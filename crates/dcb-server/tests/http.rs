@@ -1,16 +1,23 @@
-//! Tests de bout en bout sur le routeur, avec une base SQLite temporaire.
+//! Tests de bout en bout sur le routeur, avec un dossier `cards/` et une base temporaires.
 
 use std::path::PathBuf;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode, header};
-use dcb_server::{AppState, db, router, seed};
+use dcb_server::{AppState, CardStore, db, router};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 struct TestApp {
     app: axum::Router,
+    state: AppState,
     dir: PathBuf,
+}
+
+impl TestApp {
+    fn cards(&self) -> PathBuf {
+        self.dir.join("cards")
+    }
 }
 
 impl Drop for TestApp {
@@ -19,18 +26,22 @@ impl Drop for TestApp {
     }
 }
 
-async fn app(with_seed: bool) -> TestApp {
+/// Démarre l'app sur un dossier `cards/` contenant les fichiers donnés.
+async fn app(files: &[(&str, &str)]) -> TestApp {
     let dir = std::env::temp_dir().join(format!("dcb-test-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let pool = db::connect(&format!("sqlite://{}", dir.join("t.db").display()))
+    let cards = dir.join("cards");
+    std::fs::create_dir_all(&cards).unwrap();
+    for (name, body) in files {
+        std::fs::write(cards.join(name), body).unwrap();
+    }
+    let pool = db::connect(&format!("sqlite://{}", dir.join("cache.db").display()))
         .await
         .unwrap();
-    if with_seed {
-        seed::run_if_empty(&pool).await.unwrap();
-    }
-    let upload_dir = dir.join("uploads");
+    let state = AppState::new(pool, CardStore::new(&cards));
+    state.reload().await.unwrap();
     TestApp {
-        app: router(AppState { pool, upload_dir }),
+        app: router(state.clone()),
+        state,
         dir,
     }
 }
@@ -52,6 +63,10 @@ async fn send(app: &axum::Router, req: Request<Body>) -> (StatusCode, Option<Str
 
 fn get(uri: &str) -> Request<Body> {
     Request::get(uri).body(Body::empty()).unwrap()
+}
+
+fn post(uri: &str) -> Request<Body> {
+    Request::post(uri).body(Body::empty()).unwrap()
 }
 
 const BOUNDARY: &str = "dcbboundary";
@@ -84,6 +99,7 @@ fn multipart(uri: &str, fields: &[(&str, &[u8])]) -> Request<Body> {
 }
 
 const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR";
+const JPG: &[u8] = b"\xFF\xD8\xFF\xE0\0\x10JFIF";
 
 fn card_fields<'a>(name: &'a str, extra: &[(&'a str, &'a [u8])]) -> Vec<(&'a str, &'a [u8])> {
     let mut f: Vec<(&str, &[u8])> = vec![
@@ -91,7 +107,7 @@ fn card_fields<'a>(name: &'a str, extra: &[(&'a str, &'a [u8])]) -> Vec<(&'a str
         ("card_type", b"incident"),
         ("skin", b"dark"),
         ("rarity", b"gold"),
-        ("description", b"Le cluster ne repond plus"),
+        ("description", "Le cluster ne répond plus".as_bytes()),
         ("effect", b"- Inflige 3 degats\r\n- Duree 2 tours"),
         ("deploy_cost", b"4"),
         ("daily_cost", b"1"),
@@ -101,98 +117,183 @@ fn card_fields<'a>(name: &'a str, extra: &[(&'a str, &'a [u8])]) -> Vec<(&'a str
     f
 }
 
+const DDOS: &str = "name = \"DDOS\"\ntype = \"incident\"\ndeploy_cost = 4\n";
+const ARGO: &str = "name = \"ARGO CD\"\ntype = \"app\"\nrarity = \"gold\"\n";
+
 #[tokio::test]
-async fn pages_render() {
-    let t = app(true).await;
+async fn starts_empty_without_demo_cards() {
+    let t = app(&[]).await;
+    let (status, _, json) = send(&t.app, get("/api/cards")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json, "[]");
+    let (_, _, body) = send(&t.app, get("/gallery")).await;
+    assert!(body.contains("Aucune carte pour l'instant"));
+    let (_, _, body) = send(&t.app, get("/")).await;
+    assert!(body.contains("Aucune carte pour l'instant"));
+}
+
+#[tokio::test]
+async fn pages_render_from_toml_files() {
+    let t = app(&[("ddos.toml", DDOS), ("argo-cd.toml", ARGO)]).await;
     for uri in [
         "/",
         "/gallery",
         "/gallery?type=app",
         "/cards/new",
-        "/cards/1",
-        "/cards/1/edit",
+        "/cards/ddos",
+        "/cards/argo-cd/edit",
     ] {
         let (status, _, body) = send(&t.app, get(uri)).await;
         assert_eq!(status, StatusCode::OK, "{uri}");
         assert!(body.contains("DevCard"), "{uri}");
     }
-    let (status, _, _) = send(&t.app, get("/cards/9999")).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
-}
-
-#[tokio::test]
-async fn gallery_filters_by_type() {
-    let t = app(true).await;
     let (_, _, body) = send(&t.app, get("/gallery?type=incident")).await;
-    assert!(body.contains("DDOS"));
-    assert!(!body.contains("ARGO CD"));
+    assert!(body.contains("DDOS") && !body.contains("ARGO CD"));
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(
+        body.contains("ddos.toml"),
+        "le fichier à commiter est affiché"
+    );
+
+    for uri in ["/cards/nope", "/cards/..%2Fetc", "/cards/DDOS"] {
+        let (status, _, _) = send(&t.app, get(uri)).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{uri}");
+    }
 }
 
 #[tokio::test]
-async fn create_edit_delete_lifecycle() {
-    let t = app(false).await;
+async fn invalid_files_are_listed_in_gallery() {
+    let t = app(&[
+        ("ddos.toml", DDOS),
+        ("broken.toml", "name = \"X\"\ntype = \"package\"\n"),
+    ])
+    .await;
+    let (_, _, body) = send(&t.app, get("/gallery")).await;
+    assert!(body.contains("DDOS"));
+    assert!(body.contains("broken.toml"), "{body}");
+}
 
-    // Création avec illustration
+#[tokio::test]
+async fn create_writes_toml_and_art() {
+    let t = app(&[]).await;
     let (status, location, _) = send(
         &t.app,
-        multipart("/cards", &card_fields("CRASHLOOP", &[("art", PNG)])),
+        multipart("/cards", &card_fields("Crash Loop", &[("art", PNG)])),
     )
     .await;
     assert_eq!(status, StatusCode::SEE_OTHER);
-    let location = location.unwrap();
-    let id: i64 = location.trim_start_matches("/cards/").parse().unwrap();
+    assert_eq!(location.as_deref(), Some("/cards/crash-loop"));
 
-    let (_, _, json) = send(&t.app, get(&format!("/api/cards/{id}"))).await;
-    let card: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(card["name"], "CRASHLOOP");
-    assert_eq!(card["card_type"], "incident");
-    assert_eq!(card["effect"], "- Inflige 3 degats\n- Duree 2 tours");
-    let art = card["art_path"].as_str().unwrap().to_owned();
-    assert!(art.starts_with("/uploads/") && art.ends_with(".png"));
-    let (status, _, _) = send(&t.app, get(&art)).await;
+    let toml = std::fs::read_to_string(t.cards().join("crash-loop.toml")).unwrap();
+    assert!(toml.contains("name = \"Crash Loop\""), "{toml}");
+    assert!(toml.contains("type = \"incident\""), "{toml}");
+    assert!(toml.contains("art = \"crash-loop.png\""), "{toml}");
+    assert!(!toml.contains('\r'), "retours chariot normalisés : {toml}");
+    assert_eq!(
+        std::fs::read(t.cards().join("art/crash-loop.png")).unwrap(),
+        PNG
+    );
+
+    let (status, _, _) = send(&t.app, get("/art/crash-loop.png")).await;
     assert_eq!(status, StatusCode::OK);
 
-    // Mise à jour sans nouveau fichier : l'illustration est conservée, current_art est ignoré
-    let (status, _, _) = send(
+    // Même nom : un deuxième fichier, le premier n'est pas écrasé
+    let (_, location, _) = send(&t.app, multipart("/cards", &card_fields("CRASH LOOP", &[]))).await;
+    assert_eq!(location.as_deref(), Some("/cards/crash-loop-2"));
+    assert!(t.cards().join("crash-loop.toml").exists());
+
+    // Le cache reconstruit depuis les fichiers donne le même résultat
+    let (_, _, before) = send(&t.app, get("/api/cards")).await;
+    t.state.reload().await.unwrap();
+    let (_, _, after) = send(&t.app, get("/api/cards")).await;
+    assert_eq!(before, after);
+    assert!(after.contains("\"effect\":\"- Inflige 3 degats\\n- Duree 2 tours\""));
+}
+
+#[tokio::test]
+async fn update_keeps_slug_and_manages_art() {
+    let t = app(&[]).await;
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Crash Loop", &[("art", PNG)])),
+    )
+    .await;
+
+    // Renommer ne change pas le fichier ; current_art envoyé par le client est ignoré
+    let (status, location, _) = send(
         &t.app,
         multipart(
-            &format!("/cards/{id}"),
-            &card_fields("CRASHLOOP v2", &[("current_art", b"/uploads/x.png")]),
+            "/cards/crash-loop",
+            &card_fields("CrashLoopBackOff", &[("current_art", b"../../x.png")]),
         ),
     )
     .await;
     assert_eq!(status, StatusCode::SEE_OTHER);
-    let (_, _, json) = send(&t.app, get(&format!("/api/cards/{id}"))).await;
-    let card: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(card["name"], "CRASHLOOP v2");
-    assert_eq!(card["art_path"].as_str(), Some(art.as_str()));
+    assert_eq!(location.as_deref(), Some("/cards/crash-loop"));
+    let toml = std::fs::read_to_string(t.cards().join("crash-loop.toml")).unwrap();
+    assert!(toml.contains("name = \"CrashLoopBackOff\""));
+    assert!(toml.contains("art = \"crash-loop.png\""));
 
-    // Retrait de l'illustration : le fichier est supprimé
+    // Nouvelle illustration dans un autre format : l'ancienne disparaît
     send(
         &t.app,
         multipart(
-            &format!("/cards/{id}"),
-            &card_fields("CRASHLOOP v2", &[("remove_art", b"1")]),
+            "/cards/crash-loop",
+            &card_fields("CrashLoopBackOff", &[("art", JPG)]),
         ),
     )
     .await;
-    let (status, _, _) = send(&t.app, get(&art)).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(t.cards().join("art/crash-loop.jpg").exists());
+    assert!(!t.cards().join("art/crash-loop.png").exists());
 
-    // Suppression
-    let delete = Request::post(format!("/cards/{id}/delete"))
-        .body(Body::empty())
-        .unwrap();
-    let (status, location, _) = send(&t.app, delete).await;
+    // Retrait de l'illustration
+    send(
+        &t.app,
+        multipart(
+            "/cards/crash-loop",
+            &card_fields("CrashLoopBackOff", &[("remove_art", b"1")]),
+        ),
+    )
+    .await;
+    assert!(!t.cards().join("art/crash-loop.jpg").exists());
+    let toml = std::fs::read_to_string(t.cards().join("crash-loop.toml")).unwrap();
+    assert!(!toml.contains("art"), "{toml}");
+}
+
+#[tokio::test]
+async fn delete_removes_files() {
+    let t = app(&[]).await;
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Crash Loop", &[("art", PNG)])),
+    )
+    .await;
+    let (status, location, _) = send(&t.app, post("/cards/crash-loop/delete")).await;
     assert_eq!(status, StatusCode::SEE_OTHER);
     assert_eq!(location.as_deref(), Some("/gallery"));
-    let (status, _, _) = send(&t.app, get(&format!("/cards/{id}"))).await;
+    assert!(!t.cards().join("crash-loop.toml").exists());
+    assert!(!t.cards().join("art/crash-loop.png").exists());
+    let (status, _, _) = send(&t.app, get("/cards/crash-loop")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, _, _) = send(&t.app, post("/cards/crash-loop/delete")).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
-async fn invalid_submission_rerenders_form_with_errors() {
-    let t = app(false).await;
+async fn reload_picks_up_external_changes() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    // Comme après un `git pull` : un fichier ajouté, un supprimé
+    std::fs::write(t.cards().join("argo-cd.toml"), ARGO).unwrap();
+    std::fs::remove_file(t.cards().join("ddos.toml")).unwrap();
+    let (status, _, _) = send(&t.app, post("/reload")).await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    let (_, _, json) = send(&t.app, get("/api/cards")).await;
+    assert!(json.contains("argo-cd") && !json.contains("ddos"), "{json}");
+}
+
+#[tokio::test]
+async fn invalid_submission_writes_nothing() {
+    let t = app(&[]).await;
     let fields: Vec<(&str, &[u8])> = vec![
         ("name", b""),
         ("card_type", b"incident"),
@@ -213,14 +314,12 @@ async fn invalid_submission_rerenders_form_with_errors() {
         body.contains("garde ma saisie"),
         "la saisie doit être conservée"
     );
-
-    let (_, _, json) = send(&t.app, get("/api/cards")).await;
-    assert_eq!(json, "[]");
+    assert_eq!(std::fs::read_dir(t.cards()).unwrap().count(), 0);
 }
 
 #[tokio::test]
 async fn preview_renders_card_and_drops_unsafe_art() {
-    let t = app(false).await;
+    let t = app(&[]).await;
     let req = Request::post("/preview")
         .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
@@ -231,20 +330,18 @@ async fn preview_renders_card_and_drops_unsafe_art() {
     assert_eq!(status, StatusCode::OK);
     assert!(body.contains(r#"data-type="hr""#));
     assert!(body.contains(r#"data-rarity="gold""#));
-    assert!(
-        body.contains("&#60;script&#62;") || body.contains("&lt;script&gt;"),
-        "le nom doit être échappé"
-    );
-    assert!(!body.contains("<script>"));
+    assert!(!body.contains("<script>"), "le nom doit être échappé");
     assert!(!body.contains("passwd"));
 }
 
 #[tokio::test]
 async fn api_rejects_unknown_filter() {
-    let t = app(true).await;
+    let t = app(&[("ddos.toml", DDOS)]).await;
     let (status, _, _) = send(&t.app, get("/api/cards?type=package")).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    let (status, _, body) = send(&t.app, get("/api/meta")).await;
+    let (status, _, body) = send(&t.app, get("/api/cards/ddos")).await;
     assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("\"slug\":\"ddos\""));
+    let (_, _, body) = send(&t.app, get("/api/meta")).await;
     assert!(body.contains("#a538f8"));
 }

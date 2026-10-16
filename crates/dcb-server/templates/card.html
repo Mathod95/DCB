@@ -4,7 +4,7 @@
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span>{{ card.name }}</span></div>
 
   <div class="card-block card-art">
-    {% if let Some(art) = card.art_path %}
+    {% if let Some(art) = card.art_url %}
     <img src="{{ art }}" alt="" loading="lazy" draggable="false">
     {% else %}
     <svg class="card-art-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">

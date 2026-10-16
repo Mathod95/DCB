@@ -12,14 +12,19 @@
       <div><dt>Daily Cost</dt><dd>{{ card.daily_cost }} $</dd></div>
       <div><dt>Skin</dt><dd>{{ card.skin }}</dd></div>
     </dl>
-    {% if let Some(id) = card.id %}
+    {% if let Some(slug) = card.slug %}
     <div class="actions">
-      <a class="btn btn-primary" href="/cards/{{ id }}/edit">Modifier</a>
-      <form method="post" action="/cards/{{ id }}/delete" hx-confirm="Supprimer définitivement « {{ card.name }} » ?">
+      <a class="btn btn-primary" href="/cards/{{ slug }}/edit">Modifier</a>
+      <form method="post" action="/cards/{{ slug }}/delete" hx-confirm="Supprimer « {{ card.name }} » ? Le fichier {{ file }} sera supprimé.">
         <button class="btn btn-danger" type="submit">Supprimer</button>
       </form>
     </div>
-    <p class="muted small">Données brutes : <a href="/api/cards/{{ id }}" hx-boost="false">/api/cards/{{ id }}</a></p>
+    <div class="files">
+      <p class="eyebrow">Fichiers à commiter</p>
+      <code>{{ file }}</code>
+      {% if let Some(a) = art_file %}<code>{{ a }}</code>{% endif %}
+    </div>
+    <p class="muted small">Données brutes : <a href="/api/cards/{{ slug }}" hx-boost="false">/api/cards/{{ slug }}</a></p>
     {% endif %}
   </aside>
 </div>

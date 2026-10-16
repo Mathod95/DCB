@@ -1,0 +1,392 @@
+//! Source de vérité des cartes : un fichier TOML par carte dans `cards/`, les illustrations
+//! dans `cards/art/`. Ces fichiers sont faits pour être commités. SQLite n'est qu'un cache
+//! reconstruit à partir d'eux (voir `db::replace_all`).
+
+use std::path::{Path, PathBuf};
+
+use dcb_core::{Card, CardDraft, CardType, Rarity, Skin, is_valid_slug, slugify};
+use serde::{Deserialize, Serialize};
+
+/// Contenu d'un fichier `cards/<slug>.toml`. Le slug n'y figure pas : c'est le nom du fichier.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CardFile {
+    name: String,
+    #[serde(rename = "type")]
+    card_type: CardType,
+    #[serde(default = "default_skin")]
+    skin: Skin,
+    #[serde(default = "default_rarity")]
+    rarity: Rarity,
+    #[serde(default)]
+    deploy_cost: i64,
+    #[serde(default)]
+    daily_cost: i64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    description: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    effect: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    flavor_text: String,
+    /// Nom du fichier dans `cards/art/`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    art: Option<String>,
+}
+
+fn default_skin() -> Skin {
+    Skin::Light
+}
+
+fn default_rarity() -> Rarity {
+    Rarity::Basic
+}
+
+impl From<&CardDraft> for CardFile {
+    fn from(d: &CardDraft) -> Self {
+        Self {
+            name: d.name.clone(),
+            card_type: d.card_type,
+            skin: d.skin,
+            rarity: d.rarity,
+            deploy_cost: d.deploy_cost,
+            daily_cost: d.daily_cost,
+            description: d.description.clone(),
+            effect: d.effect.clone(),
+            flavor_text: d.flavor_text.clone(),
+            art: d.art.clone(),
+        }
+    }
+}
+
+impl From<CardFile> for CardDraft {
+    fn from(f: CardFile) -> Self {
+        Self {
+            name: f.name,
+            card_type: f.card_type,
+            skin: f.skin,
+            rarity: f.rarity,
+            description: f.description,
+            effect: f.effect,
+            deploy_cost: f.deploy_cost,
+            daily_cost: f.daily_cost,
+            flavor_text: f.flavor_text,
+            art: f.art,
+        }
+    }
+}
+
+/// Fichier ignoré au chargement, avec la raison. Affiché dans la galerie.
+#[derive(Debug, Clone)]
+pub struct LoadError {
+    pub file: String,
+    pub message: String,
+}
+
+impl std::fmt::Display for LoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.file, self.message)
+    }
+}
+
+/// Nom de fichier d'illustration acceptable : pas de dossier, pas de `..`.
+pub fn is_safe_file_name(f: &str) -> bool {
+    !f.is_empty()
+        && f.len() <= 80
+        && !f.starts_with('.')
+        && !f.contains("..")
+        && f.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+}
+
+pub struct CardStore {
+    dir: PathBuf,
+    /// Sérialise les écritures (choix du slug, fichiers) entre requêtes concurrentes.
+    write_lock: tokio::sync::Mutex<()>,
+}
+
+impl CardStore {
+    pub fn new(dir: impl Into<PathBuf>) -> Self {
+        Self {
+            dir: dir.into(),
+            write_lock: tokio::sync::Mutex::new(()),
+        }
+    }
+
+    pub fn dir(&self) -> &Path {
+        &self.dir
+    }
+
+    pub fn art_dir(&self) -> PathBuf {
+        self.dir.join("art")
+    }
+
+    fn card_path(&self, slug: &str) -> PathBuf {
+        self.dir.join(format!("{slug}.toml"))
+    }
+
+    /// Garde à prendre pendant une modification (création, mise à jour, suppression).
+    pub async fn lock(&self) -> tokio::sync::MutexGuard<'_, ()> {
+        self.write_lock.lock().await
+    }
+
+    /// Lit toutes les cartes. Un fichier invalide est ignoré et signalé, il ne bloque pas les autres.
+    pub async fn load_all(&self) -> std::io::Result<(Vec<Card>, Vec<LoadError>)> {
+        tokio::fs::create_dir_all(&self.dir).await?;
+        let mut entries = tokio::fs::read_dir(&self.dir).await?;
+        let mut paths = Vec::new();
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "toml") && path.is_file() {
+                paths.push(path);
+            }
+        }
+        paths.sort();
+
+        let mut cards = Vec::new();
+        let mut errors = Vec::new();
+        for path in paths {
+            let file = path
+                .file_name()
+                .map(|f| f.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            match self.read_card(&path).await {
+                Ok((card, warning)) => {
+                    if let Some(message) = warning {
+                        errors.push(LoadError {
+                            file: file.clone(),
+                            message,
+                        });
+                    }
+                    cards.push(card);
+                }
+                Err(message) => errors.push(LoadError { file, message }),
+            }
+        }
+        Ok((cards, errors))
+    }
+
+    /// Lit une carte. Renvoie aussi un avertissement non bloquant (illustration introuvable).
+    async fn read_card(&self, path: &Path) -> Result<(Card, Option<String>), String> {
+        let slug = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| is_valid_slug(s))
+            .ok_or("nom de fichier invalide (attendu : minuscules, chiffres et tirets)")?
+            .to_owned();
+        let text = tokio::fs::read_to_string(path)
+            .await
+            .map_err(|e| e.to_string())?;
+        let file: CardFile = toml::from_str(&text).map_err(|e| e.message().to_owned())?;
+        let mut draft = CardDraft::from(file).validated().map_err(|errs| {
+            errs.iter()
+                .map(|e| format!("{} {}", e.field, e.message))
+                .collect::<Vec<_>>()
+                .join(", ")
+        })?;
+
+        let mut warning = None;
+        if let Some(art) = &draft.art {
+            if !is_safe_file_name(art) {
+                warning = Some(format!("illustration {art:?} ignorée (nom invalide)"));
+                draft.art = None;
+            } else if !self.art_dir().join(art).is_file() {
+                warning = Some(format!("illustration art/{art} introuvable"));
+                draft.art = None;
+            }
+        }
+        Ok((Card { slug, draft }, warning))
+    }
+
+    /// Slug libre dérivé du nom : `argo-cd`, puis `argo-cd-2`, `argo-cd-3`...
+    /// À appeler en tenant le verrou d'écriture.
+    pub fn unique_slug(&self, name: &str) -> String {
+        let base = slugify(name);
+        if !self.card_path(&base).exists() {
+            return base;
+        }
+        (2..)
+            .map(|n| {
+                let suffix = format!("-{n}");
+                let mut b = base.clone();
+                b.truncate(dcb_core::SLUG_MAX - suffix.len());
+                format!("{}{suffix}", b.trim_end_matches('-'))
+            })
+            .find(|s| !self.card_path(s).exists())
+            .expect("suite infinie")
+    }
+
+    /// Écrit `cards/<slug>.toml` de façon atomique (fichier temporaire puis renommage), pour ne
+    /// jamais laisser un fichier à moitié écrit.
+    pub async fn write(&self, card: &Card) -> anyhow::Result<()> {
+        anyhow::ensure!(is_valid_slug(&card.slug), "slug invalide: {}", card.slug);
+        tokio::fs::create_dir_all(&self.dir).await?;
+        let body = toml::to_string_pretty(&CardFile::from(&card.draft))?;
+        let tmp = self.dir.join(format!(".{}.toml.tmp", card.slug));
+        tokio::fs::write(&tmp, body).await?;
+        tokio::fs::rename(&tmp, self.card_path(&card.slug)).await?;
+        Ok(())
+    }
+
+    /// Supprime le fichier de la carte. Renvoie `false` s'il n'existait pas.
+    pub async fn remove(&self, slug: &str) -> anyhow::Result<bool> {
+        anyhow::ensure!(is_valid_slug(slug), "slug invalide: {slug}");
+        match tokio::fs::remove_file(self.card_path(slug)).await {
+            Ok(()) => Ok(true),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Enregistre l'illustration sous `art/<slug>.<ext>` et renvoie le nom du fichier.
+    pub async fn save_art(&self, slug: &str, ext: &str, bytes: &[u8]) -> anyhow::Result<String> {
+        anyhow::ensure!(is_valid_slug(slug), "slug invalide: {slug}");
+        let dir = self.art_dir();
+        tokio::fs::create_dir_all(&dir).await?;
+        let file = format!("{slug}.{ext}");
+        let tmp = dir.join(format!(".{file}.tmp"));
+        tokio::fs::write(&tmp, bytes).await?;
+        tokio::fs::rename(&tmp, dir.join(&file)).await?;
+        Ok(file)
+    }
+
+    /// Supprime une illustration. Une erreur est seulement journalisée : ce n'est qu'un fichier
+    /// orphelin, la carte reste cohérente.
+    pub async fn remove_art(&self, file: &str) {
+        if !is_safe_file_name(file) {
+            return;
+        }
+        if let Err(e) = tokio::fs::remove_file(self.art_dir().join(file)).await
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            tracing::warn!("suppression de art/{file} impossible: {e}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn draft() -> CardDraft {
+        CardDraft {
+            name: "ARGO CD".into(),
+            card_type: CardType::App,
+            skin: Skin::Light,
+            rarity: Rarity::Gold,
+            description: "GitOps".into(),
+            effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
+            deploy_cost: 3,
+            daily_cost: 1,
+            flavor_text: "Pas de Flux dans ce jeu !".into(),
+            art: None,
+        }
+    }
+
+    fn temp_store() -> (CardStore, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("dcb-store-{}", uuid::Uuid::new_v4()));
+        (CardStore::new(&dir), dir)
+    }
+
+    #[tokio::test]
+    async fn roundtrip_and_readable_toml() {
+        let (store, dir) = temp_store();
+        let card = Card {
+            slug: "argo-cd".into(),
+            draft: draft(),
+        };
+        store.write(&card).await.unwrap();
+
+        let text = std::fs::read_to_string(dir.join("argo-cd.toml")).unwrap();
+        assert!(text.contains("name = \"ARGO CD\""), "{text}");
+        assert!(text.contains("type = \"app\""), "{text}");
+        assert!(!text.contains("art"), "{text}");
+
+        let (cards, errors) = store.load_all().await.unwrap();
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(cards, vec![card]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn hand_written_file_with_defaults() {
+        let (store, dir) = temp_store();
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("ddos.toml"),
+            "name = \"DDOS\"\ntype = \"incident\"\neffect = \"\"\"\n- Inflige 5 dégâts\n- Ralentit de 70%\n\"\"\"\n",
+        )
+        .unwrap();
+        let (cards, errors) = store.load_all().await.unwrap();
+        assert!(errors.is_empty(), "{errors:?}");
+        let d = &cards[0].draft;
+        assert_eq!(cards[0].slug, "ddos");
+        assert_eq!(d.skin, Skin::Light);
+        assert_eq!(d.rarity, Rarity::Basic);
+        assert_eq!(d.effect, "- Inflige 5 dégâts\n- Ralentit de 70%");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn invalid_files_are_reported_not_fatal() {
+        let (store, dir) = temp_store();
+        store
+            .write(&Card {
+                slug: "ok".into(),
+                draft: draft(),
+            })
+            .await
+            .unwrap();
+        std::fs::write(
+            dir.join("broken.toml"),
+            "name = \"X\"\ntype = \"package\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("typo.toml"),
+            "name = \"X\"\ntype = \"app\"\ncolour = 1\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("Bad Name.toml"), "name = \"X\"\ntype = \"app\"\n").unwrap();
+        std::fs::write(
+            dir.join("noart.toml"),
+            "name = \"X\"\ntype = \"app\"\nart = \"missing.png\"\n",
+        )
+        .unwrap();
+
+        let (cards, errors) = store.load_all().await.unwrap();
+        let slugs: Vec<_> = cards.iter().map(|c| c.slug.as_str()).collect();
+        assert_eq!(slugs, ["noart", "ok"]);
+        assert_eq!(cards[0].draft.art, None);
+        let files: Vec<_> = errors.iter().map(|e| e.file.as_str()).collect();
+        assert_eq!(
+            files,
+            ["Bad Name.toml", "broken.toml", "noart.toml", "typo.toml"]
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn unique_slug_appends_suffix() {
+        let (store, dir) = temp_store();
+        assert_eq!(store.unique_slug("Argo CD"), "argo-cd");
+        for slug in ["argo-cd", "argo-cd-2"] {
+            store
+                .write(&Card {
+                    slug: slug.into(),
+                    draft: draft(),
+                })
+                .await
+                .unwrap();
+        }
+        assert_eq!(store.unique_slug("ARGO  cd"), "argo-cd-3");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn art_names() {
+        assert!(is_safe_file_name("argo-cd.png"));
+        assert!(!is_safe_file_name("../x.png"));
+        assert!(!is_safe_file_name("a/b.png"));
+        assert!(!is_safe_file_name(".hidden"));
+    }
+}

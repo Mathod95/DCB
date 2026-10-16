@@ -6,7 +6,17 @@
     <h1>Galerie</h1>
     <p class="muted">{{ cards.len() }} carte{% if cards.len() != 1 %}s{% endif %}{% if filtered %} correspondant aux filtres{% endif %}</p>
   </div>
+  <form method="post" action="/reload">
+    <button class="btn btn-sm" type="submit" title="Relire les fichiers cards/*.toml, par exemple après un git pull">Recharger les fichiers</button>
+  </form>
 </div>
+
+{% if !load_errors.is_empty() %}
+<div class="alert" role="alert">
+  <strong>{{ load_errors.len() }} fichier{% if load_errors.len() != 1 %}s{% endif %} ignoré{% if load_errors.len() != 1 %}s{% endif %} ou incomplet{% if load_errors.len() != 1 %}s{% endif %} dans cards/ :</strong>
+  <ul>{% for e in load_errors %}<li><code>{{ e }}</code></li>{% endfor %}</ul>
+</div>
+{% endif %}
 
 <div class="filters">
   <div class="chips" role="group" aria-label="Filtrer par type">
@@ -25,14 +35,14 @@
 
 {% if cards.is_empty() %}
 <div class="empty">
-  <p>Aucune carte ici pour l'instant.</p>
+  <p>{% if filtered %}Aucune carte ne correspond à ces filtres.{% else %}Aucune carte pour l'instant. Chaque carte créée est enregistrée dans <code>cards/</code>, prête à être commitée.{% endif %}</p>
   <a class="btn btn-primary" href="/cards/new">Créer la première</a>
 </div>
 {% else %}
 <div class="grid">
   {% for card in cards %}
-  {% if let Some(id) = card.id %}
-  <a class="grid-item" href="/cards/{{ id }}" aria-label="{{ card.name }}">
+  {% if let Some(slug) = card.slug %}
+  <a class="grid-item" href="/cards/{{ slug }}" aria-label="{{ card.name }}">
     <div class="card-frame" style="--s: var(--grid-scale)">{% include "card.html" %}</div>
   </a>
   {% endif %}

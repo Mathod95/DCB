@@ -1,21 +1,26 @@
 //! Routes HTTP : pages HTML (rendu serveur + htmx) et API JSON pour les futurs clients.
+//!
+//! Chaque modification écrit d'abord le fichier `cards/<slug>.toml` (source de vérité, à
+//! commiter), puis met à jour le cache SQLite.
 
-use std::path::{Path as FsPath, PathBuf};
+use std::sync::{Arc, RwLock};
 
 use askama::Template;
 use axum::Json;
 use axum::Router;
 use axum::extract::{DefaultBodyLimit, Form, Multipart, Path, Query, State};
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use dcb_core::{Card, CardDraft, CardType, FieldError, Rarity};
+use dcb_core::{Card, CardDraft, CardType, FieldError, Rarity, is_valid_slug};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::db::{self, Filter};
+use crate::store::{CardStore, LoadError, is_safe_file_name};
 use crate::views::*;
 
 /// Taille max d'une illustration envoyée.
@@ -24,22 +29,55 @@ pub const MAX_ART_BYTES: usize = 5 * 1024 * 1024;
 #[derive(Clone)]
 pub struct AppState {
     pub pool: SqlitePool,
-    pub upload_dir: PathBuf,
+    pub store: Arc<CardStore>,
+    /// Fichiers ignorés au dernier chargement, affichés dans la galerie.
+    pub load_errors: Arc<RwLock<Vec<LoadError>>>,
+}
+
+impl AppState {
+    pub fn new(pool: SqlitePool, store: CardStore) -> Self {
+        Self {
+            pool,
+            store: Arc::new(store),
+            load_errors: Arc::default(),
+        }
+    }
+
+    /// Relit `cards/*.toml` et reconstruit le cache. Renvoie le nombre de cartes chargées.
+    pub async fn reload(&self) -> anyhow::Result<usize> {
+        let _guard = self.store.lock().await;
+        let (cards, errors) = self.store.load_all().await?;
+        db::replace_all(&self.pool, &cards).await?;
+        for e in &errors {
+            tracing::warn!("cards/{e}");
+        }
+        *self.load_errors.write().expect("verrou empoisonné") = errors;
+        Ok(cards.len())
+    }
 }
 
 pub fn router(state: AppState) -> Router {
-    let uploads = ServeDir::new(&state.upload_dir);
+    // Les illustrations gardent le même nom quand on les remplace : `no-cache` force le
+    // navigateur à revalider (Last-Modified) au lieu d'afficher l'ancienne image.
+    let art = Router::new()
+        .fallback_service(ServeDir::new(state.store.art_dir()))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("no-cache"),
+        ));
+
     Router::new()
         .route("/", get(menu))
         .route("/gallery", get(gallery))
+        .route("/reload", post(reload))
         .route("/cards/new", get(new_form))
         .route("/cards", post(create))
-        .route("/cards/{id}", get(detail).post(update))
-        .route("/cards/{id}/edit", get(edit_form))
-        .route("/cards/{id}/delete", post(delete))
+        .route("/cards/{slug}", get(detail).post(update))
+        .route("/cards/{slug}/edit", get(edit_form))
+        .route("/cards/{slug}/delete", post(delete))
         .route("/preview", post(preview))
         .route("/api/cards", get(api_list))
-        .route("/api/cards/{id}", get(api_get))
+        .route("/api/cards/{slug}", get(api_get))
         .route("/api/meta", get(api_meta))
         .route(
             "/static/app.css",
@@ -63,7 +101,7 @@ pub fn router(state: AppState) -> Router {
             "/static/app.js",
             get(|| async { asset("text/javascript", include_str!("../static/app.js")) }),
         )
-        .nest_service("/uploads", uploads)
+        .nest("/art", art)
         .fallback(not_found)
         .layer(DefaultBodyLimit::max(MAX_ART_BYTES + 64 * 1024))
         .layer(TraceLayer::new_for_http())
@@ -193,25 +231,56 @@ async fn gallery(
         color: None,
     }));
 
+    let load_errors = s
+        .load_errors
+        .read()
+        .expect("verrou empoisonné")
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+
     render(GalleryPage {
         cards: cards
             .iter()
-            .map(|c| CardView::new(Some(c.id), &c.draft))
+            .map(|c| CardView::new(Some(&c.slug), &c.draft))
             .collect(),
         type_links,
         rarity_links,
         filtered: filter.card_type.is_some() || filter.rarity.is_some(),
+        load_errors,
     })
 }
 
-async fn load(pool: &SqlitePool, id: i64) -> AppResult<Card> {
-    db::get(pool, id).await?.ok_or(AppError::NotFound)
+async fn reload(State(s): State<AppState>) -> AppResult<Redirect> {
+    s.reload().await?;
+    Ok(Redirect::to("/gallery"))
 }
 
-async fn detail(State(s): State<AppState>, Path(id): Path<i64>) -> AppResult<Html<String>> {
-    let card = load(&s.pool, id).await?;
+async fn load(pool: &SqlitePool, slug: &str) -> AppResult<Card> {
+    if !is_valid_slug(slug) {
+        return Err(AppError::NotFound);
+    }
+    db::get(pool, slug).await?.ok_or(AppError::NotFound)
+}
+
+fn card_file(s: &AppState, slug: &str) -> String {
+    s.store
+        .dir()
+        .join(format!("{slug}.toml"))
+        .display()
+        .to_string()
+}
+
+async fn detail(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Html<String>> {
+    let card = load(&s.pool, &slug).await?;
     render(DetailPage {
-        card: CardView::new(Some(card.id), &card.draft),
+        file: card_file(&s, &card.slug),
+        art_file: card
+            .draft
+            .art
+            .as_ref()
+            .map(|a| s.store.art_dir().join(a).display().to_string()),
+        card: CardView::new(Some(&card.slug), &card.draft),
     })
 }
 
@@ -228,15 +297,15 @@ async fn new_form() -> AppResult<Html<String>> {
     ))
 }
 
-async fn edit_form(State(s): State<AppState>, Path(id): Path<i64>) -> AppResult<Html<String>> {
-    let card = load(&s.pool, id).await?;
+async fn edit_form(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Html<String>> {
+    let card = load(&s.pool, &slug).await?;
     render(FormPage::new(
         "Modifier la carte",
-        format!("/cards/{id}"),
-        format!("/cards/{id}"),
+        format!("/cards/{slug}"),
+        format!("/cards/{slug}"),
         FormValues::from_draft(&card.draft),
         Vec::new(),
-        CardView::new(Some(id), &card.draft),
+        CardView::new(Some(&slug), &card.draft),
     ))
 }
 
@@ -288,7 +357,7 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
         daily_cost: number(&v.daily_cost, "daily_cost", &mut errors),
         flavor_text: v.flavor_text.clone(),
-        art_path: v.current_art.clone(),
+        art: v.current_art.clone(),
     };
 
     match draft.clone().validated() {
@@ -405,7 +474,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "daily_cost" => v.daily_cost = text,
             "flavor_text" => v.flavor_text = text,
             "remove_art" => remove_art = !text.is_empty(),
-            // `current_art` est ignoré ici : la valeur de référence est celle en base.
+            // `current_art` est ignoré ici : la valeur de référence est celle déjà enregistrée.
             _ => {}
         }
     }
@@ -415,32 +484,6 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
         art_error,
         remove_art,
     })
-}
-
-async fn save_upload(dir: &FsPath, up: Upload) -> AppResult<String> {
-    tokio::fs::create_dir_all(dir).await?;
-    let file = format!("{}.{}", uuid::Uuid::new_v4(), up.ext);
-    tokio::fs::write(dir.join(&file), up.bytes).await?;
-    Ok(format!("/uploads/{file}"))
-}
-
-/// Supprime un fichier d'illustration à partir de son chemin public. Ignore les chemins
-/// qui ne pointent pas dans le dossier d'upload.
-async fn remove_upload(dir: &FsPath, public: &str) {
-    if let Some(file) = public
-        .strip_prefix("/uploads/")
-        .filter(|f| is_safe_file_name(f))
-        && let Err(e) = tokio::fs::remove_file(dir.join(file)).await
-    {
-        tracing::warn!("suppression de {public} impossible: {e}");
-    }
-}
-
-fn is_safe_file_name(f: &str) -> bool {
-    !f.is_empty()
-        && f.chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
-        && !f.contains("..")
 }
 
 /// Rend le formulaire avec ses erreurs (statut 422).
@@ -465,72 +508,82 @@ fn form_with_errors(
 
 async fn create(State(s): State<AppState>, mp: Multipart) -> AppResult<Response> {
     let sub = read_submission(mp).await?;
-    match sub.parse() {
-        Ok(mut draft) => {
-            draft.art_path = match sub.art {
-                Some(up) => Some(save_upload(&s.upload_dir, up).await?),
-                None => None,
-            };
-            let id = db::insert(&s.pool, &draft).await?;
-            Ok(Redirect::to(&format!("/cards/{id}")).into_response())
+    let mut draft = match sub.parse() {
+        Ok(d) => d,
+        Err((draft, errors)) => {
+            return form_with_errors(
+                "Nouvelle carte",
+                "/cards".into(),
+                "/gallery".into(),
+                sub.values,
+                &draft,
+                errors,
+            );
         }
-        Err((draft, errors)) => form_with_errors(
-            "Nouvelle carte",
-            "/cards".into(),
-            "/gallery".into(),
-            sub.values,
-            &draft,
-            errors,
-        ),
-    }
+    };
+
+    let _guard = s.store.lock().await;
+    let slug = s.store.unique_slug(&draft.name);
+    draft.art = match &sub.art {
+        Some(up) => Some(s.store.save_art(&slug, up.ext, &up.bytes).await?),
+        None => None,
+    };
+    let card = Card { slug, draft };
+    s.store.write(&card).await?;
+    db::upsert(&s.pool, &card).await?;
+    Ok(Redirect::to(&format!("/cards/{}", card.slug)).into_response())
 }
 
 async fn update(
     State(s): State<AppState>,
-    Path(id): Path<i64>,
+    Path(slug): Path<String>,
     mp: Multipart,
 ) -> AppResult<Response> {
-    let existing = load(&s.pool, id).await?;
+    let existing = load(&s.pool, &slug).await?;
     let mut sub = read_submission(mp).await?;
-    sub.values.current_art = existing.draft.art_path.clone();
+    sub.values.current_art = existing.draft.art.clone();
 
-    match sub.parse() {
-        Ok(mut draft) => {
-            let old_art = existing.draft.art_path;
-            draft.art_path = match (sub.art, sub.remove_art) {
-                (Some(up), _) => Some(save_upload(&s.upload_dir, up).await?),
-                (None, true) => None,
-                (None, false) => old_art.clone(),
-            };
-            if !db::update(&s.pool, id, &draft).await? {
-                return Err(AppError::NotFound);
-            }
-            if let Some(old) = old_art.filter(|old| Some(old) != draft.art_path.as_ref()) {
-                remove_upload(&s.upload_dir, &old).await;
-            }
-            Ok(Redirect::to(&format!("/cards/{id}")).into_response())
+    let mut draft = match sub.parse() {
+        Ok(d) => d,
+        Err((draft, errors)) => {
+            return form_with_errors(
+                "Modifier la carte",
+                format!("/cards/{slug}"),
+                format!("/cards/{slug}"),
+                sub.values,
+                &draft,
+                errors,
+            );
         }
-        Err((draft, errors)) => form_with_errors(
-            "Modifier la carte",
-            format!("/cards/{id}"),
-            format!("/cards/{id}"),
-            sub.values,
-            &draft,
-            errors,
-        ),
+    };
+
+    let _guard = s.store.lock().await;
+    let old_art = existing.draft.art;
+    draft.art = match (&sub.art, sub.remove_art) {
+        (Some(up), _) => Some(s.store.save_art(&slug, up.ext, &up.bytes).await?),
+        (None, true) => None,
+        (None, false) => old_art.clone(),
+    };
+    let card = Card { slug, draft };
+    s.store.write(&card).await?;
+    db::upsert(&s.pool, &card).await?;
+    // L'ancienne illustration n'est supprimée qu'une fois la carte enregistrée. Même nom de
+    // fichier (même extension) : elle vient d'être écrasée, rien à faire.
+    if let Some(old) = old_art.filter(|old| Some(old) != card.draft.art.as_ref()) {
+        s.store.remove_art(&old).await;
     }
+    Ok(Redirect::to(&format!("/cards/{}", card.slug)).into_response())
 }
 
-async fn delete(State(s): State<AppState>, Path(id): Path<i64>) -> AppResult<Redirect> {
-    match db::delete(&s.pool, id).await? {
-        None => Err(AppError::NotFound),
-        Some(art) => {
-            if let Some(art) = art {
-                remove_upload(&s.upload_dir, &art).await;
-            }
-            Ok(Redirect::to("/gallery"))
-        }
+async fn delete(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Redirect> {
+    let card = load(&s.pool, &slug).await?;
+    let _guard = s.store.lock().await;
+    s.store.remove(&slug).await?;
+    db::delete(&s.pool, &slug).await?;
+    if let Some(art) = &card.draft.art {
+        s.store.remove_art(art).await;
     }
+    Ok(Redirect::to("/gallery"))
 }
 
 #[derive(Deserialize)]
@@ -560,11 +613,10 @@ struct PreviewForm {
 }
 
 /// Aperçu en direct : rend la carte telle qu'elle serait enregistrée, même si le formulaire
-/// contient encore des erreurs.
+/// contient encore des erreurs. N'écrit rien.
 async fn preview(Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
-    let current_art = Some(f.current_art).filter(|p| {
-        f.remove_art.is_empty() && p.strip_prefix("/uploads/").is_some_and(is_safe_file_name)
-    });
+    let current_art =
+        Some(f.current_art).filter(|a| f.remove_art.is_empty() && is_safe_file_name(a));
     let values = FormValues {
         name: f.name,
         card_type: f.card_type,
@@ -608,8 +660,8 @@ async fn api_list(
     Ok(Json(db::list(&s.pool, filter).await?))
 }
 
-async fn api_get(State(s): State<AppState>, Path(id): Path<i64>) -> AppResult<Json<Card>> {
-    Ok(Json(load(&s.pool, id).await?))
+async fn api_get(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Json<Card>> {
+    Ok(Json(load(&s.pool, &slug).await?))
 }
 
 async fn api_meta() -> Json<serde_json::Value> {
@@ -639,13 +691,5 @@ mod tests {
         assert_eq!(sniff_image(b"\xFF\xD8\xFF\xE0...."), Some("jpg"));
         assert_eq!(sniff_image(b"RIFF\0\0\0\0WEBPVP8 "), Some("webp"));
         assert_eq!(sniff_image(b"<svg xmlns="), None);
-    }
-
-    #[test]
-    fn rejects_unsafe_upload_names() {
-        assert!(is_safe_file_name("3f2a-11.png"));
-        assert!(!is_safe_file_name("../dcb.db"));
-        assert!(!is_safe_file_name("a/b.png"));
-        assert!(!is_safe_file_name(""));
     }
 }

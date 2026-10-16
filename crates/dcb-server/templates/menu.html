@@ -10,7 +10,7 @@
   <nav class="menu-actions" aria-label="Menu principal">
     <a class="menu-item" href="/gallery">
       <span class="menu-item-title">Galerie</span>
-      <span class="menu-item-sub">{{ card_count }} carte{% if card_count != 1 %}s{% endif %} dans la collection</span>
+      <span class="menu-item-sub">{% if card_count == 0 %}Aucune carte pour l'instant{% else %}{{ card_count }} carte{% if card_count != 1 %}s{% endif %} dans la collection{% endif %}</span>
     </a>
     <a class="menu-item" href="/cards/new">
       <span class="menu-item-title">Créer une carte</span>

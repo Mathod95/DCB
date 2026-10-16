@@ -5,7 +5,7 @@ use dcb_core::{CardDraft, CardType, FieldError, Rarity, Skin, limits};
 
 /// Ce dont le partial `card.html` a besoin pour dessiner une carte.
 pub struct CardView {
-    pub id: Option<i64>,
+    pub slug: Option<String>,
     pub name: String,
     pub name_size: &'static str,
     pub type_slug: &'static str,
@@ -18,11 +18,12 @@ pub struct CardView {
     pub deploy_cost: i64,
     pub daily_cost: i64,
     pub flavor_text: String,
-    pub art_path: Option<String>,
+    /// URL publique de l'illustration (`/art/<fichier>`).
+    pub art_url: Option<String>,
 }
 
 impl CardView {
-    pub fn new(id: Option<i64>, d: &CardDraft) -> Self {
+    pub fn new(slug: Option<&str>, d: &CardDraft) -> Self {
         let name = if d.name.trim().is_empty() {
             "CARD NAME".to_owned()
         } else {
@@ -36,7 +37,7 @@ impl CardView {
             _ => "s",
         };
         Self {
-            id,
+            slug: slug.map(str::to_owned),
             name,
             name_size,
             type_slug: d.card_type.slug(),
@@ -49,7 +50,7 @@ impl CardView {
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             flavor_text: d.flavor_text.clone(),
-            art_path: d.art_path.clone(),
+            art_url: d.art.as_ref().map(|f| format!("/art/{f}")),
         }
     }
 
@@ -118,12 +119,17 @@ pub struct GalleryPage {
     pub type_links: Vec<FilterLink>,
     pub rarity_links: Vec<FilterLink>,
     pub filtered: bool,
+    /// Fichiers `cards/*.toml` ignorés au dernier chargement.
+    pub load_errors: Vec<String>,
 }
 
 #[derive(Template)]
 #[template(path = "detail.html")]
 pub struct DetailPage {
     pub card: CardView,
+    /// Chemin du fichier source, affiché pour savoir quoi commiter.
+    pub file: String,
+    pub art_file: Option<String>,
 }
 
 /// Valeurs brutes du formulaire, renvoyées telles quelles en cas d'erreur.
@@ -153,7 +159,7 @@ impl FormValues {
             deploy_cost: d.deploy_cost.to_string(),
             daily_cost: d.daily_cost.to_string(),
             flavor_text: d.flavor_text.clone(),
-            current_art: d.art_path.clone(),
+            current_art: d.art.clone(),
         }
     }
 

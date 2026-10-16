@@ -182,6 +182,12 @@ h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; }
 .actions form { margin: 0; }
 
 /* Éditeur */
+.alert ul { margin: 6px 0 0; padding-left: 18px; }
+.alert code, .files code, .empty code { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.files { display: grid; gap: 4px; margin: 4px 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.files .eyebrow { margin-bottom: 2px; }
+.files code { color: #cbd5e1; }
+.empty p { max-width: 52ch; }
 .alert {
   margin-bottom: 18px;
   padding: 12px 14px;

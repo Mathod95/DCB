@@ -2,9 +2,7 @@
 
 Jeu de cartes stratégique sur le thème DevOps, inspiré de AWS Card Clash. À terme : des duels multijoueurs tour par tour, jouables depuis un navigateur.
 
-Ce premier jalon pose la **collection de cartes** : une galerie web, un éditeur avec aperçu en direct, et une base SQLite qui stocke les cartes. Chaque carte est générée à partir de ses données, en reproduisant fidèlement le gabarit Figma.
-
-![Galerie](docs/gallery.png)
+Ce premier jalon pose la **collection de cartes** : une galerie web et un éditeur avec aperçu en direct. Chaque carte est un fichier TOML versionné dans `cards/`, rendu en reproduisant fidèlement le gabarit Figma.
 
 ## Démarrer
 
@@ -13,24 +11,38 @@ nix develop        # optionnel, fournit la toolchain Rust (voir flake.nix)
 cargo run -p dcb-server
 ```
 
-Puis ouvrir <http://127.0.0.1:3000>. Au premier lancement, la base est créée dans `data/dcb.db` et 12 cartes de démo sont ajoutées.
+Puis ouvrir <http://127.0.0.1:3000>. Lance le serveur depuis la racine du repo : les cartes sont lues dans `./cards`.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `DATABASE_URL` | `sqlite://data/dcb.db` | Base SQLite (créée si absente) |
-| `DCB_UPLOAD_DIR` | `data/uploads` | Dossier des illustrations envoyées |
+| `DCB_CARDS_DIR` | `cards` | Dossier des cartes (source de vérité) |
+| `DATABASE_URL` | `sqlite://data/cache.db` | Cache SQLite, reconstruit à chaque démarrage |
 | `DCB_BIND` | `127.0.0.1:3000` | Adresse d'écoute |
-| `DCB_SEED` | `1` | `0` pour ne pas créer les cartes de démo |
 | `RUST_LOG` | `dcb_server=info,tower_http=info` | Niveau de logs |
+
+## Ajouter des cartes
+
+1. Crée la carte dans l'éditeur (`/cards/new`). Il écrit `cards/<slug>.toml`, et `cards/art/<slug>.png` si tu ajoutes une illustration.
+2. Commite ces fichiers :
+
+   ```bash
+   git add cards/
+   git commit -m "feat(cards): ajouter Argo CD"
+   git push
+   ```
+
+Les fichiers peuvent aussi être écrits ou modifiés à la main. Le format est décrit dans [`cards/README.md`](cards/README.md). Après une modification à la main ou un `git pull`, clique sur **Recharger les fichiers** dans la galerie.
+
+La base SQLite n'est qu'un cache : elle est vidée et reconstruite depuis `cards/` au démarrage et à chaque rechargement. Tu peux supprimer `data/` à tout moment.
 
 ## Fonctionnalités
 
 - **Galerie** : grille de toutes les cartes, filtres par type et par rareté.
 - **Éditeur** : création et modification avec aperçu de la carte mis à jour pendant la saisie, compteurs de caractères calés sur la place disponible dans la carte, upload d'illustration (PNG, JPEG, WebP, GIF, 5 Mo max).
-- **Fiche carte** : affichage en grand, modification, suppression (l'illustration est supprimée avec la carte).
+- **Fiche carte** : affichage en grand, modification, suppression (le fichier TOML et l'illustration sont supprimés avec la carte), et rappel des fichiers à commiter.
 - **API JSON** pour les futurs clients du jeu :
   - `GET /api/cards` (filtres `?type=incident&rarity=gold`)
-  - `GET /api/cards/{id}`
+  - `GET /api/cards/{slug}`
   - `GET /api/meta` : types, couleurs, skins, raretés et limites de saisie
 
 ## La carte
@@ -52,17 +64,21 @@ Le rendu est en HTML/CSS (`crates/dcb-server/static/card.css`) : la carte est de
 ```
 crates/
   dcb-core/     Modèle de domaine partagé (Card, CardType, Skin, Rarity, validation)
-  dcb-server/   Serveur axum : pages HTML (askama + htmx), API JSON, SQLite (sqlx)
-    templates/  Pages et partial de carte
-    static/     CSS de l'app et de la carte, htmx embarqué
-migrations/     Schéma SQLite, appliqué au démarrage
+  dcb-server/   Serveur axum : pages HTML (askama + htmx), API JSON
+    src/store.rs  Lecture et écriture des fichiers cards/*.toml
+    src/db.rs     Cache SQLite (sqlx)
+    templates/    Pages et partial de carte
+    static/       CSS de l'app et de la carte, htmx embarqué
+cards/          Les cartes : un .toml par carte + art/ (à commiter)
+migrations/     Schéma du cache SQLite
 ```
 
 Choix techniques :
 
 - **Rendu serveur + htmx** plutôt qu'une SPA : pas de toolchain JavaScript ni de WASM à maintenir pour la partie collection. Les assets sont embarqués dans le binaire, un seul exécutable à déployer.
 - **`dcb-core` séparé** pour que le futur moteur de duel (et un éventuel client Bevy compilé en WASM) réutilise exactement les mêmes types que la base et l'API.
-- **SQLite** pour démarrer. Le passage à PostgreSQL pour le jeu en ligne ne touche que `db.rs` et les migrations.
+- **Cartes en fichiers TOML** : elles se versionnent, se relisent en diff et se modifient à la main. L'éditeur écrit d'abord le fichier (de façon atomique), puis met à jour le cache.
+- **SQLite comme cache** pour les lectures et les filtres. Les données des joueurs (comptes, decks, parties) iront plus tard dans une vraie base.
 
 ## Développement
 

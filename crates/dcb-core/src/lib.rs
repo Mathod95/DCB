@@ -118,16 +118,77 @@ pub struct CardDraft {
     pub deploy_cost: i64,
     pub daily_cost: i64,
     pub flavor_text: String,
-    /// Chemin public de l'illustration (`/uploads/...`), si présente.
-    pub art_path: Option<String>,
+    /// Nom du fichier d'illustration dans `cards/art/` (ex. `argo-cd.png`), si présente.
+    pub art: Option<String>,
 }
 
-/// Carte enregistrée.
+/// Carte enregistrée. Le slug est son identifiant stable : c'est le nom de son fichier
+/// (`cards/<slug>.toml`) et la clé dans les URLs. Il ne change pas si la carte est renommée.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Card {
-    pub id: i64,
+    pub slug: String,
     #[serde(flatten)]
     pub draft: CardDraft,
+}
+
+/// Longueur max d'un slug.
+pub const SLUG_MAX: usize = 48;
+
+/// Dérive un slug d'un nom de carte : minuscules ASCII, accents retirés, tirets.
+/// `"Ressource Humaine : SRE d'astreinte"` donne `"ressource-humaine-sre-d-astreinte"`.
+pub fn slugify(name: &str) -> String {
+    let mut out = String::new();
+    let mut pending_dash = false;
+    for c in name.chars().flat_map(char::to_lowercase) {
+        let folded: &str = match c {
+            'à' | 'â' | 'ä' | 'á' | 'ã' | 'å' => "a",
+            'é' | 'è' | 'ê' | 'ë' => "e",
+            'î' | 'ï' | 'í' | 'ì' => "i",
+            'ô' | 'ö' | 'ó' | 'ò' | 'õ' => "o",
+            'ù' | 'û' | 'ü' | 'ú' => "u",
+            'ç' => "c",
+            'ÿ' | 'ý' => "y",
+            'ñ' => "n",
+            'œ' => "oe",
+            'æ' => "ae",
+            'ß' => "ss",
+            c if c.is_ascii_alphanumeric() => {
+                if pending_dash && !out.is_empty() {
+                    out.push('-');
+                }
+                pending_dash = false;
+                out.push(c);
+                continue;
+            }
+            _ => {
+                pending_dash = true;
+                continue;
+            }
+        };
+        if pending_dash && !out.is_empty() {
+            out.push('-');
+        }
+        pending_dash = false;
+        out.push_str(folded);
+    }
+    out.truncate(SLUG_MAX);
+    let out = out.trim_end_matches('-').to_owned();
+    if out.is_empty() {
+        "carte".to_owned()
+    } else {
+        out
+    }
+}
+
+/// Un slug ne contient que `[a-z0-9-]`, sans tiret au début ni à la fin. Garantit qu'il est
+/// utilisable tel quel comme nom de fichier et dans une URL.
+pub fn is_valid_slug(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= SLUG_MAX
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && s.bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
 }
 
 /// Erreur de validation rattachée à un champ du formulaire.
@@ -203,6 +264,33 @@ fn normalize_multiline(s: &str) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn slugify_handles_french_names() {
+        assert_eq!(slugify("ARGO CD"), "argo-cd");
+        assert_eq!(slugify("  Health Check!! "), "health-check");
+        assert_eq!(slugify("SRE d'astreinte"), "sre-d-astreinte");
+        assert_eq!(
+            slugify("Équipe Sécurité & Conformité"),
+            "equipe-securite-conformite"
+        );
+        assert_eq!(slugify("Cœur"), "coeur");
+        assert_eq!(slugify("!!!"), "carte");
+        assert!(slugify(&"x".repeat(100)).len() <= SLUG_MAX);
+        for name in ["ARGO CD", "Équipe", "a - b", "-x-", "日本"] {
+            assert!(is_valid_slug(&slugify(name)), "{name}");
+        }
+    }
+
+    #[test]
+    fn slug_validation_rejects_paths() {
+        assert!(is_valid_slug("argo-cd-2"));
+        assert!(!is_valid_slug("../etc"));
+        assert!(!is_valid_slug("Argo"));
+        assert!(!is_valid_slug("a/b"));
+        assert!(!is_valid_slug("-a"));
+        assert!(!is_valid_slug(""));
+    }
+
     fn draft() -> CardDraft {
         CardDraft {
             name: "  Argo CD ".into(),
@@ -214,7 +302,7 @@ mod tests {
             deploy_cost: 2,
             daily_cost: 1,
             flavor_text: String::new(),
-            art_path: None,
+            art: None,
         }
     }
 
@@ -250,11 +338,11 @@ mod tests {
     #[test]
     fn card_serializes_flat() {
         let card = Card {
-            id: 7,
+            slug: "argo-cd".into(),
             draft: draft(),
         };
         let json = serde_json::to_string(&card).unwrap();
-        assert!(json.contains("\"id\":7"));
+        assert!(json.contains("\"slug\":\"argo-cd\""));
         assert!(json.contains("\"card_type\":\"app\""));
         assert!(!json.contains("draft"));
     }

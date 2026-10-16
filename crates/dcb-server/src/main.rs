@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use dcb_server::{AppState, db, router, seed};
+use dcb_server::{AppState, CardStore, db, router};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -12,10 +12,12 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
+    // Source de vérité, à commiter.
+    let cards_dir =
+        PathBuf::from(std::env::var("DCB_CARDS_DIR").unwrap_or_else(|_| "cards".into()));
+    // Cache reconstruit à chaque démarrage, jamais commité.
     let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://data/dcb.db".into());
-    let upload_dir =
-        PathBuf::from(std::env::var("DCB_UPLOAD_DIR").unwrap_or_else(|_| "data/uploads".into()));
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://data/cache.db".into());
     let bind = std::env::var("DCB_BIND").unwrap_or_else(|_| "127.0.0.1:3000".into());
 
     if let Some(path) = database_url
@@ -25,20 +27,20 @@ async fn main() -> anyhow::Result<()> {
     {
         std::fs::create_dir_all(&path)?;
     }
-    std::fs::create_dir_all(&upload_dir)?;
 
     let pool = db::connect(&database_url).await?;
-    if std::env::var("DCB_SEED").as_deref() != Ok("0") {
-        let n = seed::run_if_empty(&pool).await?;
-        if n > 0 {
-            tracing::info!("{n} cartes de démo ajoutées");
-        }
-    }
+    let state = AppState::new(pool, CardStore::new(&cards_dir));
+    let n = state.reload().await?;
+    tracing::info!(
+        "{n} carte{} chargée{} depuis {}",
+        if n > 1 { "s" } else { "" },
+        if n > 1 { "s" } else { "" },
+        cards_dir.display()
+    );
 
-    let app = router(AppState { pool, upload_dir });
     let listener = tokio::net::TcpListener::bind(&bind).await?;
     tracing::info!("DevCardBattle sur http://{bind}");
-    axum::serve(listener, app)
+    axum::serve(listener, router(state))
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })

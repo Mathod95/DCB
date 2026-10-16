@@ -1,16 +1,17 @@
-//! Accès SQLite. Les requêtes sont vérifiées à l'exécution (pas de `query!`) pour ne pas
-//! exiger une base au moment de la compilation.
+//! Cache SQLite des cartes, reconstruit depuis `cards/*.toml` (voir `store`). Il sert aux
+//! lectures (galerie, filtres, API) ; chaque écriture passe d'abord par le fichier TOML.
+//!
+//! Les requêtes sont vérifiées à l'exécution (pas de `query!`) pour ne pas exiger de base à la
+//! compilation, et écrites en `&'static str` car sqlx refuse le SQL construit à l'exécution.
 
 use std::str::FromStr;
 
 use dcb_core::{Card, CardDraft, CardType, Rarity};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, Sqlite, SqlitePool};
 
 pub async fn connect(url: &str) -> anyhow::Result<SqlitePool> {
-    let options = SqliteConnectOptions::from_str(url)?
-        .create_if_missing(true)
-        .foreign_keys(true);
+    let options = SqliteConnectOptions::from_str(url)?.create_if_missing(true);
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect_with(options)
@@ -21,7 +22,7 @@ pub async fn connect(url: &str) -> anyhow::Result<SqlitePool> {
 
 #[derive(FromRow)]
 struct CardRow {
-    id: i64,
+    slug: String,
     name: String,
     card_type: String,
     skin: String,
@@ -31,7 +32,7 @@ struct CardRow {
     deploy_cost: i64,
     daily_cost: i64,
     flavor_text: String,
-    art_path: Option<String>,
+    art: Option<String>,
 }
 
 impl TryFrom<CardRow> for Card {
@@ -40,7 +41,7 @@ impl TryFrom<CardRow> for Card {
     fn try_from(r: CardRow) -> Result<Self, Self::Error> {
         let decode = |e: dcb_core::UnknownVariant| sqlx::Error::Decode(Box::new(e));
         Ok(Card {
-            id: r.id,
+            slug: r.slug,
             draft: CardDraft {
                 name: r.name,
                 card_type: r.card_type.parse().map_err(decode)?,
@@ -51,18 +52,17 @@ impl TryFrom<CardRow> for Card {
                 deploy_cost: r.deploy_cost,
                 daily_cost: r.daily_cost,
                 flavor_text: r.flavor_text,
-                art_path: r.art_path,
+                art: r.art,
             },
         })
     }
 }
 
-/// Colonnes lues, sous forme de macro pour composer des requêtes `&'static str` avec `concat!`
-/// (sqlx refuse les chaînes SQL construites à l'exécution).
+/// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "id, name, card_type, skin, rarity, description, effect, \
-         deploy_cost, daily_cost, flavor_text, art_path"
+        "slug, name, card_type, skin, rarity, description, effect, \
+         deploy_cost, daily_cost, flavor_text, art"
     };
 }
 
@@ -90,10 +90,10 @@ pub async fn list(pool: &SqlitePool, filter: Filter) -> sqlx::Result<Vec<Card>> 
         .collect()
 }
 
-pub async fn get(pool: &SqlitePool, id: i64) -> sqlx::Result<Option<Card>> {
-    const SQL: &str = concat!("SELECT ", columns!(), " FROM cards WHERE id = ?");
+pub async fn get(pool: &SqlitePool, slug: &str) -> sqlx::Result<Option<Card>> {
+    const SQL: &str = concat!("SELECT ", columns!(), " FROM cards WHERE slug = ?");
     sqlx::query_as::<_, CardRow>(SQL)
-        .bind(id)
+        .bind(slug)
         .fetch_optional(pool)
         .await?
         .map(Card::try_from)
@@ -106,12 +106,23 @@ pub async fn count(pool: &SqlitePool) -> sqlx::Result<i64> {
         .await
 }
 
-pub async fn insert(pool: &SqlitePool, d: &CardDraft) -> sqlx::Result<i64> {
-    let res = sqlx::query(
-        "INSERT INTO cards (name, card_type, skin, rarity, description, effect, \
-                            deploy_cost, daily_cost, flavor_text, art_path) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+async fn upsert_with<'e, E>(executor: E, c: &Card) -> sqlx::Result<()>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
+    let d = &c.draft;
+    sqlx::query(
+        "INSERT INTO cards (slug, name, card_type, skin, rarity, description, effect, \
+                            deploy_cost, daily_cost, flavor_text, art) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON CONFLICT (slug) DO UPDATE SET \
+            name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
+            rarity = excluded.rarity, description = excluded.description, \
+            effect = excluded.effect, deploy_cost = excluded.deploy_cost, \
+            daily_cost = excluded.daily_cost, flavor_text = excluded.flavor_text, \
+            art = excluded.art",
     )
+    .bind(&c.slug)
     .bind(&d.name)
     .bind(d.card_type.slug())
     .bind(d.skin.slug())
@@ -121,40 +132,31 @@ pub async fn insert(pool: &SqlitePool, d: &CardDraft) -> sqlx::Result<i64> {
     .bind(d.deploy_cost)
     .bind(d.daily_cost)
     .bind(&d.flavor_text)
-    .bind(&d.art_path)
-    .execute(pool)
+    .bind(&d.art)
+    .execute(executor)
     .await?;
-    Ok(res.last_insert_rowid())
+    Ok(())
 }
 
-/// Renvoie `false` si la carte n'existe pas.
-pub async fn update(pool: &SqlitePool, id: i64, d: &CardDraft) -> sqlx::Result<bool> {
-    let res = sqlx::query(
-        "UPDATE cards SET name = ?, card_type = ?, skin = ?, rarity = ?, description = ?, \
-                          effect = ?, deploy_cost = ?, daily_cost = ?, flavor_text = ?, \
-                          art_path = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-         WHERE id = ?",
-    )
-    .bind(&d.name)
-    .bind(d.card_type.slug())
-    .bind(d.skin.slug())
-    .bind(d.rarity.slug())
-    .bind(&d.description)
-    .bind(&d.effect)
-    .bind(d.deploy_cost)
-    .bind(d.daily_cost)
-    .bind(&d.flavor_text)
-    .bind(&d.art_path)
-    .bind(id)
-    .execute(pool)
-    .await?;
-    Ok(res.rows_affected() > 0)
+pub async fn upsert(pool: &SqlitePool, card: &Card) -> sqlx::Result<()> {
+    upsert_with(pool, card).await
 }
 
-/// Supprime la carte et renvoie son illustration, pour que l'appelant nettoie le fichier.
-pub async fn delete(pool: &SqlitePool, id: i64) -> sqlx::Result<Option<Option<String>>> {
-    sqlx::query_scalar::<_, Option<String>>("DELETE FROM cards WHERE id = ? RETURNING art_path")
-        .bind(id)
-        .fetch_optional(pool)
-        .await
+pub async fn delete(pool: &SqlitePool, slug: &str) -> sqlx::Result<()> {
+    sqlx::query("DELETE FROM cards WHERE slug = ?")
+        .bind(slug)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Remplace tout le cache par les cartes données, en une transaction : en cas d'erreur, le
+/// cache précédent reste intact.
+pub async fn replace_all(pool: &SqlitePool, cards: &[Card]) -> sqlx::Result<()> {
+    let mut tx = pool.begin().await?;
+    sqlx::query("DELETE FROM cards").execute(&mut *tx).await?;
+    for card in cards {
+        upsert_with(&mut *tx, card).await?;
+    }
+    tx.commit().await
 }

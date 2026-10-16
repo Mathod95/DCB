@@ -1,19 +1,17 @@
--- Cartes de DevCardBattle. Les enums (card_type, skin, rarity) sont stockés en texte :
--- ajouter une valeur ne demande pas de migration, seulement une variante dans dcb-core.
+-- Cache des cartes. La source de vérité est cards/*.toml : cette table est vidée et
+-- reconstruite au démarrage. Les enums (card_type, skin, rarity) sont stockés en texte.
 CREATE TABLE cards (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug         TEXT    PRIMARY KEY NOT NULL,
     name         TEXT    NOT NULL,
     card_type    TEXT    NOT NULL,
-    skin         TEXT    NOT NULL DEFAULT 'light',
-    rarity       TEXT    NOT NULL DEFAULT 'basic',
+    skin         TEXT    NOT NULL,
+    rarity       TEXT    NOT NULL,
     description  TEXT    NOT NULL DEFAULT '',
     effect       TEXT    NOT NULL DEFAULT '',
-    deploy_cost  INTEGER NOT NULL DEFAULT 0 CHECK (deploy_cost BETWEEN 0 AND 99),
-    daily_cost   INTEGER NOT NULL DEFAULT 0 CHECK (daily_cost BETWEEN 0 AND 99),
+    deploy_cost  INTEGER NOT NULL DEFAULT 0,
+    daily_cost   INTEGER NOT NULL DEFAULT 0,
     flavor_text  TEXT    NOT NULL DEFAULT '',
-    art_path     TEXT,
-    created_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
+    art          TEXT
+) WITHOUT ROWID;
 
 CREATE INDEX idx_cards_type ON cards (card_type);
