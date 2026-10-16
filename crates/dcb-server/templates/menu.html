@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="menu">
+  <div class="menu-intro">
+    <p class="eyebrow">Jeu de cartes stratégique · Duel DevOps</p>
+    <h1>Déployez. Tenez la prod.<br>Faites tomber celle d'en face.</h1>
+    <p class="lead">Construisez votre collection de cartes Resource, App, Incident, Event et Ressources Humaines, puis affrontez d'autres joueurs en duel tour par tour.</p>
+  </div>
+
+  <nav class="menu-actions" aria-label="Menu principal">
+    <a class="menu-item" href="/gallery">
+      <span class="menu-item-title">Galerie</span>
+      <span class="menu-item-sub">{{ card_count }} carte{% if card_count != 1 %}s{% endif %} dans la collection</span>
+    </a>
+    <a class="menu-item" href="/cards/new">
+      <span class="menu-item-title">Créer une carte</span>
+      <span class="menu-item-sub">Éditeur avec aperçu en direct</span>
+    </a>
+    <div class="menu-item is-disabled" aria-disabled="true">
+      <span class="menu-item-title">Deck builder</span>
+      <span class="menu-item-sub">Bientôt</span>
+    </div>
+    <div class="menu-item is-disabled" aria-disabled="true">
+      <span class="menu-item-title">Duel en ligne</span>
+      <span class="menu-item-sub">Bientôt</span>
+    </div>
+  </nav>
+</section>
+{% endblock %}

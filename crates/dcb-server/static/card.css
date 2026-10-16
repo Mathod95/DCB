@@ -1,0 +1,253 @@
+/*
+ * Carte DevCardBattle, reproduite depuis le composant Figma `card` (374×574).
+ * Toutes les cotes viennent du fichier Figma ; la carte est dessinée à taille réelle puis
+ * mise à l'échelle par `.card-frame` (variable --s).
+ *
+ * Pour ajouter un type de carte : une variante dans dcb-core + une ligne [data-type] ici.
+ */
+
+.card[data-type="resource"] { --type: #38bdf8; }
+.card[data-type="incident"] { --type: #f83838; }
+.card[data-type="hr"]       { --type: #0800f6; }
+.card[data-type="app"]      { --type: #f88838; }
+.card[data-type="event"]    { --type: #a538f8; }
+
+/* Mise à l'échelle sans flou de mise en page : le cadre prend la taille réduite,
+   la carte garde ses cotes Figma et est scalée depuis le coin haut gauche. */
+.card-frame {
+  --s: 1;
+  width: calc(374px * var(--s));
+  height: calc(574px * var(--s));
+  flex: none;
+}
+.card-frame > .card {
+  transform: scale(var(--s));
+  transform-origin: 0 0;
+}
+
+.card {
+  /* skin/Light */
+  --skin-from: #f8fafc;
+  --skin-to: #e2e8f0;
+  --block-bg: #fefcff;
+  --block-border: #e2e8f0;
+  --title: #0f172a;
+  --text: #334155;
+  --flavor: #334155;
+  --art-border: #e2e8f0;
+
+  position: relative;
+  width: 374px;
+  height: 574px;
+  border-radius: 20px;
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.21; /* « normal » d'Inter, comme dans Figma */
+  text-align: left;
+  color: var(--text);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: 0 10px 30px rgb(2 6 23 / 0.35), 0 2px 6px rgb(2 6 23 / 0.25);
+}
+.card *, .card *::before, .card *::after { box-sizing: border-box; }
+
+.card[data-skin="dark"] {
+  /* skin/Dark */
+  --skin-from: #1e293b;
+  --skin-to: #020617;
+  --block-bg: #0f172a;
+  --block-border: #334155;
+  --title: #e5e7eb;
+  --text: #cbd5f5;
+  --flavor: #cbd5f5;
+  --art-border: #334155;
+}
+
+.card-skin {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: linear-gradient(to bottom, var(--skin-from), var(--skin-to));
+}
+
+.card-block {
+  position: absolute;
+  left: 19px;
+  width: 336px;
+  border: 1px solid var(--block-border);
+  border-radius: 12px;
+  background: var(--block-bg);
+  overflow: hidden;
+}
+
+/* cardNameBlock */
+.card-name {
+  top: 19px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 88px 0 12px; /* laisse la place au badge du type */
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--title);
+  white-space: nowrap;
+}
+.card-name[data-size="m"] { font-size: 17px; }
+.card-name[data-size="s"] { font-size: 14px; }
+.card-name span { overflow: hidden; text-overflow: ellipsis; }
+
+/* cardArtBlock */
+.card-art {
+  top: 89px;
+  height: 180px;
+  border: 2px solid var(--art-border);
+  background: #fff;
+  display: grid;
+  place-items: center;
+}
+.card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.card-art-empty {
+  width: 56px;
+  height: 56px;
+  color: #cbd5e1;
+}
+
+/* cardDescriptionBlock / cardEffectBlock */
+.card-description { top: 279px; height: 60px; }
+.card-effect      { top: 349px; height: 110px; }
+
+.card-block-title {
+  position: absolute;
+  top: 4px;
+  left: 9px;
+  margin: 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--title);
+}
+.card-block-text {
+  position: absolute;
+  top: 21px;
+  left: 9px;
+  right: 8px;
+  bottom: 4px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+}
+
+/* Trois cases du bas : Deploy Cost, Daily Cost, Rarity */
+.card-stat {
+  position: absolute;
+  top: 469px;
+  width: 105px;
+  height: 65px;
+  border: 1px solid;
+  border-radius: 12px;
+  overflow: hidden;
+  text-align: center;
+}
+.card-stat-deploy { left: 19px;  background: #ecfeff; border-color: #67e8f9; color: #0369a1; }
+.card-stat-daily  { left: 135px; background: #fefce8; border-color: #fde047; color: #854d0e; }
+.card-stat-rarity { left: 250px; background: #f0fdf4; border-color: #86efac; color: #166534; }
+
+.card-stat-value {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 38px;
+  font-variant-numeric: tabular-nums;
+}
+.card-stat-value small { font-size: 15px; font-weight: 700; margin-left: 1px; }
+.card-stat-rarity .card-stat-value { font-size: 20px; letter-spacing: 2px; }
+.card[data-rarity="gold"] .card-stat-rarity .card-stat-value { color: #d97706; }
+
+.card-stat-label {
+  position: absolute;
+  top: 49px;
+  left: 0;
+  right: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Texte d'ambiance */
+.card-flavor {
+  position: absolute;
+  top: 546px;
+  left: 9px;
+  right: 9px;
+  height: 18px;
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+  color: var(--flavor);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* cardTypeStroke/* : bordure colorée + badge */
+.card-stroke {
+  position: absolute;
+  inset: 7px;
+  border: 4px solid var(--type);
+  border-radius: 16px;
+  pointer-events: none;
+}
+.card-type {
+  position: absolute;
+  top: 19px;
+  left: 270px;
+  width: 76px;
+  height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  text-align: center;
+  color: var(--type);
+  pointer-events: none;
+}
+.card-type span { display: block; }
+
+/* rarityLayer/Gold : dégradé « diamant » du Figma à 25% d'opacité, plus un reflet animé */
+.card-rarity {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  pointer-events: none;
+}
+.card[data-rarity="gold"] .card-rarity {
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 374 574' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><g transform='matrix(-37.4 57.4 -37.4 -24.369 374 0)' opacity='0.25'><rect height='133.38' width='73.178' fill='url(%23grad)' id='quad' shape-rendering='crispEdges'/><use href='%23quad' transform='scale(1 -1)'/><use href='%23quad' transform='scale(-1 1)'/><use href='%23quad' transform='scale(-1 -1)'/></g><defs><linearGradient id='grad' gradientUnits='userSpaceOnUse' x2='5' y2='5'><stop stop-color='rgba(255,204,0,1)' offset='0'/><stop stop-color='rgba(255,188,10,1)' offset='0.25'/><stop stop-color='rgba(255,173,20,1)' offset='0.5'/><stop stop-color='rgba(255,141,40,1)' offset='1'/></linearGradient></defs></svg>");
+  background-size: 100% 100%;
+  box-shadow: inset 0 0 0 2px rgb(255 204 0 / 0.55);
+  overflow: hidden;
+}
+.card[data-rarity="gold"] .card-rarity::after {
+  content: "";
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 236 170 / 0.35) 50%, transparent 58%);
+  transform: translateX(-60%);
+  animation: dcb-sheen 5s ease-in-out infinite;
+}
+@keyframes dcb-sheen {
+  0%, 55% { transform: translateX(-60%); }
+  100%    { transform: translateX(60%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card[data-rarity="gold"] .card-rarity::after { animation: none; opacity: 0; }
+}

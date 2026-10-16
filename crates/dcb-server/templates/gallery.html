@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Galerie · DevCardBattle{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Galerie</h1>
+    <p class="muted">{{ cards.len() }} carte{% if cards.len() != 1 %}s{% endif %}{% if filtered %} correspondant aux filtres{% endif %}</p>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="chips" role="group" aria-label="Filtrer par type">
+    {% for f in type_links %}
+    <a class="chip{% if f.active %} is-active{% endif %}" href="{{ f.href }}"{% if let Some(c) = f.color %} style="--chip: {{ c }}"{% endif %}>
+      {% if f.color.is_some() %}<i class="chip-dot"></i>{% endif %}{{ f.label }}
+    </a>
+    {% endfor %}
+  </div>
+  <div class="chips" role="group" aria-label="Filtrer par rareté">
+    {% for f in rarity_links %}
+    <a class="chip{% if f.active %} is-active{% endif %}" href="{{ f.href }}">{{ f.label }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if cards.is_empty() %}
+<div class="empty">
+  <p>Aucune carte ici pour l'instant.</p>
+  <a class="btn btn-primary" href="/cards/new">Créer la première</a>
+</div>
+{% else %}
+<div class="grid">
+  {% for card in cards %}
+  {% if let Some(id) = card.id %}
+  <a class="grid-item" href="/cards/{{ id }}" aria-label="{{ card.name }}">
+    <div class="card-frame" style="--s: var(--grid-scale)">{% include "card.html" %}</div>
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

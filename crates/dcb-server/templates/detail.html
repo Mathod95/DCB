@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ card.name }} · DevCardBattle{% endblock %}
+{% block content %}
+<a class="back" href="/gallery">← Galerie</a>
+<div class="detail">
+  <div class="card-frame detail-card">{% include "card.html" %}</div>
+  <aside class="detail-side">
+    <p class="eyebrow">{{ card.type_label }} · {{ card.rarity_label }}</p>
+    <h1>{{ card.name }}</h1>
+    <dl class="facts">
+      <div><dt>Deploy Cost</dt><dd>{{ card.deploy_cost }}</dd></div>
+      <div><dt>Daily Cost</dt><dd>{{ card.daily_cost }} $</dd></div>
+      <div><dt>Skin</dt><dd>{{ card.skin }}</dd></div>
+    </dl>
+    {% if let Some(id) = card.id %}
+    <div class="actions">
+      <a class="btn btn-primary" href="/cards/{{ id }}/edit">Modifier</a>
+      <form method="post" action="/cards/{{ id }}/delete" hx-confirm="Supprimer définitivement « {{ card.name }} » ?">
+        <button class="btn btn-danger" type="submit">Supprimer</button>
+      </form>
+    </div>
+    <p class="muted small">Données brutes : <a href="/api/cards/{{ id }}" hx-boost="false">/api/cards/{{ id }}</a></p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

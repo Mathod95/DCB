@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · DevCardBattle{% endblock %}
+{% block content %}
+<a class="back" href="{{ cancel_href }}">← Annuler</a>
+<div class="page-head"><h1>{{ title }}</h1></div>
+
+{% if !errors.is_empty() %}
+<div class="alert" role="alert">La carte n'a pas été enregistrée : corrige les champs signalés.</div>
+{% endif %}
+
+<div class="editor">
+  <form id="card-form" class="editor-form" method="post" action="{{ action }}" enctype="multipart/form-data" hx-boost="false">
+    <fieldset id="card-fields">
+      <div class="field">
+        <label for="f-name">Nom</label>
+        <input id="f-name" name="name" value="{{ values.name }}" maxlength="{{ lim_name }}" data-count required autofocus placeholder="ARGO CD">
+        <p class="field-error">{{ self.error("name") }}</p>
+      </div>
+
+      <div class="field">
+        <span class="label">Type</span>
+        <div class="segmented segmented-types">
+          {% for c in types %}
+          <label class="seg" style="--chip: {{ c.color.unwrap_or("#64748b") }}">
+            <input type="radio" name="card_type" value="{{ c.value }}"{% if values.card_type.as_str() == c.value %} checked{% endif %}>
+            <span><i class="chip-dot"></i>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-error">{{ self.error("card_type") }}</p>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <span class="label">Skin</span>
+          <div class="segmented">
+            {% for c in skins %}
+            <label class="seg">
+              <input type="radio" name="skin" value="{{ c.value }}"{% if values.skin.as_str() == c.value %} checked{% endif %}>
+              <span>{{ c.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Rareté</span>
+          <div class="segmented">
+            {% for c in rarities %}
+            <label class="seg">
+              <input type="radio" name="rarity" value="{{ c.value }}"{% if values.rarity.as_str() == c.value %} checked{% endif %}>
+              <span>{{ c.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-description">Description</label>
+        <textarea id="f-description" name="description" rows="2" maxlength="{{ lim_description }}" data-count placeholder="Ce que représente la carte">{{ values.description }}</textarea>
+        <p class="field-error">{{ self.error("description") }}</p>
+      </div>
+
+      <div class="field">
+        <label for="f-effect">Effect</label>
+        <textarea id="f-effect" name="effect" rows="4" maxlength="{{ lim_effect }}" data-count placeholder="- Inflige 5 dégâts&#10;- Durée 3 tours">{{ values.effect }}</textarea>
+        <p class="field-hint">Une ligne par effet, les retours à la ligne sont conservés.</p>
+        <p class="field-error">{{ self.error("effect") }}</p>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="f-deploy">Deploy Cost</label>
+          <input id="f-deploy" name="deploy_cost" type="number" min="0" max="99" inputmode="numeric" value="{{ values.deploy_cost }}">
+          <p class="field-error">{{ self.error("deploy_cost") }}</p>
+        </div>
+        <div class="field">
+          <label for="f-daily">Daily Cost ($)</label>
+          <input id="f-daily" name="daily_cost" type="number" min="0" max="99" inputmode="numeric" value="{{ values.daily_cost }}">
+          <p class="field-error">{{ self.error("daily_cost") }}</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-flavor">Texte d'ambiance</label>
+        <input id="f-flavor" name="flavor_text" value="{{ values.flavor_text }}" maxlength="{{ lim_flavor }}" data-count placeholder="Pas de Flux dans ce jeu !">
+        <p class="field-error">{{ self.error("flavor_text") }}</p>
+      </div>
+
+      <input type="hidden" name="current_art" value="{% if let Some(a) = values.current_art %}{{ a }}{% endif %}">
+      {% if values.current_art.is_some() %}
+      <label class="check"><input type="checkbox" name="remove_art" value="1"> Retirer l'illustration actuelle</label>
+      {% endif %}
+    </fieldset>
+
+    <div class="field">
+      <label for="f-art">Illustration</label>
+      <input id="f-art" name="art" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+      <p class="field-hint">PNG, JPEG, WebP ou GIF, 5 Mo max. Format idéal 336×180 (ratio 1,87).</p>
+      <p class="field-error">{{ self.error("art") }}</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Enregistrer</button>
+      <a class="btn" href="{{ cancel_href }}">Annuler</a>
+    </div>
+  </form>
+
+  <div class="editor-preview">
+    <p class="eyebrow">Aperçu</p>
+    <div id="preview"
+         hx-post="/preview"
+         hx-trigger="input from:#card-form delay:150ms, change from:#card-form"
+         hx-include="#card-fields"
+         hx-swap="innerHTML">
+      <div class="card-frame">{% include "card.html" %}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
