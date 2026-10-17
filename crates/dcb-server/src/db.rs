@@ -27,6 +27,7 @@ struct CardRow {
     card_type: String,
     skin: String,
     rarity: String,
+    foil: String,
     description: String,
     effect: String,
     deploy_cost: i64,
@@ -47,6 +48,7 @@ impl TryFrom<CardRow> for Card {
                 card_type: r.card_type.parse().map_err(decode)?,
                 skin: r.skin.parse().map_err(decode)?,
                 rarity: r.rarity.parse().map_err(decode)?,
+                foil: r.foil.parse().map_err(decode)?,
                 description: r.description,
                 effect: r.effect,
                 deploy_cost: r.deploy_cost,
@@ -61,7 +63,7 @@ impl TryFrom<CardRow> for Card {
 /// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "slug, name, card_type, skin, rarity, description, effect, \
+        "slug, name, card_type, skin, rarity, foil, description, effect, \
          deploy_cost, daily_cost, flavor_text, art"
     };
 }
@@ -112,12 +114,13 @@ where
 {
     let d = &c.draft;
     sqlx::query(
-        "INSERT INTO cards (slug, name, card_type, skin, rarity, description, effect, \
+        "INSERT INTO cards (slug, name, card_type, skin, rarity, foil, description, effect, \
                             deploy_cost, daily_cost, flavor_text, art) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (slug) DO UPDATE SET \
             name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
-            rarity = excluded.rarity, description = excluded.description, \
+            rarity = excluded.rarity, foil = excluded.foil, \
+            description = excluded.description, \
             effect = excluded.effect, deploy_cost = excluded.deploy_cost, \
             daily_cost = excluded.daily_cost, flavor_text = excluded.flavor_text, \
             art = excluded.art",
@@ -127,6 +130,7 @@ where
     .bind(d.card_type.slug())
     .bind(d.skin.slug())
     .bind(d.rarity.slug())
+    .bind(d.foil.slug())
     .bind(&d.description)
     .bind(&d.effect)
     .bind(d.deploy_cost)

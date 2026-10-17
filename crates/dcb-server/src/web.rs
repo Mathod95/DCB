@@ -97,6 +97,7 @@ pub fn router(state: AppState) -> Router {
                 )
             }),
         )
+        .route("/static/foil/{name}", get(foil_texture))
         .route(
             "/static/app.js",
             get(|| async { asset("text/javascript", include_str!("../static/app.js")) }),
@@ -161,6 +162,24 @@ fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
         ],
         body,
     )
+}
+
+/// Textures des finitions holographiques, embarquées dans le binaire.
+async fn foil_texture(Path(name): Path<String>) -> Response {
+    let body = match name.as_str() {
+        "stars.svg" => include_str!("../static/foil/stars.svg"),
+        "glitter.svg" => include_str!("../static/foil/glitter.svg"),
+        "shards.svg" => include_str!("../static/foil/shards.svg"),
+        _ => return not_found_response(),
+    };
+    (
+        [
+            (header::CONTENT_TYPE, "image/svg+xml"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        body,
+    )
+        .into_response()
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -352,6 +371,12 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         card_type: pick(&v.card_type, CardType::App, "card_type", &mut errors),
         skin: pick(&v.skin, dcb_core::Skin::Light, "skin", &mut errors),
         rarity: pick(&v.rarity, Rarity::Basic, "rarity", &mut errors),
+        // Champ ajouté après coup : absent = pas de finition.
+        foil: if v.foil.is_empty() {
+            dcb_core::Foil::None
+        } else {
+            pick(&v.foil, dcb_core::Foil::None, "foil", &mut errors)
+        },
         description: v.description.clone(),
         effect: v.effect.clone(),
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
@@ -468,6 +493,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "card_type" => v.card_type = text,
             "skin" => v.skin = text,
             "rarity" => v.rarity = text,
+            "foil" => v.foil = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -597,6 +623,8 @@ struct PreviewForm {
     #[serde(default)]
     rarity: String,
     #[serde(default)]
+    foil: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -622,6 +650,7 @@ async fn preview(Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
         card_type: f.card_type,
         skin: f.skin,
         rarity: f.rarity,
+        foil: f.foil,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -671,6 +700,7 @@ async fn api_meta() -> Json<serde_json::Value> {
         })).collect::<Vec<_>>(),
         "skins": dcb_core::Skin::ALL.iter().map(|s| s.slug()).collect::<Vec<_>>(),
         "rarities": Rarity::ALL.iter().map(|r| r.slug()).collect::<Vec<_>>(),
+        "foils": dcb_core::Foil::ALL.iter().map(|f| f.slug()).collect::<Vec<_>>(),
         "limits": {
             "name": dcb_core::limits::NAME,
             "description": dcb_core::limits::DESCRIPTION,

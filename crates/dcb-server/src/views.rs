@@ -1,7 +1,7 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
-use dcb_core::{CardDraft, CardType, FieldError, Rarity, Skin, limits};
+use dcb_core::{CardDraft, CardType, FieldError, Foil, Rarity, Skin, limits};
 
 /// Ce dont le partial `card.html` a besoin pour dessiner une carte.
 pub struct CardView {
@@ -13,6 +13,7 @@ pub struct CardView {
     pub skin: &'static str,
     pub rarity_slug: &'static str,
     pub rarity_label: &'static str,
+    pub foil: &'static str,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -45,6 +46,7 @@ impl CardView {
             skin: d.skin.slug(),
             rarity_slug: d.rarity.slug(),
             rarity_label: d.rarity.label(),
+            foil: d.foil.slug(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost,
@@ -83,6 +85,17 @@ pub fn skin_choices() -> Vec<Choice> {
         .map(|s| Choice {
             value: s.slug(),
             label: s.label(),
+            color: None,
+        })
+        .collect()
+}
+
+pub fn foil_choices() -> Vec<Choice> {
+    Foil::ALL
+        .iter()
+        .map(|f| Choice {
+            value: f.slug(),
+            label: f.label(),
             color: None,
         })
         .collect()
@@ -139,6 +152,7 @@ pub struct FormValues {
     pub card_type: String,
     pub skin: String,
     pub rarity: String,
+    pub foil: String,
     pub description: String,
     pub effect: String,
     pub deploy_cost: String,
@@ -154,6 +168,7 @@ impl FormValues {
             card_type: d.card_type.slug().into(),
             skin: d.skin.slug().into(),
             rarity: d.rarity.slug().into(),
+            foil: d.foil.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost.to_string(),
@@ -168,6 +183,7 @@ impl FormValues {
             card_type: CardType::App.slug().into(),
             skin: Skin::Light.slug().into(),
             rarity: Rarity::Basic.slug().into(),
+            foil: Foil::None.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
             ..Default::default()
@@ -187,6 +203,7 @@ pub struct FormPage {
     pub types: Vec<Choice>,
     pub skins: Vec<Choice>,
     pub rarities: Vec<Choice>,
+    pub foils: Vec<Choice>,
     pub lim_name: usize,
     pub lim_description: usize,
     pub lim_effect: usize,
@@ -212,6 +229,7 @@ impl FormPage {
             types: type_choices(),
             skins: skin_choices(),
             rarities: rarity_choices(),
+            foils: foil_choices(),
             lim_name: limits::NAME,
             lim_description: limits::DESCRIPTION,
             lim_effect: limits::EFFECT,

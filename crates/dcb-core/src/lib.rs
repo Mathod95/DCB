@@ -93,6 +93,17 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Finition holographique, indépendante de la rareté (overlay animé sur toute la carte).
+    Foil {
+        None    => "none",    "Aucun",
+        Stars   => "stars",   "Étoiles",
+        Glitter => "glitter", "Paillettes",
+        Shards  => "shards",  "Éclats",
+        Rainbow => "rainbow", "Irisé",
+    }
+}
+
 impl CardType {
     /// Couleur du type, reprise du Figma (`cardTypeStroke/*`).
     pub fn color(self) -> &'static str {
@@ -113,6 +124,7 @@ pub struct CardDraft {
     pub card_type: CardType,
     pub skin: Skin,
     pub rarity: Rarity,
+    pub foil: Foil,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -297,6 +309,7 @@ mod tests {
             card_type: CardType::App,
             skin: Skin::Light,
             rarity: Rarity::Basic,
+            foil: Foil::None,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -312,6 +325,9 @@ mod tests {
             assert_eq!(t.slug().parse::<CardType>().unwrap(), *t);
         }
         assert_eq!("GOLD".parse::<Rarity>().unwrap(), Rarity::Gold);
+        for f in Foil::ALL {
+            assert_eq!(f.slug().parse::<Foil>().unwrap(), *f);
+        }
         assert!("package".parse::<CardType>().is_err());
     }
 

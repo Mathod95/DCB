@@ -251,3 +251,142 @@
 @media (prefers-reduced-motion: reduce) {
   .card[data-rarity="gold"] .card-rarity::after { animation: none; opacity: 0; }
 }
+
+/*
+ * Finitions holographiques (champ `foil`), indépendantes de la rareté.
+ *
+ * Trois couches au-dessus de la carte :
+ *   ::before            voile irisé pastel sur toute la carte
+ *   ::after             motif (étoiles, paillettes, éclats) découpé dans un dégradé arc-en-ciel
+ *   .card-foil-glare    reflet lumineux qui suit la souris
+ *
+ * --mx / --my : position du reflet (0% à 100%). Animées au repos, pilotées par app.js au survol.
+ * Textures : static/foil/*.svg, générées par tools/gen_foil.py.
+ */
+@property --mx { syntax: "<percentage>"; inherits: true; initial-value: 30%; }
+@property --my { syntax: "<percentage>"; inherits: true; initial-value: 20%; }
+
+.card {
+  --holo: linear-gradient(
+    120deg,
+    #ff7eb6 0%, #ffd27e 14%, #fff59e 24%, #7effa8 38%, #6ee7ff 52%,
+    #8b9bff 66%, #d77eff 80%, #ff7eb6 100%
+  );
+  --holo-pastel: linear-gradient(
+    125deg,
+    #fbcfe8 0%, #e9d5ff 20%, #bae6fd 40%, #a7f3d0 55%, #fef3c7 70%, #e9d5ff 85%, #fbcfe8 100%
+  );
+  /* Peau claire : le voile assombrit légèrement le blanc ; peau sombre : il l'éclaire. */
+  --foil-blend: multiply;
+  --foil-veil: 0.42;
+}
+.card[data-skin="dark"] {
+  --foil-blend: screen;
+  --foil-veil: 0.14;
+}
+
+.card:not([data-foil="none"]) {
+  animation: dcb-holo-idle 9s ease-in-out infinite alternate;
+}
+.card.is-tracking { animation: none; }
+
+@keyframes dcb-holo-idle {
+  0%   { --mx: 15%; --my: 10%; }
+  50%  { --mx: 85%; --my: 55%; }
+  100% { --mx: 40%; --my: 95%; }
+}
+
+.card-foil {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.card-foil::before,
+.card-foil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: 260% 260%;
+  background-position: var(--mx) var(--my);
+}
+
+.card-foil::before {
+  background-image: var(--holo-pastel);
+  mix-blend-mode: var(--foil-blend);
+  opacity: var(--foil-veil);
+}
+
+.card-foil::after {
+  background-image: var(--holo);
+  /* le motif se décale un peu à contresens du voile : effet de profondeur */
+  background-position: calc(100% - var(--mx)) calc(100% - var(--my));
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  opacity: 0.75;
+  filter: saturate(1.3) brightness(1.05);
+}
+
+.card[data-foil="stars"] .card-foil::after {
+  -webkit-mask-image: url("/static/foil/stars.svg");
+  mask-image: url("/static/foil/stars.svg");
+  -webkit-mask-size: 150px 150px;
+  mask-size: 150px 150px;
+}
+.card[data-foil="glitter"] .card-foil::after {
+  -webkit-mask-image: url("/static/foil/glitter.svg");
+  mask-image: url("/static/foil/glitter.svg");
+  -webkit-mask-size: 120px 120px;
+  mask-size: 120px 120px;
+  opacity: 0.95;
+}
+.card[data-foil="shards"] .card-foil::after {
+  -webkit-mask-image: url("/static/foil/shards.svg");
+  mask-image: url("/static/foil/shards.svg");
+  -webkit-mask-size: 220px 220px;
+  mask-size: 220px 220px;
+  opacity: 0.6;
+}
+/* Irisé : pas de motif, un voile plus marqué avec des bandes de lumière diagonales */
+.card[data-foil="rainbow"] {
+  --foil-veil: 0.75;
+}
+.card[data-foil="rainbow"][data-skin="dark"] {
+  --foil-veil: 0.3;
+}
+.card[data-foil="rainbow"] .card-foil::after {
+  background-image: var(--holo);
+  mix-blend-mode: var(--foil-blend);
+  opacity: 0.3;
+  filter: none;
+}
+
+.card-foil-glare {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mx) var(--my),
+    rgb(255 255 255 / 0.65) 0%,
+    rgb(255 255 255 / 0.18) 22%,
+    transparent 48%
+  );
+  mix-blend-mode: soft-light;
+}
+.card[data-skin="dark"] .card-foil-glare { mix-blend-mode: screen; opacity: 0.45; }
+
+/* Inclinaison 3D au survol (variables posées par app.js sur .card-frame) */
+.card-frame {
+  --rx: 0deg;
+  --ry: 0deg;
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.card-frame.is-tracking { transition: transform 60ms linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card:not([data-foil="none"]) { animation: none; }
+  .card-frame { transform: none; transition: none; }
+}

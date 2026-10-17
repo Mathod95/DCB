@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dcb_core::{Card, CardDraft, CardType, Rarity, Skin, is_valid_slug, slugify};
+use dcb_core::{Card, CardDraft, CardType, Foil, Rarity, Skin, is_valid_slug, slugify};
 use serde::{Deserialize, Serialize};
 
 /// Contenu d'un fichier `cards/<slug>.toml`. Le slug n'y figure pas : c'est le nom du fichier.
@@ -18,6 +18,9 @@ struct CardFile {
     skin: Skin,
     #[serde(default = "default_rarity")]
     rarity: Rarity,
+    /// Finition holographique, absente du fichier quand il n'y en a pas.
+    #[serde(default = "default_foil", skip_serializing_if = "is_no_foil")]
+    foil: Foil,
     #[serde(default)]
     deploy_cost: i64,
     #[serde(default)]
@@ -41,6 +44,14 @@ fn default_rarity() -> Rarity {
     Rarity::Basic
 }
 
+fn default_foil() -> Foil {
+    Foil::None
+}
+
+fn is_no_foil(f: &Foil) -> bool {
+    *f == Foil::None
+}
+
 impl From<&CardDraft> for CardFile {
     fn from(d: &CardDraft) -> Self {
         Self {
@@ -48,6 +59,7 @@ impl From<&CardDraft> for CardFile {
             card_type: d.card_type,
             skin: d.skin,
             rarity: d.rarity,
+            foil: d.foil,
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             description: d.description.clone(),
@@ -65,6 +77,7 @@ impl From<CardFile> for CardDraft {
             card_type: f.card_type,
             skin: f.skin,
             rarity: f.rarity,
+            foil: f.foil,
             description: f.description,
             effect: f.effect,
             deploy_cost: f.deploy_cost,
@@ -273,6 +286,7 @@ mod tests {
             card_type: CardType::App,
             skin: Skin::Light,
             rarity: Rarity::Gold,
+            foil: Foil::Shards,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
             deploy_cost: 3,
@@ -300,6 +314,7 @@ mod tests {
         assert!(text.contains("name = \"ARGO CD\""), "{text}");
         assert!(text.contains("type = \"app\""), "{text}");
         assert!(!text.contains("art"), "{text}");
+        assert!(text.contains("foil = \"shards\""), "{text}");
 
         let (cards, errors) = store.load_all().await.unwrap();
         assert!(errors.is_empty(), "{errors:?}");
@@ -322,6 +337,7 @@ mod tests {
         assert_eq!(cards[0].slug, "ddos");
         assert_eq!(d.skin, Skin::Light);
         assert_eq!(d.rarity, Rarity::Basic);
+        assert_eq!(d.foil, Foil::None);
         assert_eq!(d.effect, "- Inflige 5 dégâts\n- Ralentit de 70%");
         std::fs::remove_dir_all(dir).unwrap();
     }

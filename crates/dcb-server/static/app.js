@@ -54,4 +54,49 @@
 
   document.addEventListener("htmx:load", (e) => initCounters(e.detail.elt));
   document.addEventListener("DOMContentLoaded", () => initCounters(document));
+
+  // Reflet holographique : la carte survolée suit la souris (position du reflet + inclinaison).
+  // Délégation sur document, donc valable aussi pour l'aperçu remplacé par htmx.
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const MAX_TILT = 9; // degrés
+
+  function shiny(frame) {
+    const card = frame?.querySelector(":scope > .card");
+    if (!card) return null;
+    const isShiny = card.dataset.foil !== "none" || card.dataset.rarity === "gold";
+    return isShiny ? card : null;
+  }
+
+  function release(frame) {
+    frame.classList.remove("is-tracking");
+    frame.style.removeProperty("--rx");
+    frame.style.removeProperty("--ry");
+    const card = frame.querySelector(":scope > .card");
+    if (card) {
+      card.classList.remove("is-tracking");
+      card.style.removeProperty("--mx");
+      card.style.removeProperty("--my");
+    }
+  }
+
+  document.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "touch" || reduceMotion.matches) return;
+    const frame = e.target.closest?.(".card-frame");
+    const card = shiny(frame);
+    if (!card) return;
+    const r = frame.getBoundingClientRect();
+    const x = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+    const y = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1);
+    frame.classList.add("is-tracking");
+    card.classList.add("is-tracking");
+    frame.style.setProperty("--rx", `${((0.5 - y) * 2 * MAX_TILT).toFixed(2)}deg`);
+    frame.style.setProperty("--ry", `${((x - 0.5) * 2 * MAX_TILT).toFixed(2)}deg`);
+    card.style.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
+    card.style.setProperty("--my", `${(y * 100).toFixed(1)}%`);
+  });
+
+  document.addEventListener("pointerout", (e) => {
+    const frame = e.target.closest?.(".card-frame");
+    if (frame && !frame.contains(e.relatedTarget)) release(frame);
+  });
 })();

@@ -107,6 +107,7 @@ fn card_fields<'a>(name: &'a str, extra: &[(&'a str, &'a [u8])]) -> Vec<(&'a str
         ("card_type", b"incident"),
         ("skin", b"dark"),
         ("rarity", b"gold"),
+        ("foil", b"shards"),
         ("description", "Le cluster ne répond plus".as_bytes()),
         ("effect", b"- Inflige 3 degats\r\n- Duree 2 tours"),
         ("deploy_cost", b"4"),
@@ -188,6 +189,7 @@ async fn create_writes_toml_and_art() {
     assert!(toml.contains("name = \"Crash Loop\""), "{toml}");
     assert!(toml.contains("type = \"incident\""), "{toml}");
     assert!(toml.contains("art = \"crash-loop.png\""), "{toml}");
+    assert!(toml.contains("foil = \"shards\""), "{toml}");
     assert!(!toml.contains('\r'), "retours chariot normalisés : {toml}");
     assert_eq!(
         std::fs::read(t.cards().join("art/crash-loop.png")).unwrap(),
@@ -344,4 +346,11 @@ async fn api_rejects_unknown_filter() {
     assert!(body.contains("\"slug\":\"ddos\""));
     let (_, _, body) = send(&t.app, get("/api/meta")).await;
     assert!(body.contains("#a538f8"));
+    assert!(body.contains("\"glitter\""));
+    for tex in ["stars", "glitter", "shards"] {
+        let (status, _, _) = send(&t.app, get(&format!("/static/foil/{tex}.svg"))).await;
+        assert_eq!(status, StatusCode::OK, "{tex}");
+    }
+    let (status, _, _) = send(&t.app, get("/static/foil/..%2Fapp.css")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }

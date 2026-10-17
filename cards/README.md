@@ -11,6 +11,7 @@ name = "ARGO CD"
 type = "app"            # resource | incident | hr | app | event
 skin = "light"          # light | dark (défaut : light)
 rarity = "gold"         # basic | gold (défaut : basic)
+foil = "stars"          # none | stars | glitter | shards | rainbow (défaut : none)
 deploy_cost = 3         # 0 à 99 (défaut : 0)
 daily_cost = 1          # 0 à 99 (défaut : 0)
 description = "Permet de structurer vos repository Git et de déployer des resources Argo CD"
@@ -30,4 +31,5 @@ Longueurs max, calées sur la place disponible dans la carte : nom 24, descripti
 - **Nom du fichier :** le slug, en minuscules, chiffres et tirets (`argo-cd.toml`). L'éditeur le dérive du nom de la carte à la création.
 - **Renommage :** renommer une carte dans l'éditeur ne renomme pas son fichier. Le slug reste stable, ce qui garde un historique Git propre.
 - **Fichier invalide :** il est ignoré, sans bloquer les autres cartes, et signalé en haut de la galerie avec la raison.
+- **Finition holographique (`foil`) :** indépendante de la rareté. Étoiles, paillettes, éclats ou irisé, avec un reflet qui suit la souris. Les textures sont dans `crates/dcb-server/static/foil/`, générées par `tools/gen_foil.py`.
 - **Illustrations :** PNG, JPEG, WebP ou GIF, 5 Mo max, format idéal 336×180.

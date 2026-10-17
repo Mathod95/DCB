@@ -1,4 +1,4 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-rarity="{{ card.rarity_slug }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-rarity="{{ card.rarity_slug }}" data-foil="{{ card.foil }}">
   <div class="card-skin"></div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span>{{ card.name }}</span></div>
@@ -41,4 +41,5 @@
   <div class="card-stroke"></div>
   <div class="card-type">{% for line in card.type_label_lines() %}<span>{{ line }}</span>{% endfor %}</div>
   <div class="card-rarity"></div>
+  {% if card.foil != "none" %}<div class="card-foil" aria-hidden="true"><i class="card-foil-glare"></i></div>{% endif %}
 </div>
