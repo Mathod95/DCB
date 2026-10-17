@@ -98,6 +98,7 @@
       <div class="field">
         <label for="f-flavor">Texte d'ambiance</label>
         <input id="f-flavor" name="flavor_text" value="{{ values.flavor_text }}" maxlength="{{ lim_flavor }}" data-count placeholder="Pas de Flux dans ce jeu !">
+        <p class="field-hint">Petite phrase drôle affichée en italique en bas de la carte.</p>
         <p class="field-error">{{ self.error("flavor_text") }}</p>
       </div>
 

@@ -198,6 +198,8 @@
   text-overflow: ellipsis;
 }
 
+.card-flavor.is-placeholder { opacity: 0.4; }
+
 /* cardTypeStroke/* : bordure colorée + badge */
 .card-stroke {
   position: absolute;

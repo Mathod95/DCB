@@ -36,7 +36,7 @@
     <div class="card-stat-label">{{ card.rarity_label }}</div>
   </div>
 
-  <p class="card-flavor">{{ card.flavor_text }}</p>
+  <p class="card-flavor{% if card.flavor_placeholder %} is-placeholder{% endif %}">{% if card.flavor_placeholder %}Texte d'ambiance{% else %}{{ card.flavor_text }}{% endif %}</p>
 
   <div class="card-stroke"></div>
   <div class="card-type">{% for line in card.type_label_lines() %}<span>{{ line }}</span>{% endfor %}</div>

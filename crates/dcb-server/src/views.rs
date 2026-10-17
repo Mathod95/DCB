@@ -19,6 +19,8 @@ pub struct CardView {
     pub deploy_cost: i64,
     pub daily_cost: i64,
     pub flavor_text: String,
+    /// Aperçu de l'éditeur avec texte d'ambiance vide : on montre l'emplacement en grisé.
+    pub flavor_placeholder: bool,
     /// URL publique de l'illustration (`/art/<fichier>`).
     pub art_url: Option<String>,
 }
@@ -52,6 +54,7 @@ impl CardView {
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             flavor_text: d.flavor_text.clone(),
+            flavor_placeholder: slug.is_none() && d.flavor_text.trim().is_empty(),
             art_url: d.art.as_ref().map(|f| format!("/art/{f}")),
         }
     }

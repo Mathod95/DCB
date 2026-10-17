@@ -334,6 +334,10 @@ async fn preview_renders_card_and_drops_unsafe_art() {
     assert!(body.contains(r#"data-rarity="gold""#));
     assert!(!body.contains("<script>"), "le nom doit être échappé");
     assert!(!body.contains("passwd"));
+    assert!(
+        body.contains("is-placeholder"),
+        "emplacement du texte d'ambiance visible"
+    );
 }
 
 #[tokio::test]
