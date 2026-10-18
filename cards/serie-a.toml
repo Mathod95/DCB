@@ -1,0 +1,8 @@
+name = "SERIE A"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+effect = "- Jette une pièce si pile Félicitations vous obtenez la Série A sinon relancer une pièce dans 5 jours"
+flavor_text = "Le premier steps pour obtenir la victoire !"

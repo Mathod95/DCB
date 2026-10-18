@@ -1,0 +1,8 @@
+name = "AUTO-SCALLING"
+type = "resource"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Augmente automatiquement vos ressources selon la charge."
+effect = "- Réduit les dégâts de 50% pendant 3 tours."

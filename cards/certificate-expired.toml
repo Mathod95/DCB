@@ -1,0 +1,11 @@
+name = "CERTIFICATE EXPIRED"
+type = "incident"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Vos certificats SSL ont expiré cette nuit"
+effect = """
+Bloque tous le traffic HTTPS pendant une journée tant qu'aucun déploiement n'auras été efféctué !
+Bloque également le revenue journalier de vos application métier !"""
+flavor_text = "Expires On Sunday, January 4, 2026"

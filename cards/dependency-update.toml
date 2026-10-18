@@ -1,0 +1,8 @@
+name = "DEPENDENCY UPDATE"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Une mise à jours des dépendances est disponible"
+effect = "- Piochez 2 cartes mais risque de 20% de bug critique"

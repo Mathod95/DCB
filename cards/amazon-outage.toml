@@ -1,0 +1,9 @@
+name = "AMAZON OUTAGE"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Une panne majeure chez AWS affecte tous vos services"
+effect = "- Ralentit le trafic de 50% pendant 2 jours"
+flavor_text = "Surement la faute de CloudFlare"

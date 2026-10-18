@@ -1,0 +1,6 @@
+name = "UPTIME KUMA"
+type = "app"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0

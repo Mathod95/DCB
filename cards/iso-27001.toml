@@ -1,0 +1,7 @@
+name = "ISO-27001"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+flavor_text = "J'ai jamais vue quelqu'un avoir cette certification"

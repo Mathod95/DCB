@@ -1,0 +1,10 @@
+name = "STEPHANIE DC."
+type = "hr"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Stéphanie occuperas la place de Directrice des ressources humaine !"
+effect = """
+- Vous permet de recruter de nouveaux collègues toute les semaines
+- Peut faire apparaitre des profiles légendaire"""

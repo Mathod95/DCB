@@ -1,0 +1,8 @@
+name = "TECH DEBT PAYMENT"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Il faut rembourser la dette technique."
+effect = "- Perdez 3 ressources mais réduisez instabilité de 25%."

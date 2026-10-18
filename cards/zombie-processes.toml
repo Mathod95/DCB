@@ -1,0 +1,8 @@
+name = "ZOMBIE PROCESSES"
+type = "incident"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Des processus zombies s'accumulent sur vos serveurs."
+flavor_text = "Previously in AMC the Walking Deead"

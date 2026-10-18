@@ -1,0 +1,8 @@
+name = "AUDIT FAILED"
+type = "incident"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "L'audit révèle des failles critiques"
+effect = "Non seulement vous aller payer pour l'audit mais vous perdez aussi autant de déploiement que de pièce qui tombe sur pile"

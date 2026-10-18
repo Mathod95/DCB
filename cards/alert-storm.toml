@@ -1,0 +1,7 @@
+name = "ALERT STORM"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Trop d'alertes, impossible de voir le vrai problème"

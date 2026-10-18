@@ -1,0 +1,9 @@
+name = "RELEASE 18:30"
+type = "event"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Une release non prévue après les horraires de travailles"
+effect = "- Vous consomme un déploiement journalier  tous les 3 jours tant que vous n'avez pas de manager dans votre équipe"
+flavor_text = "La classique des devs et encore c'est pas un vendredi !"

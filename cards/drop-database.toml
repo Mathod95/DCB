@@ -1,0 +1,11 @@
+name = "DROP DATABASE;"
+type = "incident"
+skin = "light"
+rarity = "basic"
+deploy_cost = 0
+daily_cost = 0
+description = "Un de vos développeurs à confondu la base de staging avec la production ..."
+effect = """
+- Une de vos applications métier ne fonctionne plus sauf si vous avez une backup -1 déploiements.
+Si vous n'avez pas de backup + 2 jours d'inactivité -1 déploiements par jours"""
+flavor_text = "C'est réel je connais un gars qui la déjà fait !"
