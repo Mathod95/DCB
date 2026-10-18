@@ -5,4 +5,4 @@ deploy_cost = 0
 daily_cost = 0
 effect = """
 - Nécessite Slack/Mattermost
-- Jetez une pièces si c'est pile vous avez vue la notification à temps et vous rencontrer aucun problème"""
+- Lancez une pièce: si c'est pile, vous avez vu la notification à temps et ne rencontrez aucun problème"""

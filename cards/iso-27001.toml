@@ -3,4 +3,4 @@ type = "event"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-flavor_text = "J'ai jamais vue quelqu'un avoir cette certification"
+flavor_text = "Je n'ai jamais vu quelqu'un avoir cette certification"

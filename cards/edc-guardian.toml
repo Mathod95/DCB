@@ -3,5 +3,5 @@ type = "app"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Protége les utilisateurs contre les abonnements et paiements non désirés via le paiement mobile"
-effect = "Toute les semaines jeter 2 pièces s'il ces pile vous doubler quelque choses"
+description = "Protège les utilisateurs contre les abonnements et paiements non désirés via le paiement mobile"
+effect = "Toutes les semaines, lancez 2 pièces: si c'est pile, vous doublez quelque chose"

@@ -4,4 +4,4 @@ skin = "light"
 deploy_cost = 0
 daily_cost = 0
 description = "Il faut rembourser la dette technique."
-effect = "- Perdez 3 ressources mais réduisez instabilité de 25%."
+effect = "- Perdez 3 ressources, mais réduisez l'instabilité de 25%."

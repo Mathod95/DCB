@@ -3,4 +3,4 @@ type = "resource"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Vous permet de déployer simultanément sur plusieurs cluster Kubernetes"
+description = "Vous permet de déployer simultanément sur plusieurs clusters Kubernetes"

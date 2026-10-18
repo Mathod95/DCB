@@ -1,7 +1,7 @@
-name = "SERIE A"
+name = "SÉRIE A"
 type = "event"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-effect = "- Jette une pièce si pile Félicitations vous obtenez la Série A sinon relancer une pièce dans 5 jours"
-flavor_text = "Le premier steps pour obtenir la victoire !"
+effect = "- Lancez une pièce: si c'est pile, félicitations, vous obtenez la Série A ! Sinon, relancez une pièce dans 5 jours"
+flavor_text = "Le premier pas vers la victoire !"

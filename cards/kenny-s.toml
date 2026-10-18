@@ -3,8 +3,8 @@ type = "hr"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Kenny occuperas la place de Cloud Architect !"
+description = "Kenny occupera la place de Cloud Architect !"
 effect = """
 - Ajoute +2 deployment MAX
-- Compétence Canard: Quand un déployment à une chance d'échouer Kenny fait en sorte qu'il passe sans encombre"""
-flavor_text = "Ne lui parler surtout pas de Terraspace"
+- Compétence Canard: quand un déploiement a une chance d'échouer, Kenny fait en sorte qu'il passe sans encombre"""
+flavor_text = "Ne lui parlez surtout pas de Terraspace"

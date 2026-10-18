@@ -3,8 +3,8 @@ type = "hr"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Arnaud occuperas la place de meilleur CTO ever !"
+description = "Arnaud occupera la place de meilleur CTO ever !"
 effect = """
-- Ajoute +3 deployment max
-- Compétence AppOfApps: Arnaud vous permet de piocher dans votre deck une carte App. (Lancer une pièce si c'est pile l'app est déployer sans consommer un déployment)"""
+- Ajoute +3 deployment MAX
+- Compétence AppOfApps: Arnaud vous permet de piocher une carte App dans votre deck (lancez une pièce: si c'est pile, l'app est déployée sans consommer de déploiement)"""
 flavor_text = "Le mieux est l'ennemi du bien"

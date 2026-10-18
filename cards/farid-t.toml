@@ -3,4 +3,4 @@ type = "hr"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-flavor_text = "Le gars fessait du ski !"
+flavor_text = "Le gars faisait du ski !"

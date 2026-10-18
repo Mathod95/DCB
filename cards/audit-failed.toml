@@ -4,4 +4,4 @@ skin = "light"
 deploy_cost = 0
 daily_cost = 0
 description = "L'audit révèle des failles critiques"
-effect = "Non seulement vous aller payer pour l'audit mais vous perdez aussi autant de déploiement que de pièce qui tombe sur pile"
+effect = "Non seulement vous allez payer pour l'audit, mais vous perdez aussi autant de déploiements que de pièces qui tombent sur pile"

@@ -3,7 +3,7 @@ type = "hr"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Aymeric occuperas la place de Lead Dev pour une app métier"
+description = "Aymeric occupera la place de Lead Dev pour une app métier"
 effect = """
 - Ajoute +1 deployment MAX
 - Débloque la carte Features

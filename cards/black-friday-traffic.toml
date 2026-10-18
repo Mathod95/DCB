@@ -3,5 +3,5 @@ type = "event"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Le traffic triple subitement"
-effect = "- Augmentation du traffic de 30% pendant 3 jours"
+description = "Le trafic triple subitement"
+effect = "- Augmentation du trafic de 30% pendant 3 jours"

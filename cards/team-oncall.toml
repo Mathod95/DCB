@@ -5,6 +5,6 @@ deploy_cost = 0
 daily_cost = 0
 description = "Vous obtenez l'unité équipe d'astreinte"
 effect = """
-- Necessite PagerDutty
+- Nécessite PagerDuty
 - Résout les incidents au détriment de votre budget"""
-flavor_text = "Le téléphone qui sonne pendant l'happy hours"
+flavor_text = "Le téléphone qui sonne pendant l'happy hour"

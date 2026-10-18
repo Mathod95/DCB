@@ -4,4 +4,4 @@ skin = "light"
 deploy_cost = 0
 daily_cost = 0
 description = "Une fuite mémoire consomme progressivement la RAM."
-flavor_text = "Ca ne serait pas arriver avec du RUST !"
+flavor_text = "Ça ne serait pas arrivé avec du Rust !"

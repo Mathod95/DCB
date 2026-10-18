@@ -3,10 +3,10 @@ type = "app"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "Permet de structurer vos repository Git et de déployer des ressources Argo CD"
+description = "Permet de structurer vos repositories Git et de déployer des ressources Argo CD"
 effect = """
-- Débloque la carte applicationSet
+- Débloque la carte Application Set
 - Ajoute +1 deployment MAX
-- Gestion multi environment (déployment unifié)"""
+- Gestion multi-environment (déploiement unifié)"""
 flavor_text = "Pas de Flux dans ce jeu !"
 art = "argo-cd.png"

@@ -3,4 +3,4 @@ type = "event"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-flavor_text = "La carotte qui ferons que vos ânes se surpasserons"
+flavor_text = "La carotte qui fera que vos ânes se surpasseront"

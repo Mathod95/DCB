@@ -3,5 +3,5 @@ type = "incident"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
-description = "ArgoCD ne peut plus synchroniser vos applications."
+description = "Argo CD ne peut plus synchroniser vos applications."
 effect = "- Empêche tout déploiement pendant 2 jours"

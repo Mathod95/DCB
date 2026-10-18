@@ -5,6 +5,6 @@ deploy_cost = 0
 daily_cost = 0
 description = "Vos certificats SSL ont expiré cette nuit"
 effect = """
-Bloque tous le traffic HTTPS pendant une journée tant qu'aucun déploiement n'auras été efféctué !
-Bloque également le revenue journalier de vos application métier !"""
+Bloque tout le trafic HTTPS pendant une journée tant qu'aucun déploiement n'aura été effectué !
+Bloque également le revenu journalier de vos applications métier !"""
 flavor_text = "Expires On Sunday, January 4, 2026"
