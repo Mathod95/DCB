@@ -1,7 +1,6 @@
 name = "PodCrashLoopBackOff"
 type = "incident"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Vos pods Kubernetes redémarrent en boucle infinie"

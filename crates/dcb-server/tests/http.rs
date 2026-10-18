@@ -106,7 +106,6 @@ fn card_fields<'a>(name: &'a str, extra: &[(&'a str, &'a [u8])]) -> Vec<(&'a str
         ("name", name.as_bytes()),
         ("card_type", b"incident"),
         ("skin", b"dark"),
-        ("rarity", b"gold"),
         ("foil", b"shards"),
         ("description", "Le cluster ne répond plus".as_bytes()),
         ("effect", b"- Inflige 3 degats\r\n- Duree 2 tours"),
@@ -119,7 +118,7 @@ fn card_fields<'a>(name: &'a str, extra: &[(&'a str, &'a [u8])]) -> Vec<(&'a str
 }
 
 const DDOS: &str = "name = \"DDOS\"\ntype = \"incident\"\ndeploy_cost = 4\n";
-const ARGO: &str = "name = \"ARGO CD\"\ntype = \"app\"\nrarity = \"gold\"\n";
+const ARGO: &str = "name = \"ARGO CD\"\ntype = \"app\"\nfoil = \"gold\"\n";
 
 #[tokio::test]
 async fn starts_empty_without_demo_cards() {
@@ -300,7 +299,6 @@ async fn invalid_submission_writes_nothing() {
         ("name", b""),
         ("card_type", b"incident"),
         ("skin", b"light"),
-        ("rarity", b"basic"),
         ("deploy_cost", b"150"),
         ("daily_cost", b"abc"),
         ("description", b"garde ma saisie"),
@@ -325,13 +323,13 @@ async fn preview_renders_card_and_drops_unsafe_art() {
     let req = Request::post("/preview")
         .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
-            "name=%3Cscript%3E&card_type=hr&skin=dark&rarity=gold&deploy_cost=7&current_art=..%2F..%2Fetc%2Fpasswd",
+            "name=%3Cscript%3E&card_type=hr&skin=dark&foil=gold&deploy_cost=7&current_art=..%2F..%2Fetc%2Fpasswd",
         ))
         .unwrap();
     let (status, _, body) = send(&t.app, req).await;
     assert_eq!(status, StatusCode::OK);
     assert!(body.contains(r#"data-type="hr""#));
-    assert!(body.contains(r#"data-rarity="gold""#));
+    assert!(body.contains(r#"data-foil="gold""#));
     assert!(!body.contains("<script>"), "le nom doit être échappé");
     assert!(!body.contains("passwd"));
     assert!(

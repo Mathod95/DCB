@@ -1,7 +1,6 @@
 name = "MARK GUARDIAN"
 type = "app"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Service spécialisé dans la protection des marques, de la réputation en ligne contre les fraudes"

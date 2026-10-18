@@ -1,7 +1,6 @@
 name = "LOAD BALANCER"
 type = "resource"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Distribue intelligemment le trafic entre vos serveurs."

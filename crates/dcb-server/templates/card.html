@@ -1,4 +1,4 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-rarity="{{ card.rarity_slug }}" data-foil="{{ card.foil }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}">
   <div class="card-skin"></div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span>{{ card.name }}</span></div>
@@ -32,14 +32,13 @@
     <div class="card-stat-label">Daily Cost</div>
   </div>
   <div class="card-stat card-stat-rarity">
-    <div class="card-stat-value">{% if card.rarity_slug == "gold" %}★★★{% else %}★{% endif %}</div>
-    <div class="card-stat-label">{{ card.rarity_label }}</div>
+    <div class="card-stat-value">{{ card.foil_label }}</div>
+    <div class="card-stat-label">Rarity</div>
   </div>
 
   <p class="card-flavor{% if card.flavor_placeholder %} is-placeholder{% endif %}">{% if card.flavor_placeholder %}Texte d'ambiance{% else %}{{ card.flavor_text }}{% endif %}</p>
 
   <div class="card-stroke"></div>
   <div class="card-type">{% for line in card.type_label_lines() %}<span>{{ line }}</span>{% endfor %}</div>
-  <div class="card-rarity"></div>
-  {% if card.foil != "none" %}<div class="card-foil" aria-hidden="true"><i class="card-foil-glare"></i></div>{% endif %}
+  {% if card.foil != "basic" %}<div class="card-foil" aria-hidden="true"><i class="card-foil-glare"></i></div>{% endif %}
 </div>

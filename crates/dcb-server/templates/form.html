@@ -42,21 +42,10 @@
             {% endfor %}
           </div>
         </div>
-        <div class="field">
-          <span class="label">Rareté</span>
-          <div class="segmented">
-            {% for c in rarities %}
-            <label class="seg">
-              <input type="radio" name="rarity" value="{{ c.value }}"{% if values.rarity.as_str() == c.value %} checked{% endif %}>
-              <span>{{ c.label }}</span>
-            </label>
-            {% endfor %}
-          </div>
-        </div>
       </div>
 
       <div class="field">
-        <span class="label">Finition holographique</span>
+        <span class="label">Finition (rareté)</span>
         <div class="segmented">
           {% for c in foils %}
           <label class="seg">

@@ -1,7 +1,6 @@
 name = "ARGO CD"
 type = "app"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Permet de structurer vos repository Git et de déployer des ressources Argo CD"

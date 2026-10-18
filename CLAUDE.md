@@ -30,7 +30,8 @@ cargo fmt --all
 
 - Textes de l'interface en français ; termes techniques en anglais (deploy, cluster, pod, scaling...)
 - Pas de tiret cadratin dans les textes
-- Les enums (type, skin, rareté) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
+- La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit
+- Les enums (type, skin, foil) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
 - Les cotes de `card.css` viennent du Figma : ne pas les changer sans vérifier la maquette
 - Pas de cartes de démo ni de seed : le dépôt ne contient que les cartes créées par l'utilisateur
 - Le slug (nom du fichier) ne change pas quand une carte est renommée
@@ -38,6 +39,6 @@ cargo fmt --all
 
 ## État
 
-Fait : finitions holographiques (`foil`, reflet suivant la souris), galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
+Fait : finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 61 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
 
 À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket, comptes joueurs, déploiement.

@@ -1,7 +1,6 @@
 name = "ARNAUD D."
 type = "hr"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Arnaud occuperas la place de ProductOwner"

@@ -1,7 +1,7 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
-use dcb_core::{CardDraft, CardType, FieldError, Foil, Rarity, Skin, limits};
+use dcb_core::{CardDraft, CardType, FieldError, Foil, Skin, limits};
 
 /// Ce dont le partial `card.html` a besoin pour dessiner une carte.
 pub struct CardView {
@@ -11,9 +11,8 @@ pub struct CardView {
     pub type_slug: &'static str,
     pub type_label: &'static str,
     pub skin: &'static str,
-    pub rarity_slug: &'static str,
-    pub rarity_label: &'static str,
     pub foil: &'static str,
+    pub foil_label: &'static str,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -46,9 +45,8 @@ impl CardView {
             type_slug: d.card_type.slug(),
             type_label: d.card_type.label(),
             skin: d.skin.slug(),
-            rarity_slug: d.rarity.slug(),
-            rarity_label: d.rarity.label(),
             foil: d.foil.slug(),
+            foil_label: d.foil.label(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost,
@@ -104,17 +102,6 @@ pub fn foil_choices() -> Vec<Choice> {
         .collect()
 }
 
-pub fn rarity_choices() -> Vec<Choice> {
-    Rarity::ALL
-        .iter()
-        .map(|r| Choice {
-            value: r.slug(),
-            label: r.label(),
-            color: None,
-        })
-        .collect()
-}
-
 #[derive(Template)]
 #[template(path = "menu.html")]
 pub struct MenuPage {
@@ -133,7 +120,7 @@ pub struct FilterLink {
 pub struct GalleryPage {
     pub cards: Vec<CardView>,
     pub type_links: Vec<FilterLink>,
-    pub rarity_links: Vec<FilterLink>,
+    pub foil_links: Vec<FilterLink>,
     pub filtered: bool,
     /// Fichiers `cards/*.toml` ignorés au dernier chargement.
     pub load_errors: Vec<String>,
@@ -154,7 +141,6 @@ pub struct FormValues {
     pub name: String,
     pub card_type: String,
     pub skin: String,
-    pub rarity: String,
     pub foil: String,
     pub description: String,
     pub effect: String,
@@ -170,7 +156,6 @@ impl FormValues {
             name: d.name.clone(),
             card_type: d.card_type.slug().into(),
             skin: d.skin.slug().into(),
-            rarity: d.rarity.slug().into(),
             foil: d.foil.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
@@ -185,8 +170,7 @@ impl FormValues {
         Self {
             card_type: CardType::App.slug().into(),
             skin: Skin::Light.slug().into(),
-            rarity: Rarity::Basic.slug().into(),
-            foil: Foil::None.slug().into(),
+            foil: Foil::Basic.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
             ..Default::default()
@@ -205,7 +189,6 @@ pub struct FormPage {
     pub card: CardView,
     pub types: Vec<Choice>,
     pub skins: Vec<Choice>,
-    pub rarities: Vec<Choice>,
     pub foils: Vec<Choice>,
     pub lim_name: usize,
     pub lim_description: usize,
@@ -231,7 +214,6 @@ impl FormPage {
             card,
             types: type_choices(),
             skins: skin_choices(),
-            rarities: rarity_choices(),
             foils: foil_choices(),
             lim_name: limits::NAME,
             lim_description: limits::DESCRIPTION,

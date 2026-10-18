@@ -86,21 +86,28 @@ text_enum! {
 }
 
 text_enum! {
-    /// Rareté (calques `rarityLayer/*` du Figma). `Gold` ajoute l'overlay doré.
-    Rarity {
-        Basic => "basic", "Basic",
-        Gold  => "gold",  "Gold",
-    }
-}
-
-text_enum! {
-    /// Finition holographique, indépendante de la rareté (overlay animé sur toute la carte).
+    /// Finition de la carte, qui fait aussi office de rareté (composants `foilLayer/*` du
+    /// Figma). `Basic` n'ajoute rien, les autres posent un overlay animé sur toute la carte.
     Foil {
-        None    => "none",    "Aucun",
+        Basic   => "basic",   "Basic",
+        Gold    => "gold",    "Gold",
         Stars   => "stars",   "Étoiles",
         Glitter => "glitter", "Paillettes",
         Shards  => "shards",  "Éclats",
         Rainbow => "rainbow", "Irisé",
+    }
+}
+
+impl Foil {
+    /// Lit une valeur de finition en acceptant les anciens formats : `none` (avant que Basic
+    /// soit une finition) et l'ancien champ `rarity` (`gold` donnait l'effet doré).
+    pub fn from_legacy(foil: Option<&str>, rarity: Option<&str>) -> Result<Self, UnknownVariant> {
+        match (foil.map(str::trim), rarity.map(str::trim)) {
+            (Some(f), _) if f.eq_ignore_ascii_case("none") => Ok(Foil::Basic),
+            (Some(f), _) => f.parse(),
+            (None, Some(r)) if r.eq_ignore_ascii_case("gold") => Ok(Foil::Gold),
+            (None, _) => Ok(Foil::Basic),
+        }
     }
 }
 
@@ -123,7 +130,6 @@ pub struct CardDraft {
     pub name: String,
     pub card_type: CardType,
     pub skin: Skin,
-    pub rarity: Rarity,
     pub foil: Foil,
     pub description: String,
     pub effect: String,
@@ -308,8 +314,7 @@ mod tests {
             name: "  Argo CD ".into(),
             card_type: CardType::App,
             skin: Skin::Light,
-            rarity: Rarity::Basic,
-            foil: Foil::None,
+            foil: Foil::Basic,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -324,11 +329,25 @@ mod tests {
         for t in CardType::ALL {
             assert_eq!(t.slug().parse::<CardType>().unwrap(), *t);
         }
-        assert_eq!("GOLD".parse::<Rarity>().unwrap(), Rarity::Gold);
+        assert_eq!("GOLD".parse::<Foil>().unwrap(), Foil::Gold);
         for f in Foil::ALL {
             assert_eq!(f.slug().parse::<Foil>().unwrap(), *f);
         }
         assert!("package".parse::<CardType>().is_err());
+    }
+
+    #[test]
+    fn legacy_rarity_maps_to_foil() {
+        assert_eq!(Foil::from_legacy(None, None).unwrap(), Foil::Basic);
+        assert_eq!(Foil::from_legacy(Some("none"), None).unwrap(), Foil::Basic);
+        assert_eq!(Foil::from_legacy(None, Some("gold")).unwrap(), Foil::Gold);
+        assert_eq!(Foil::from_legacy(None, Some("basic")).unwrap(), Foil::Basic);
+        // une finition explicite l'emporte sur l'ancienne rareté
+        assert_eq!(
+            Foil::from_legacy(Some("stars"), Some("gold")).unwrap(),
+            Foil::Stars
+        );
+        assert!(Foil::from_legacy(Some("chrome"), None).is_err());
     }
 
     #[test]

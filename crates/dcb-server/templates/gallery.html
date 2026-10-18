@@ -26,8 +26,8 @@
     </a>
     {% endfor %}
   </div>
-  <div class="chips" role="group" aria-label="Filtrer par rareté">
-    {% for f in rarity_links %}
+  <div class="chips" role="group" aria-label="Filtrer par finition">
+    {% for f in foil_links %}
     <a class="chip{% if f.active %} is-active{% endif %}" href="{{ f.href }}">{{ f.label }}</a>
     {% endfor %}
   </div>

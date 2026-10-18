@@ -1,7 +1,6 @@
 name = "DDOS ATTACK"
 type = "incident"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Une attaque DDoS massive surcharge vos serveurs."

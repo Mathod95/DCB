@@ -1,7 +1,6 @@
 name = "ARGOCD SYNC FAILED"
 type = "incident"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "ArgoCD ne peut plus synchroniser vos applications."

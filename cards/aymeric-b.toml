@@ -1,7 +1,6 @@
 name = "AYMERIC B"
 type = "hr"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Aymeric occuperas la place de Lead Dev pour une app métier"

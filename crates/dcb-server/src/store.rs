@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dcb_core::{Card, CardDraft, CardType, Foil, Rarity, Skin, is_valid_slug, slugify};
+use dcb_core::{Card, CardDraft, CardType, Foil, Skin, is_valid_slug, slugify};
 use serde::{Deserialize, Serialize};
 
 /// Contenu d'un fichier `cards/<slug>.toml`. Le slug n'y figure pas : c'est le nom du fichier.
@@ -16,11 +16,14 @@ struct CardFile {
     card_type: CardType,
     #[serde(default = "default_skin")]
     skin: Skin,
-    #[serde(default = "default_rarity")]
-    rarity: Rarity,
-    /// Finition holographique, absente du fichier quand il n'y en a pas.
-    #[serde(default = "default_foil", skip_serializing_if = "is_no_foil")]
-    foil: Foil,
+    /// Finition (et rareté), absente du fichier quand c'est `basic`. Lue en texte pour
+    /// accepter l'ancienne valeur `none`, voir `Foil::from_legacy`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    foil: Option<String>,
+    /// Ancien champ, remplacé par `foil` : `rarity = "gold"` donne `foil = "gold"`.
+    /// Lu pour la compatibilité, jamais réécrit.
+    #[serde(default, skip_serializing)]
+    rarity: Option<String>,
     #[serde(default)]
     deploy_cost: i64,
     #[serde(default)]
@@ -40,26 +43,14 @@ fn default_skin() -> Skin {
     Skin::Light
 }
 
-fn default_rarity() -> Rarity {
-    Rarity::Basic
-}
-
-fn default_foil() -> Foil {
-    Foil::None
-}
-
-fn is_no_foil(f: &Foil) -> bool {
-    *f == Foil::None
-}
-
 impl From<&CardDraft> for CardFile {
     fn from(d: &CardDraft) -> Self {
         Self {
             name: d.name.clone(),
             card_type: d.card_type,
             skin: d.skin,
-            rarity: d.rarity,
-            foil: d.foil,
+            foil: (d.foil != Foil::Basic).then(|| d.foil.slug().to_owned()),
+            rarity: None,
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             description: d.description.clone(),
@@ -70,21 +61,30 @@ impl From<&CardDraft> for CardFile {
     }
 }
 
-impl From<CardFile> for CardDraft {
-    fn from(f: CardFile) -> Self {
-        Self {
+impl TryFrom<CardFile> for CardDraft {
+    type Error = String;
+
+    fn try_from(f: CardFile) -> Result<Self, Self::Error> {
+        let foil = Foil::from_legacy(f.foil.as_deref(), f.rarity.as_deref()).map_err(|e| {
+            let valid: Vec<_> = Foil::ALL.iter().map(|f| f.slug()).collect();
+            format!(
+                "foil {:?} inconnu (valeurs : {})",
+                e.value,
+                valid.join(", ")
+            )
+        })?;
+        Ok(Self {
             name: f.name,
             card_type: f.card_type,
             skin: f.skin,
-            rarity: f.rarity,
-            foil: f.foil,
+            foil,
             description: f.description,
             effect: f.effect,
             deploy_cost: f.deploy_cost,
             daily_cost: f.daily_cost,
             flavor_text: f.flavor_text,
             art: f.art,
-        }
+        })
     }
 }
 
@@ -190,7 +190,7 @@ impl CardStore {
             .await
             .map_err(|e| e.to_string())?;
         let file: CardFile = toml::from_str(&text).map_err(|e| e.message().to_owned())?;
-        let mut draft = CardDraft::from(file).validated().map_err(|errs| {
+        let mut draft = CardDraft::try_from(file)?.validated().map_err(|errs| {
             errs.iter()
                 .map(|e| format!("{} {}", e.field, e.message))
                 .collect::<Vec<_>>()
@@ -285,7 +285,6 @@ mod tests {
             name: "ARGO CD".into(),
             card_type: CardType::App,
             skin: Skin::Light,
-            rarity: Rarity::Gold,
             foil: Foil::Shards,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
@@ -336,9 +335,40 @@ mod tests {
         let d = &cards[0].draft;
         assert_eq!(cards[0].slug, "ddos");
         assert_eq!(d.skin, Skin::Light);
-        assert_eq!(d.rarity, Rarity::Basic);
-        assert_eq!(d.foil, Foil::None);
+        assert_eq!(d.foil, Foil::Basic);
         assert_eq!(d.effect, "- Inflige 5 dégâts\n- Ralentit de 70%");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn legacy_rarity_files_still_load() {
+        let (store, dir) = temp_store();
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("a.toml"),
+            "name = \"A\"\ntype = \"app\"\nrarity = \"gold\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("b.toml"),
+            "name = \"B\"\ntype = \"app\"\nrarity = \"basic\"\nfoil = \"none\"\n",
+        )
+        .unwrap();
+        let (cards, errors) = store.load_all().await.unwrap();
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(cards[0].draft.foil, Foil::Gold);
+        assert_eq!(cards[1].draft.foil, Foil::Basic);
+
+        // réécrit au nouveau format : plus de `rarity`, et rien pour `basic`
+        store.write(&cards[0]).await.unwrap();
+        store.write(&cards[1]).await.unwrap();
+        let a = std::fs::read_to_string(dir.join("a.toml")).unwrap();
+        let b = std::fs::read_to_string(dir.join("b.toml")).unwrap();
+        assert!(
+            a.contains("foil = \"gold\"") && !a.contains("rarity"),
+            "{a}"
+        );
+        assert!(!b.contains("foil") && !b.contains("rarity"), "{b}");
         std::fs::remove_dir_all(dir).unwrap();
     }
 

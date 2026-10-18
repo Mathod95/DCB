@@ -1,7 +1,6 @@
 name = "AMAZON OUTAGE"
 type = "event"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Une panne majeure chez AWS affecte tous vos services"

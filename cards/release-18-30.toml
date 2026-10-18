@@ -1,7 +1,6 @@
 name = "RELEASE 18:30"
 type = "event"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Une release non prévue après les horraires de travailles"

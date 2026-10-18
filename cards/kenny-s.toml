@@ -1,7 +1,6 @@
 name = "KENNY S."
 type = "hr"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Kenny occuperas la place de Cloud Architect !"

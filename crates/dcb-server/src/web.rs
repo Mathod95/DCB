@@ -12,7 +12,7 @@ use axum::extract::{DefaultBodyLimit, Form, Multipart, Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use dcb_core::{Card, CardDraft, CardType, FieldError, Rarity, is_valid_slug};
+use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, is_valid_slug};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
@@ -195,7 +195,7 @@ async fn menu(State(s): State<AppState>) -> AppResult<Html<String>> {
 struct GalleryQuery {
     #[serde(rename = "type")]
     card_type: Option<String>,
-    rarity: Option<String>,
+    foil: Option<String>,
 }
 
 async fn gallery(
@@ -205,17 +205,17 @@ async fn gallery(
     // Une valeur inconnue dans l'URL revient à « pas de filtre » plutôt qu'à une erreur.
     let filter = Filter {
         card_type: q.card_type.as_deref().and_then(|v| v.parse().ok()),
-        rarity: q.rarity.as_deref().and_then(|v| v.parse().ok()),
+        foil: q.foil.as_deref().and_then(|v| v.parse().ok()),
     };
     let cards = db::list(&s.pool, filter).await?;
 
-    let href = |t: Option<CardType>, r: Option<Rarity>| {
+    let href = |t: Option<CardType>, f: Option<Foil>| {
         let mut parts = Vec::new();
         if let Some(t) = t {
             parts.push(format!("type={t}"));
         }
-        if let Some(r) = r {
-            parts.push(format!("rarity={r}"));
+        if let Some(f) = f {
+            parts.push(format!("foil={f}"));
         }
         if parts.is_empty() {
             "/gallery".to_owned()
@@ -226,27 +226,27 @@ async fn gallery(
 
     let mut type_links = vec![FilterLink {
         label: "Tous",
-        href: href(None, filter.rarity),
+        href: href(None, filter.foil),
         active: filter.card_type.is_none(),
         color: None,
     }];
     type_links.extend(CardType::ALL.iter().map(|&t| FilterLink {
         label: t.label(),
-        href: href(Some(t), filter.rarity),
+        href: href(Some(t), filter.foil),
         active: filter.card_type == Some(t),
         color: Some(t.color()),
     }));
 
-    let mut rarity_links = vec![FilterLink {
+    let mut foil_links = vec![FilterLink {
         label: "Toutes",
         href: href(filter.card_type, None),
-        active: filter.rarity.is_none(),
+        active: filter.foil.is_none(),
         color: None,
     }];
-    rarity_links.extend(Rarity::ALL.iter().map(|&r| FilterLink {
-        label: r.label(),
-        href: href(filter.card_type, Some(r)),
-        active: filter.rarity == Some(r),
+    foil_links.extend(Foil::ALL.iter().map(|&f| FilterLink {
+        label: f.label(),
+        href: href(filter.card_type, Some(f)),
+        active: filter.foil == Some(f),
         color: None,
     }));
 
@@ -264,8 +264,8 @@ async fn gallery(
             .map(|c| CardView::new(Some(&c.slug), &c.draft))
             .collect(),
         type_links,
-        rarity_links,
-        filtered: filter.card_type.is_some() || filter.rarity.is_some(),
+        foil_links,
+        filtered: filter.card_type.is_some() || filter.foil.is_some(),
         load_errors,
     })
 }
@@ -370,12 +370,10 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         name: v.name.clone(),
         card_type: pick(&v.card_type, CardType::App, "card_type", &mut errors),
         skin: pick(&v.skin, dcb_core::Skin::Light, "skin", &mut errors),
-        rarity: pick(&v.rarity, Rarity::Basic, "rarity", &mut errors),
-        // Champ ajouté après coup : absent = pas de finition.
         foil: if v.foil.is_empty() {
-            dcb_core::Foil::None
+            Foil::Basic
         } else {
-            pick(&v.foil, dcb_core::Foil::None, "foil", &mut errors)
+            pick(&v.foil, Foil::Basic, "foil", &mut errors)
         },
         description: v.description.clone(),
         effect: v.effect.clone(),
@@ -492,7 +490,6 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "name" => v.name = text,
             "card_type" => v.card_type = text,
             "skin" => v.skin = text,
-            "rarity" => v.rarity = text,
             "foil" => v.foil = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
@@ -621,8 +618,6 @@ struct PreviewForm {
     #[serde(default)]
     skin: String,
     #[serde(default)]
-    rarity: String,
-    #[serde(default)]
     foil: String,
     #[serde(default)]
     description: String,
@@ -649,7 +644,6 @@ async fn preview(Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
         name: f.name,
         card_type: f.card_type,
         skin: f.skin,
-        rarity: f.rarity,
         foil: f.foil,
         description: f.description,
         effect: f.effect,
@@ -679,8 +673,8 @@ async fn api_list(
             .map(str::parse)
             .transpose()
             .map_err(parse_err)?,
-        rarity: q
-            .rarity
+        foil: q
+            .foil
             .as_deref()
             .map(str::parse)
             .transpose()
@@ -699,8 +693,9 @@ async fn api_meta() -> Json<serde_json::Value> {
             "slug": t.slug(), "label": t.label(), "color": t.color()
         })).collect::<Vec<_>>(),
         "skins": dcb_core::Skin::ALL.iter().map(|s| s.slug()).collect::<Vec<_>>(),
-        "rarities": Rarity::ALL.iter().map(|r| r.slug()).collect::<Vec<_>>(),
-        "foils": dcb_core::Foil::ALL.iter().map(|f| f.slug()).collect::<Vec<_>>(),
+        "foils": Foil::ALL.iter().map(|f| serde_json::json!({
+            "slug": f.slug(), "label": f.label()
+        })).collect::<Vec<_>>(),
         "limits": {
             "name": dcb_core::limits::NAME,
             "description": dcb_core::limits::DESCRIPTION,

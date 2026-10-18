@@ -1,7 +1,6 @@
 name = "CERTIFICATE EXPIRED"
 type = "incident"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Vos certificats SSL ont expiré cette nuit"

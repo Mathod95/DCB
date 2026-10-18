@@ -1,7 +1,6 @@
 name = "GIT FORCE PUSH"
 type = "incident"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Quelqu'un a force push sur main en production !"

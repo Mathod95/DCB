@@ -1,7 +1,6 @@
 name = "HEALTH CHECK"
 type = "resource"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Détecte et remplace automatiquement les instances défaillantes."

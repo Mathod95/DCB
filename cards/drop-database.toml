@@ -1,7 +1,6 @@
 name = "DROP DATABASE;"
 type = "incident"
 skin = "light"
-rarity = "basic"
 deploy_cost = 0
 daily_cost = 0
 description = "Un de vos développeurs à confondu la base de staging avec la production ..."

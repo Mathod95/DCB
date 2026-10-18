@@ -63,7 +63,7 @@
   function shiny(frame) {
     const card = frame?.querySelector(":scope > .card");
     if (!card) return null;
-    const isShiny = card.dataset.foil !== "none" || card.dataset.rarity === "gold";
+    const isShiny = card.dataset.foil && card.dataset.foil !== "basic";
     return isShiny ? card : null;
   }
 

@@ -37,13 +37,13 @@ La base SQLite n'est qu'un cache : elle est vidée et reconstruite depuis `cards
 
 ## Fonctionnalités
 
-- **Galerie** : grille de toutes les cartes, filtres par type et par rareté.
+- **Galerie** : grille de toutes les cartes, filtres par type et par finition.
 - **Éditeur** : création et modification avec aperçu de la carte mis à jour pendant la saisie, compteurs de caractères calés sur la place disponible dans la carte, upload d'illustration (PNG, JPEG, WebP, GIF, 5 Mo max).
 - **Fiche carte** : affichage en grand, modification, suppression (le fichier TOML et l'illustration sont supprimés avec la carte), et rappel des fichiers à commiter.
 - **API JSON** pour les futurs clients du jeu :
-  - `GET /api/cards` (filtres `?type=incident&rarity=gold`)
+  - `GET /api/cards` (filtres `?type=incident&foil=gold`)
   - `GET /api/cards/{slug}`
-  - `GET /api/meta` : types, couleurs, skins, raretés et limites de saisie
+  - `GET /api/meta` : types, couleurs, skins, finitions et limites de saisie
 
 ## La carte
 
@@ -53,7 +53,7 @@ Reproduite depuis le composant `card` du fichier Figma DevCardBattle (374×574),
 |---|---|
 | Type (bordure + badge) | Resource `#38bdf8`, Incident `#f83838`, Ressource humaine `#0800f6`, App `#f88838`, Event `#a538f8` |
 | Skin | Light, Dark |
-| Rareté | Basic, Gold (overlay doré du Figma + reflet animé) |
+| Finition (`foil`, fait office de rareté) | Basic, Gold (overlay doré du Figma), Étoiles, Paillettes, Éclats, Irisé, avec un reflet qui suit la souris |
 
 Le rendu est en HTML/CSS (`crates/dcb-server/static/card.css`) : la carte est dessinée à ses cotes Figma puis mise à l'échelle, donc le même code sert à la galerie, à l'aperçu et à la fiche.
 
