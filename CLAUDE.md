@@ -34,6 +34,7 @@ cargo fmt --all
 
 - Textes de l'interface en français ; termes techniques en anglais (deploy, cluster, pod, scaling...)
 - Pas de tiret cadratin dans les textes
+- Cible : navigateur sur ordinateur uniquement. Pas de vue mobile à concevoir ni à tester
 - La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit
 - Les enums (type, skin, foil) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
 - Les cotes de `card.css` viennent du Figma : ne pas les changer sans vérifier la maquette

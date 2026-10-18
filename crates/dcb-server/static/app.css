@@ -439,7 +439,6 @@ input[type="file"]::file-selector-button {
 }
 .usermenu-panel a:hover, .usermenu-panel button:hover { background: var(--panel-2); text-decoration: none; }
 .usermenu-panel form { margin: 0; }
-.usermenu-panel a.nav-mobile { display: none; }
 
 .auth { display: grid; gap: 24px; max-width: 440px; margin: 24px auto 0; }
 .auth-intro { display: grid; gap: 8px; }
@@ -482,7 +481,6 @@ input[type="file"]::file-selector-button {
 }
 @media (max-width: 560px) {
   .usermenu-name { display: none; }
-  .usermenu-panel a.nav-mobile { display: block; }
   .auth { margin-top: 8px; }
   .auth-form { padding: 18px; }
 }

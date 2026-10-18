@@ -28,9 +28,6 @@
         <summary><span class="avatar" aria-hidden="true">{{ ctx.initial() }}</span><span class="usermenu-name">{{ name }}</span></summary>
         <div class="usermenu-panel">
           <p class="muted small">{% if ctx.is_admin %}Admin{% else %}Utilisateur{% endif %}</p>
-          <a class="nav-mobile" href="/gallery">Galerie</a>
-          <a class="nav-mobile" href="/regles">Règles</a>
-          {% if ctx.is_admin %}<a class="nav-mobile" href="/admin/users">Comptes</a>{% endif %}
           <a href="/account">Mon compte</a>
           <form method="post" action="/logout" hx-boost="false"><button type="submit">Se déconnecter</button></form>
         </div>
