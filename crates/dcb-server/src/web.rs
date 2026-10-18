@@ -9,8 +9,10 @@ use std::sync::{Arc, RwLock};
 use askama::Template;
 use axum::Json;
 use axum::Router;
+use axum::extract::Request;
 use axum::extract::{DefaultBodyLimit, Form, Multipart, Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
+use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, is_valid_slug};
@@ -20,6 +22,7 @@ use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
+use crate::auth::{CurrentUser, EditorUser, MaybeUser, User};
 use crate::db::{self, Filter};
 use crate::rules::Rules;
 use crate::store::{CardStore, LoadError, is_safe_file_name};
@@ -30,7 +33,15 @@ pub const MAX_ART_BYTES: usize = 5 * 1024 * 1024;
 
 #[derive(Clone)]
 pub struct AppState {
+    /// Cache des cartes, reconstruit depuis `cards/` à chaque démarrage.
     pub pool: SqlitePool,
+    /// Base persistante : comptes et sessions (`data/app.db`).
+    pub app_db: SqlitePool,
+    /// Éditeur de cartes (création, modification, rechargement), réservé à l'admin. Coupé en
+    /// production (`DCB_EDITOR=0`) : les cartes arrivent alors avec l'image.
+    pub editor_enabled: bool,
+    /// Cookie de session marqué `Secure` (servi en HTTPS).
+    pub secure_cookies: bool,
     pub store: Arc<CardStore>,
     /// Fichiers ignorés au dernier chargement, affichés dans la galerie.
     pub load_errors: Arc<RwLock<Vec<LoadError>>>,
@@ -48,9 +59,12 @@ pub struct RulesState {
 }
 
 impl AppState {
-    pub fn new(pool: SqlitePool, store: CardStore) -> Self {
+    pub fn new(pool: SqlitePool, app_db: SqlitePool, store: CardStore) -> Self {
         Self {
             pool,
+            app_db,
+            editor_enabled: true,
+            secure_cookies: false,
             store: Arc::new(store),
             load_errors: Arc::default(),
             rules_path: None,
@@ -61,6 +75,20 @@ impl AppState {
     pub fn with_rules_file(mut self, path: impl Into<PathBuf>) -> Self {
         self.rules_path = Some(path.into());
         self
+    }
+
+    pub fn with_editor(mut self, enabled: bool) -> Self {
+        self.editor_enabled = enabled;
+        self
+    }
+
+    pub fn with_secure_cookies(mut self, secure: bool) -> Self {
+        self.secure_cookies = secure;
+        self
+    }
+
+    pub fn ctx(&self, user: &User) -> Ctx {
+        Ctx::for_user(Some(user), self.editor_enabled)
     }
 
     /// Relit `cards/*.toml` et reconstruit le cache. Renvoie le nombre de cartes chargées.
@@ -103,7 +131,9 @@ pub fn router(state: AppState) -> Router {
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-cache"),
-        ));
+        ))
+        // les illustrations ne sont visibles qu'une fois connecté, comme le reste du jeu
+        .layer(middleware::from_fn_with_state(state.clone(), require_login));
 
     Router::new()
         .route("/", get(menu))
@@ -143,7 +173,9 @@ pub fn router(state: AppState) -> Router {
             get(|| async { asset("text/javascript", include_str!("../static/app.js")) }),
         )
         .nest("/art", art)
+        .merge(crate::accounts::routes())
         .fallback(not_found)
+        .layer(middleware::from_fn(same_origin_only))
         .layer(DefaultBodyLimit::max(MAX_ART_BYTES + 64 * 1024))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -177,21 +209,72 @@ impl IntoResponse for AppError {
     }
 }
 
-type AppResult<T> = Result<T, AppError>;
+pub(crate) type AppResult<T> = Result<T, AppError>;
 
-fn render(t: impl Template) -> AppResult<Html<String>> {
+pub(crate) fn render(t: impl Template) -> AppResult<Html<String>> {
     Ok(Html(t.render()?))
 }
 
-fn not_found_response() -> Response {
-    let body = NotFoundPage
+fn not_found_with(ctx: Ctx) -> Response {
+    let body = NotFoundPage { ctx }
         .render()
         .unwrap_or_else(|_| "Introuvable".into());
     (StatusCode::NOT_FOUND, Html(body)).into_response()
 }
 
-async fn not_found() -> Response {
-    not_found_response()
+fn not_found_response() -> Response {
+    not_found_with(Ctx::anonymous())
+}
+
+pub(crate) fn not_found_for(user: Option<&User>, state: &AppState) -> Response {
+    not_found_with(Ctx::for_user(user, state.editor_enabled))
+}
+
+pub(crate) fn forbidden_response(user: Option<&User>, state: &AppState) -> Response {
+    let body = ForbiddenPage {
+        ctx: Ctx::for_user(user, state.editor_enabled),
+    }
+    .render()
+    .unwrap_or_else(|_| "Accès refusé".into());
+    (StatusCode::FORBIDDEN, Html(body)).into_response()
+}
+
+async fn not_found(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> Response {
+    not_found_for(u.as_ref(), &s)
+}
+
+/// Middleware : refuse l'accès aux visiteurs non connectés (redirection vers /login).
+async fn require_login(_user: CurrentUser, req: Request, next: Next) -> Response {
+    next.run(req).await
+}
+
+/// Middleware : refuse les envois de formulaire venant d'un autre site (protection CSRF, en
+/// plus du cookie `SameSite=Lax`). Les navigateurs envoient `Origin` sur les POST ; il doit
+/// correspondre à l'hôte de la requête.
+async fn same_origin_only(req: Request, next: Next) -> Response {
+    let safe_method = matches!(
+        *req.method(),
+        axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+    );
+    if !safe_method && let Some(origin) = req.headers().get(header::ORIGIN) {
+        let host = req
+            .headers()
+            .get(header::HOST)
+            .and_then(|h| h.to_str().ok());
+        let origin_host = origin
+            .to_str()
+            .ok()
+            .and_then(|o| o.split_once("://"))
+            .map(|(_, rest)| rest.trim_end_matches('/'));
+        if host.is_none() || origin_host != host {
+            return (
+                StatusCode::FORBIDDEN,
+                "Requête refusée : origine différente",
+            )
+                .into_response();
+        }
+    }
+    next.run(req).await
 }
 
 fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
@@ -225,8 +308,9 @@ async fn foil_texture(Path(name): Path<String>) -> Response {
 // ---------------------------------------------------------------------------------------------
 // Pages
 
-async fn menu(State(s): State<AppState>) -> AppResult<Html<String>> {
+async fn menu(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> AppResult<Html<String>> {
     render(MenuPage {
+        ctx: s.ctx(&u),
         card_count: db::count(&s.pool).await?,
     })
 }
@@ -240,6 +324,7 @@ struct GalleryQuery {
 
 async fn gallery(
     State(s): State<AppState>,
+    CurrentUser(u): CurrentUser,
     Query(q): Query<GalleryQuery>,
 ) -> AppResult<Html<String>> {
     // Une valeur inconnue dans l'URL revient à « pas de filtre » plutôt qu'à une erreur.
@@ -299,6 +384,7 @@ async fn gallery(
         .collect();
 
     render(GalleryPage {
+        ctx: s.ctx(&u),
         cards: cards
             .iter()
             .map(|c| CardView::new(Some(&c.slug), &c.draft))
@@ -310,13 +396,13 @@ async fn gallery(
     })
 }
 
-async fn rules_page(State(s): State<AppState>) -> AppResult<Response> {
+async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> AppResult<Response> {
     let (rules, error) = {
         let state = s.rules.read().expect("verrou empoisonné");
         (state.rules.clone(), state.error.clone())
     };
     let Some(rules) = rules else {
-        let page = RulesPage::missing(error);
+        let page = RulesPage::missing(s.ctx(&u), error);
         return Ok((StatusCode::SERVICE_UNAVAILABLE, render(page)?).into_response());
     };
 
@@ -347,10 +433,10 @@ async fn rules_page(State(s): State<AppState>) -> AppResult<Response> {
         None => Vec::new(),
     };
 
-    Ok(render(RulesPage::new(&rules, error, types, foils))?.into_response())
+    Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, foils))?.into_response())
 }
 
-async fn reload(State(s): State<AppState>) -> AppResult<Redirect> {
+async fn reload(State(s): State<AppState>, _editor: EditorUser) -> AppResult<Redirect> {
     s.reload().await?;
     Ok(Redirect::to("/gallery"))
 }
@@ -370,9 +456,14 @@ fn card_file(s: &AppState, slug: &str) -> String {
         .to_string()
 }
 
-async fn detail(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Html<String>> {
+async fn detail(
+    State(s): State<AppState>,
+    CurrentUser(u): CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Html<String>> {
     let card = load(&s.pool, &slug).await?;
     render(DetailPage {
+        ctx: s.ctx(&u),
         file: card_file(&s, &card.slug),
         art_file: card
             .draft
@@ -383,10 +474,11 @@ async fn detail(State(s): State<AppState>, Path(slug): Path<String>) -> AppResul
     })
 }
 
-async fn new_form() -> AppResult<Html<String>> {
+async fn new_form(State(s): State<AppState>, EditorUser(u): EditorUser) -> AppResult<Html<String>> {
     let values = FormValues::blank();
     let preview = parse_values(&values).unwrap_or_else(|(d, _)| d);
     render(FormPage::new(
+        s.ctx(&u),
         "Nouvelle carte",
         "/cards".into(),
         "/gallery".into(),
@@ -396,9 +488,14 @@ async fn new_form() -> AppResult<Html<String>> {
     ))
 }
 
-async fn edit_form(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Html<String>> {
+async fn edit_form(
+    State(s): State<AppState>,
+    EditorUser(u): EditorUser,
+    Path(slug): Path<String>,
+) -> AppResult<Html<String>> {
     let card = load(&s.pool, &slug).await?;
     render(FormPage::new(
+        s.ctx(&u),
         "Modifier la carte",
         format!("/cards/{slug}"),
         format!("/cards/{slug}"),
@@ -591,6 +688,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
 
 /// Rend le formulaire avec ses erreurs (statut 422).
 fn form_with_errors(
+    ctx: Ctx,
     title: &'static str,
     action: String,
     cancel_href: String,
@@ -599,6 +697,7 @@ fn form_with_errors(
     errors: Vec<FieldError>,
 ) -> AppResult<Response> {
     let page = FormPage::new(
+        ctx,
         title,
         action,
         cancel_href,
@@ -609,12 +708,17 @@ fn form_with_errors(
     Ok((StatusCode::UNPROCESSABLE_ENTITY, render(page)?).into_response())
 }
 
-async fn create(State(s): State<AppState>, mp: Multipart) -> AppResult<Response> {
+async fn create(
+    State(s): State<AppState>,
+    EditorUser(u): EditorUser,
+    mp: Multipart,
+) -> AppResult<Response> {
     let sub = read_submission(mp).await?;
     let mut draft = match sub.parse() {
         Ok(d) => d,
         Err((draft, errors)) => {
             return form_with_errors(
+                s.ctx(&u),
                 "Nouvelle carte",
                 "/cards".into(),
                 "/gallery".into(),
@@ -639,6 +743,7 @@ async fn create(State(s): State<AppState>, mp: Multipart) -> AppResult<Response>
 
 async fn update(
     State(s): State<AppState>,
+    EditorUser(u): EditorUser,
     Path(slug): Path<String>,
     mp: Multipart,
 ) -> AppResult<Response> {
@@ -650,6 +755,7 @@ async fn update(
         Ok(d) => d,
         Err((draft, errors)) => {
             return form_with_errors(
+                s.ctx(&u),
                 "Modifier la carte",
                 format!("/cards/{slug}"),
                 format!("/cards/{slug}"),
@@ -678,7 +784,11 @@ async fn update(
     Ok(Redirect::to(&format!("/cards/{}", card.slug)).into_response())
 }
 
-async fn delete(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Redirect> {
+async fn delete(
+    State(s): State<AppState>,
+    _editor: EditorUser,
+    Path(slug): Path<String>,
+) -> AppResult<Redirect> {
     let card = load(&s.pool, &slug).await?;
     let _guard = s.store.lock().await;
     s.store.remove(&slug).await?;
@@ -717,7 +827,7 @@ struct PreviewForm {
 
 /// Aperçu en direct : rend la carte telle qu'elle serait enregistrée, même si le formulaire
 /// contient encore des erreurs. N'écrit rien.
-async fn preview(Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
+async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
     let current_art =
         Some(f.current_art).filter(|a| f.remove_art.is_empty() && is_safe_file_name(a));
     let values = FormValues {
@@ -743,6 +853,7 @@ async fn preview(Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
 
 async fn api_list(
     State(s): State<AppState>,
+    _user: CurrentUser,
     Query(q): Query<GalleryQuery>,
 ) -> AppResult<Json<Vec<Card>>> {
     let parse_err = |e: dcb_core::UnknownVariant| AppError::BadRequest(e.to_string());
@@ -763,11 +874,15 @@ async fn api_list(
     Ok(Json(db::list(&s.pool, filter).await?))
 }
 
-async fn api_get(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Json<Card>> {
+async fn api_get(
+    State(s): State<AppState>,
+    _user: CurrentUser,
+    Path(slug): Path<String>,
+) -> AppResult<Json<Card>> {
     Ok(Json(load(&s.pool, &slug).await?))
 }
 
-async fn api_meta() -> Json<serde_json::Value> {
+async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "card_types": CardType::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label(), "color": t.color()

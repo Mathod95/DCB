@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Comptes · DevCardBattle{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Administration</p>
+    <h1>Comptes</h1>
+    <p class="muted">{{ users.len() }} compte{% if users.len() != 1 %}s{% endif %}. Pas d'inscription libre: chaque joueur reçoit un compte créé ici.{% if !editor_enabled %} Éditeur de cartes désactivé sur ce serveur.{% endif %}</p>
+  </div>
+</div>
+
+{% if let Some(n) = notice %}
+<div class="alert{% if n.ok %} alert-ok{% endif %}" role="{% if n.ok %}status{% else %}alert{% endif %}">
+  {{ n.text }}
+  {% if let Some(p) = n.password %}
+  <div class="secret">
+    <span class="muted small">Mot de passe à transmettre, il ne sera plus affiché:</span>
+    <code class="secret-value">{{ p }}</code>
+    <button type="button" class="btn btn-sm" data-copy="{{ p }}">Copier</button>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="admin">
+  <form class="admin-new" method="post" action="/admin/users" hx-boost="false">
+    <h2 class="auth-subtitle">Inviter un joueur</h2>
+    <div class="field">
+      <label for="u-name">Identifiant</label>
+      <input id="u-name" name="username" value="{{ new_username }}" autocapitalize="none" spellcheck="false" required placeholder="jean.dupont">
+      <p class="field-hint">3 à 32 caractères: lettres, chiffres, point, tiret.</p>
+    </div>
+    <div class="field">
+      <label for="u-pass">Mot de passe</label>
+      <input id="u-pass" name="password" type="text" autocomplete="off" placeholder="Laisser vide pour en générer un">
+      <p class="field-hint">Vide: un mot de passe de 16 caractères est généré et affiché une fois.</p>
+    </div>
+    <div class="field">
+      <span class="label">Rôle</span>
+      <div class="segmented">
+        <label class="seg"><input type="radio" name="role" value="user" checked><span>Utilisateur</span></label>
+        <label class="seg"><input type="radio" name="role" value="admin"><span>Admin</span></label>
+      </div>
+    </div>
+    <button class="btn btn-primary" type="submit">Créer le compte</button>
+  </form>
+
+  <div class="table-wrap">
+    <table class="users">
+      <thead>
+        <tr><th scope="col">Identifiant</th><th scope="col">Rôle</th><th scope="col">Statut</th><th scope="col">Créé le</th><th scope="col">Dernière connexion</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr{% if !u.active %} class="is-off"{% endif %}>
+          <td><strong>{{ u.username }}</strong>{% if u.is_self %} <span class="pill">toi</span>{% endif %}</td>
+          <td>{{ u.role_label }}</td>
+          <td>{% if u.active %}<span class="state state-on">Actif</span>{% else %}<span class="state state-off">Désactivé</span>{% endif %}</td>
+          <td class="num">{{ u.created }}</td>
+          <td class="num">{{ u.last_login }}</td>
+          <td class="row-actions">
+            {% if u.is_self %}
+            <a class="btn btn-sm" href="/account">Mon compte</a>
+            {% else %}
+            <form method="post" action="/admin/users/{{ u.id }}/role" hx-boost="false"><input type="hidden" name="role" value="{{ u.other_role }}"><button class="btn btn-sm" type="submit">Passer {{ u.other_role_label }}</button></form>
+            <form method="post" action="/admin/users/{{ u.id }}/password" hx-boost="false"><button class="btn btn-sm" type="submit">Nouveau mot de passe</button></form>
+            <form method="post" action="/admin/users/{{ u.id }}/active" hx-boost="false"><button class="btn btn-sm" type="submit">{% if u.active %}Désactiver{% else %}Réactiver{% endif %}</button></form>
+            <form method="post" action="/admin/users/{{ u.id }}/delete" hx-boost="false" data-confirm="Supprimer définitivement le compte « {{ u.username }} » ?"><button class="btn btn-sm btn-danger" type="submit">Supprimer</button></form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

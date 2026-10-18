@@ -5,11 +5,17 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.104"
+argon2 = "0.6.0"
 askama = "0.16.1"
 axum = { version = "0.8.9", features = ["multipart", "macros"] }
+axum-extra = { version = "0.12.6", features = ["cookie"] }
 dcb-core = { version = "0.1.0", path = "../dcb-core" }
+getrandom = "0.4.3"
+hex = "0.4.3"
+rpassword = "7.5.4"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
+sha2 = "0.11.1"
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
 tokio = { version = "1.53.3", features = ["macros", "rt-multi-thread", "fs", "signal"] }
 toml = "1.1.8"

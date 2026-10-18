@@ -3,20 +3,35 @@
 use std::path::PathBuf;
 
 use axum::body::Body;
-use axum::http::{Request, StatusCode, header};
+use axum::http::{HeaderValue, Request, StatusCode, header};
+use dcb_server::auth::{self, Role};
 use dcb_server::{AppState, CardStore, db, router};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 struct TestApp {
+    /// Routeur où chaque requête porte le cookie de session d'un admin.
     app: axum::Router,
+    /// Même app, connecté en utilisateur simple.
+    user: axum::Router,
+    /// Même app, sans session.
+    anon: axum::Router,
     state: AppState,
     dir: PathBuf,
+    admin_token: String,
+    user_token: String,
 }
 
 impl TestApp {
     fn cards(&self) -> PathBuf {
         self.dir.join("cards")
+    }
+
+    /// Reconstruit les routeurs après un changement d'état (règles, éditeur…).
+    fn rebuild(&mut self) {
+        self.app = with_session(router(self.state.clone()), &self.admin_token);
+        self.user = with_session(router(self.state.clone()), &self.user_token);
+        self.anon = router(self.state.clone());
     }
 }
 
@@ -26,7 +41,26 @@ impl Drop for TestApp {
     }
 }
 
-/// Démarre l'app sur un dossier `cards/` contenant les fichiers donnés.
+const ADMIN_PASSWORD: &str = "admin-password-123";
+const USER_PASSWORD: &str = "joueur-password-123";
+
+fn with_session(r: axum::Router, token: &str) -> axum::Router {
+    let cookie = HeaderValue::from_str(&format!("{}={token}", auth::COOKIE_NAME)).unwrap();
+    r.layer(axum::middleware::map_request(
+        move |mut req: axum::extract::Request| {
+            let cookie = cookie.clone();
+            async move {
+                if !req.headers().contains_key(header::COOKIE) {
+                    req.headers_mut().insert(header::COOKIE, cookie);
+                }
+                req
+            }
+        },
+    ))
+}
+
+/// Démarre l'app sur un dossier `cards/` contenant les fichiers donnés, avec un compte admin
+/// (« admin ») et un compte utilisateur (« joueur ») déjà connectés.
 async fn app(files: &[(&str, &str)]) -> TestApp {
     let dir = std::env::temp_dir().join(format!("dcb-test-{}", uuid::Uuid::new_v4()));
     let cards = dir.join("cards");
@@ -37,13 +71,39 @@ async fn app(files: &[(&str, &str)]) -> TestApp {
     let pool = db::connect(&format!("sqlite://{}", dir.join("cache.db").display()))
         .await
         .unwrap();
-    let state = AppState::new(pool, CardStore::new(&cards));
+    let app_db = auth::connect(&format!("sqlite://{}", dir.join("app.db").display()))
+        .await
+        .unwrap();
+    let admin = auth::create_user(&app_db, "admin", ADMIN_PASSWORD, Role::Admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let user = auth::create_user(&app_db, "joueur", USER_PASSWORD, Role::User)
+        .await
+        .unwrap()
+        .unwrap();
+    let admin_token = auth::create_session(&app_db, admin).await.unwrap();
+    let user_token = auth::create_session(&app_db, user).await.unwrap();
+    let state = AppState::new(pool, app_db, CardStore::new(&cards));
     state.reload().await.unwrap();
-    TestApp {
+    let mut t = TestApp {
         app: router(state.clone()),
+        user: router(state.clone()),
+        anon: router(state.clone()),
         state,
         dir,
-    }
+        admin_token,
+        user_token,
+    };
+    t.rebuild();
+    t
+}
+
+fn form(uri: &str, body: &str) -> Request<Body> {
+    Request::post(uri)
+        .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body.to_owned()))
+        .unwrap()
 }
 
 async fn send(app: &axum::Router, req: Request<Body>) -> (StatusCode, Option<String>, String) {
@@ -367,7 +427,7 @@ async fn app_with_rules(files: &[(&str, &str)], rules: Option<&str>) -> TestApp 
     }
     t.state = t.state.clone().with_rules_file(&path);
     t.state.reload().await.unwrap();
-    t.app = router(t.state.clone());
+    t.rebuild();
     t
 }
 
@@ -445,4 +505,384 @@ async fn broken_rules_file_keeps_last_valid_version() {
     let (status, _, body) = send(&missing.app, get("/regles")).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert!(body.contains("pas encore disponibles"));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Authentification et rôles
+
+fn set_cookie(res_headers: &axum::http::HeaderMap) -> Option<String> {
+    res_headers
+        .get(header::SET_COOKIE)
+        .map(|v| v.to_str().unwrap().to_owned())
+}
+
+async fn send_full(
+    app: &axum::Router,
+    req: Request<Body>,
+) -> (StatusCode, axum::http::HeaderMap, String) {
+    let res = app.clone().oneshot(req).await.unwrap();
+    let status = res.status();
+    let headers = res.headers().clone();
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    (status, headers, String::from_utf8_lossy(&body).into_owned())
+}
+
+#[tokio::test]
+async fn anonymous_visitors_are_sent_to_login() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    for uri in [
+        "/",
+        "/gallery",
+        "/regles",
+        "/cards/ddos",
+        "/api/cards",
+        "/admin/users",
+        "/art/x.png",
+    ] {
+        let (status, location, _) = send(&t.anon, get(uri)).await;
+        assert_eq!(status, StatusCode::SEE_OTHER, "{uri}");
+        assert!(
+            location.as_deref().unwrap().starts_with("/login?next="),
+            "{uri}"
+        );
+    }
+    let (_, location, _) = send(&t.anon, get("/gallery?type=app")).await;
+    assert_eq!(
+        location.as_deref(),
+        Some("/login?next=/gallery%3Ftype%3Dapp")
+    );
+    // la page de connexion et ses styles restent accessibles
+    let (status, _, body) = send(&t.anon, get("/login")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("Connexion") && !body.contains("topnav"));
+    let (status, _, _) = send(&t.anon, get("/static/app.css")).await;
+    assert_eq!(status, StatusCode::OK);
+    // un cookie invalide ne passe pas
+    let req = Request::get("/")
+        .header(header::COOKIE, "dcb_session=abc")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(send(&t.anon, req).await.0, StatusCode::SEE_OTHER);
+}
+
+#[tokio::test]
+async fn login_sets_a_safe_session_cookie() {
+    let t = app(&[]).await;
+    let (status, _, body) = send(
+        &t.anon,
+        form(
+            "/login",
+            "username=joueur&password=mauvais-mdp&next=/regles",
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert!(body.contains("Identifiant ou mot de passe incorrect"));
+    assert!(body.contains(r#"value="joueur""#), "identifiant conservé");
+
+    let (status, headers, _) = send_full(
+        &t.anon,
+        form(
+            "/login",
+            &format!("username=Joueur&password={USER_PASSWORD}&next=/regles"),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    assert_eq!(headers.get(header::LOCATION).unwrap(), "/regles");
+    let cookie = set_cookie(&headers).unwrap();
+    assert!(
+        cookie.contains("HttpOnly") && cookie.contains("SameSite=Lax"),
+        "{cookie}"
+    );
+    assert!(!cookie.contains("Secure"), "pas de Secure en HTTP local");
+    let token = cookie.split(';').next().unwrap().to_owned();
+
+    let req = Request::get("/")
+        .header(header::COOKIE, &token)
+        .body(Body::empty())
+        .unwrap();
+    let (status, _, body) = send(&t.anon, req).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("joueur"));
+
+    // pas de redirection vers un autre site après connexion
+    let (_, location, _) = send(
+        &t.anon,
+        form(
+            "/login",
+            &format!("username=joueur&password={USER_PASSWORD}&next=//evil.example"),
+        ),
+    )
+    .await;
+    assert_eq!(location.as_deref(), Some("/"));
+
+    // déconnexion : la session est supprimée côté serveur
+    let req = Request::post("/logout")
+        .header(header::COOKIE, &token)
+        .body(Body::empty())
+        .unwrap();
+    let (status, headers, _) = send_full(&t.anon, req).await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    assert!(set_cookie(&headers).unwrap().contains("Max-Age=0"));
+    let req = Request::get("/")
+        .header(header::COOKIE, &token)
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(send(&t.anon, req).await.0, StatusCode::SEE_OTHER);
+}
+
+#[tokio::test]
+async fn users_can_browse_but_not_edit() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    for uri in [
+        "/",
+        "/gallery",
+        "/regles",
+        "/cards/ddos",
+        "/api/cards",
+        "/account",
+    ] {
+        let (status, _, _) = send(&t.user, get(uri)).await;
+        assert!(
+            status == StatusCode::OK || status == StatusCode::SERVICE_UNAVAILABLE,
+            "{uri}: {status}"
+        );
+    }
+    let (_, _, gallery) = send(&t.user, get("/gallery")).await;
+    assert!(!gallery.contains("Nouvelle carte") && !gallery.contains("Recharger"));
+    let (_, _, detail) = send(&t.user, get("/cards/ddos")).await;
+    assert!(!detail.contains("/cards/ddos/edit") && !detail.contains("Supprimer"));
+    let (_, _, menu) = send(&t.user, get("/")).await;
+    assert!(!menu.contains("Créer une carte") && !menu.contains("/admin/users"));
+
+    for req in [
+        get("/cards/new"),
+        get("/cards/ddos/edit"),
+        post("/reload"),
+        post("/cards/ddos/delete"),
+        multipart("/cards", &card_fields("Pirate", &[])),
+        get("/admin/users"),
+        form("/admin/users", "username=pirate&password=&role=admin"),
+    ] {
+        let uri = req.uri().to_string();
+        let (status, _, _) = send(&t.user, req).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{uri}");
+    }
+    assert!(t.cards().join("ddos.toml").exists());
+    assert!(!t.cards().join("pirate.toml").exists());
+}
+
+#[tokio::test]
+async fn read_only_mode_hides_the_editor_even_for_admins() {
+    let mut t = app(&[("ddos.toml", DDOS)]).await;
+    t.state = t.state.clone().with_editor(false);
+    t.rebuild();
+    for req in [
+        get("/cards/new"),
+        post("/reload"),
+        multipart("/cards", &card_fields("X", &[])),
+    ] {
+        let uri = req.uri().to_string();
+        assert_eq!(send(&t.app, req).await.0, StatusCode::NOT_FOUND, "{uri}");
+    }
+    let (_, _, menu) = send(&t.app, get("/")).await;
+    assert!(!menu.contains("Créer une carte") && menu.contains("/admin/users"));
+    let (status, _, body) = send(&t.app, get("/admin/users")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("Éditeur de cartes désactivé"));
+}
+
+#[tokio::test]
+async fn cross_site_posts_are_rejected() {
+    let t = app(&[]).await;
+    let req = Request::post("/reload")
+        .header(header::HOST, "dcb.example")
+        .header(header::ORIGIN, "https://evil.example")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(send(&t.app, req).await.0, StatusCode::FORBIDDEN);
+    let req = Request::post("/reload")
+        .header(header::HOST, "dcb.example")
+        .header(header::ORIGIN, "https://dcb.example")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(send(&t.app, req).await.0, StatusCode::SEE_OTHER);
+}
+
+#[tokio::test]
+async fn admin_invites_and_manages_accounts() {
+    let t = app(&[]).await;
+    // mot de passe généré, affiché une fois
+    let (status, _, body) = send(
+        &t.app,
+        form("/admin/users", "username=Jean.Dupont&password=&role=user"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("Compte « jean.dupont » créé"));
+    let generated = body
+        .split(r#"<code class="secret-value">"#)
+        .nth(1)
+        .and_then(|s| s.split("</code>").next())
+        .unwrap()
+        .to_owned();
+    assert_eq!(generated.len(), 16);
+    let (status, _, _) = send(
+        &t.anon,
+        form(
+            "/login",
+            &format!("username=jean.dupont&password={generated}"),
+        ),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::SEE_OTHER,
+        "le joueur invité peut se connecter"
+    );
+
+    // erreurs de saisie
+    let (status, _, body) = send(
+        &t.app,
+        form("/admin/users", "username=jean.dupont&password=&role=user"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(body.contains("déjà pris"));
+    let (status, _, body) = send(
+        &t.app,
+        form("/admin/users", "username=x&password=court&role=user"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(body.contains("Identifiant"));
+
+    let joueur = auth::find_user_by_name(&t.state.app_db, "joueur")
+        .await
+        .unwrap()
+        .unwrap();
+    // promotion
+    let (status, _, body) = send(
+        &t.app,
+        form(&format!("/admin/users/{}/role", joueur.id), "role=admin"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("est maintenant Admin"));
+    let (status, _, _) = send(&t.user, get("/admin/users")).await;
+    assert_eq!(status, StatusCode::OK, "le rôle s'applique tout de suite");
+    send(
+        &t.app,
+        form(&format!("/admin/users/{}/role", joueur.id), "role=user"),
+    )
+    .await;
+
+    // désactivation : ses sessions sont fermées
+    let (_, _, body) = send(&t.app, post(&format!("/admin/users/{}/active", joueur.id))).await;
+    assert!(body.contains("désactivé"));
+    assert_eq!(send(&t.user, get("/")).await.0, StatusCode::SEE_OTHER);
+    let (status, _, _) = send(
+        &t.anon,
+        form(
+            "/login",
+            &format!("username=joueur&password={USER_PASSWORD}"),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "compte désactivé");
+    send(&t.app, post(&format!("/admin/users/{}/active", joueur.id))).await;
+
+    // nouveau mot de passe généré
+    let (_, _, body) = send(
+        &t.app,
+        post(&format!("/admin/users/{}/password", joueur.id)),
+    )
+    .await;
+    assert!(body.contains("secret-value"));
+    let (status, _, _) = send(
+        &t.anon,
+        form(
+            "/login",
+            &format!("username=joueur&password={USER_PASSWORD}"),
+        ),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "l'ancien mot de passe ne marche plus"
+    );
+
+    // un admin ne se modifie pas lui-même ici
+    let admin = auth::find_user_by_name(&t.state.app_db, "admin")
+        .await
+        .unwrap()
+        .unwrap();
+    for uri in [
+        format!("/admin/users/{}/active", admin.id),
+        format!("/admin/users/{}/delete", admin.id),
+    ] {
+        let (status, _, body) = send(&t.app, post(&uri)).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+        assert!(body.contains("ton propre compte"));
+    }
+
+    // suppression
+    let (_, _, body) = send(&t.app, post(&format!("/admin/users/{}/delete", joueur.id))).await;
+    assert!(body.contains("supprimé"));
+    assert!(
+        auth::find_user_by_name(&t.state.app_db, "joueur")
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn users_change_their_own_password() {
+    let t = app(&[]).await;
+    let (status, _, body) = send(
+        &t.user,
+        form(
+            "/account",
+            "current=faux-mot-de-passe&new=nouveau-mdp-123&confirm=nouveau-mdp-123",
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(body.contains("actuel est incorrect"));
+    let (status, _, body) = send(
+        &t.user,
+        form(
+            "/account",
+            &format!("current={USER_PASSWORD}&new=nouveau-mdp-123&confirm=autre-chose-123"),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(body.contains("ne correspondent pas"));
+
+    let (status, headers, body) = send_full(
+        &t.user,
+        form(
+            "/account",
+            &format!("current={USER_PASSWORD}&new=nouveau-mdp-123&confirm=nouveau-mdp-123"),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("Mot de passe changé"));
+    assert!(
+        set_cookie(&headers).is_some(),
+        "nouvelle session pour cet appareil"
+    );
+    // l'ancienne session est fermée, le nouveau mot de passe fonctionne
+    assert_eq!(send(&t.user, get("/")).await.0, StatusCode::SEE_OTHER);
+    let (status, _, _) = send(
+        &t.anon,
+        form("/login", "username=joueur&password=nouveau-mdp-123"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
 }

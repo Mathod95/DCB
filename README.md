@@ -13,12 +13,22 @@ cargo run -p dcb-server
 
 Puis ouvrir <http://127.0.0.1:3000>. Lance le serveur depuis la racine du repo : les cartes sont lues dans `./cards`.
 
+Toute l'app est derrière une connexion. Crée d'abord ton compte admin :
+
+```bash
+cargo run -p dcb-server -- user add mathod --admin   # mot de passe demandé au clavier
+```
+
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `DCB_CARDS_DIR` | `cards` | Dossier des cartes (source de vérité) |
 | `DCB_RULES_FILE` | `rules/regles.toml` | Contenu de la page des règles |
 | `DATABASE_URL` | `sqlite://data/cache.db` | Cache SQLite, reconstruit à chaque démarrage |
+| `DCB_APP_DATABASE_URL` | `sqlite://data/app.db` | Comptes et sessions (**à sauvegarder**, jamais reconstruite) |
 | `DCB_BIND` | `127.0.0.1:3000` | Adresse d'écoute |
+| `DCB_EDITOR` | `1` | `0` coupe l'éditeur : les cartes sont en lecture seule, même pour l'admin |
+| `DCB_SECURE_COOKIES` | `0` | `1` derrière HTTPS (cookie de session `Secure`) |
+| `DCB_ADMIN_USERNAME`, `DCB_ADMIN_PASSWORD` | | Créent le premier admin au démarrage si aucun compte n'existe |
 | `RUST_LOG` | `dcb_server=info,tower_http=info` | Niveau de logs |
 
 ## Ajouter des cartes
@@ -35,6 +45,39 @@ Puis ouvrir <http://127.0.0.1:3000>. Lance le serveur depuis la racine du repo :
 Les fichiers peuvent aussi être écrits ou modifiés à la main. Le format est décrit dans [`cards/README.md`](cards/README.md). Après une modification à la main ou un `git pull`, clique sur **Recharger les fichiers** dans la galerie.
 
 La base SQLite n'est qu'un cache : elle est vidée et reconstruite depuis `cards/` au démarrage et à chaque rechargement. Tu peux supprimer `data/` à tout moment.
+
+## Comptes
+
+Pas d'inscription libre : l'admin crée les comptes (accès sur invitation).
+
+| Rôle | Droits |
+|---|---|
+| Utilisateur | Galerie, règles, fiches cartes, API, son compte (changer son mot de passe) |
+| Admin | Tout ça, plus la page **Comptes** (`/admin/users`) et l'éditeur de cartes quand `DCB_EDITOR=1` |
+
+Depuis la page Comptes : inviter un joueur (laisser le mot de passe vide pour en générer un, affiché une seule fois), passer un compte Admin ou Utilisateur, générer un nouveau mot de passe, désactiver ou supprimer. Le dernier admin actif ne peut pas être retiré.
+
+En ligne de commande (mot de passe demandé au clavier, ou lu dans `DCB_PASSWORD`) :
+
+```bash
+dcb-server user add <nom> [--admin]
+dcb-server user passwd <nom>     # ferme aussi ses sessions
+dcb-server user list
+```
+
+Sécurité : mots de passe hachés en Argon2id, sessions de 30 jours dont seul le SHA-256 du jeton est stocké, cookie `HttpOnly` et `SameSite=Lax`, et refus des requêtes POST venant d'un autre site (en-tête `Origin`).
+
+## Déploiement
+
+Chaque push sur `main` publie l'image `ghcr.io/mathod95/dcb:latest` (et `sha-<commit>`). Elle contient le binaire, `cards/` et `rules/`, avec l'éditeur coupé (`DCB_EDITOR=0`) et les cookies `Secure` : en prod les cartes sont en lecture seule. Pour ajouter ou modifier une carte, on passe par l'éditeur en local, on commite, on push, et on redéploie la nouvelle image.
+
+```bash
+docker run -d -p 3000:3000 -v dcb-data:/data \
+  -e DCB_ADMIN_USERNAME=mathod -e DCB_ADMIN_PASSWORD='un-mot-de-passe-long' \
+  ghcr.io/mathod95/dcb:latest
+```
+
+Le volume `/data` contient `app.db` (les comptes, à sauvegarder) et `cache.db` (jetable). Les variables `DCB_ADMIN_*` ne servent qu'au premier démarrage. L'app doit être servie en HTTPS (reverse proxy type Caddy ou un Ingress) ; sinon, mettre `DCB_SECURE_COOKIES=0`. Pour gérer les comptes depuis le serveur : `docker exec -it <conteneur> dcb-server user list`.
 
 ## Fonctionnalités
 
@@ -65,15 +108,19 @@ Le rendu est en HTML/CSS (`crates/dcb-server/static/card.css`) : la carte est de
 
 ```
 crates/
-  dcb-core/     Modèle de domaine partagé (Card, CardType, Skin, Rarity, validation)
+  dcb-core/     Modèle de domaine partagé (Card, CardType, Skin, Foil, validation)
   dcb-server/   Serveur axum : pages HTML (askama + htmx), API JSON
     src/store.rs  Lecture et écriture des fichiers cards/*.toml
     src/db.rs     Cache SQLite (sqlx)
+    src/auth.rs   Comptes, mots de passe, sessions, extracteurs de rôle
+    src/accounts.rs  Pages connexion, mon compte, administration des comptes
     templates/    Pages et partial de carte
     static/       CSS de l'app et de la carte, htmx embarqué
 cards/          Les cartes : un .toml par carte + art/ (à commiter)
 rules/          Texte de la page des règles (regles.toml, à commiter)
 migrations/     Schéma du cache SQLite
+migrations-app/ Schéma de la base persistante (comptes, sessions)
+Dockerfile      Image de prod, publiée sur GHCR par .github/workflows/image.yml
 ```
 
 Choix techniques :
@@ -81,7 +128,7 @@ Choix techniques :
 - **Rendu serveur + htmx** plutôt qu'une SPA : pas de toolchain JavaScript ni de WASM à maintenir pour la partie collection. Les assets sont embarqués dans le binaire, un seul exécutable à déployer.
 - **`dcb-core` séparé** pour que le futur moteur de duel (et un éventuel client Bevy compilé en WASM) réutilise exactement les mêmes types que la base et l'API.
 - **Cartes en fichiers TOML** : elles se versionnent, se relisent en diff et se modifient à la main. L'éditeur écrit d'abord le fichier (de façon atomique), puis met à jour le cache.
-- **SQLite comme cache** pour les lectures et les filtres. Les données des joueurs (comptes, decks, parties) iront plus tard dans une vraie base.
+- **SQLite comme cache** pour les lectures et les filtres. Les données des joueurs vivent dans une seconde base SQLite, persistante (`app.db`) : comptes aujourd'hui, decks et parties plus tard.
 
 ## Développement
 
@@ -91,11 +138,11 @@ cargo clippy --all-targets -- -D warnings
 cargo fmt --all
 ```
 
-La CI GitHub Actions lance ces trois commandes à chaque push et pull request.
+La CI GitHub Actions lance ces trois commandes à chaque push et pull request, et publie l'image Docker à chaque push sur `main`.
 
 ## Prochaines étapes
 
 - Effets structurés (type, valeur, durée) en plus du texte libre, pour que le moteur puisse les appliquer
 - Deck builder
 - Moteur de duel et parties en ligne via WebSocket
-- Comptes joueurs
+- Hébergement (VPS, Fly.io ou cluster Kubernetes)

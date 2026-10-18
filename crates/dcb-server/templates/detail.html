@@ -13,6 +13,7 @@
       <div><dt>Skin</dt><dd>{{ card.skin }}</dd></div>
     </dl>
     {% if let Some(slug) = card.slug %}
+    {% if ctx.can_edit %}
     <div class="actions">
       <a class="btn btn-primary" href="/cards/{{ slug }}/edit">Modifier</a>
       <form method="post" action="/cards/{{ slug }}/delete" hx-confirm="Supprimer « {{ card.name }} » ? Le fichier {{ file }} sera supprimé.">
@@ -24,6 +25,7 @@
       <code>{{ file }}</code>
       {% if let Some(a) = art_file %}<code>{{ a }}</code>{% endif %}
     </div>
+    {% endif %}
     <p class="muted small">Données brutes : <a href="/api/cards/{{ slug }}" hx-boost="false">/api/cards/{{ slug }}</a></p>
     {% endif %}
   </aside>

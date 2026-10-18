@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Mon compte · DevCardBattle{% endblock %}
+{% block content %}
+<section class="auth">
+  <div class="auth-intro">
+    <p class="eyebrow">Mon compte</p>
+    <h1>{% if let Some(n) = ctx.username %}{{ n }}{% endif %}</h1>
+    <p class="muted">Rôle: {{ role_label }}</p>
+  </div>
+
+  <form class="auth-form" method="post" action="/account" hx-boost="false">
+    <h2 class="auth-subtitle">Changer de mot de passe</h2>
+    {% if done %}<div class="alert alert-ok" role="status">Mot de passe changé. Tes autres appareils ont été déconnectés.</div>{% endif %}
+    {% if let Some(e) = error %}<div class="alert" role="alert">{{ e }}</div>{% endif %}
+    <div class="field">
+      <label for="a-current">Mot de passe actuel</label>
+      <input id="a-current" name="current" type="password" autocomplete="current-password" required>
+    </div>
+    <div class="field">
+      <label for="a-new">Nouveau mot de passe</label>
+      <input id="a-new" name="new" type="password" autocomplete="new-password" minlength="10" required>
+      <p class="field-hint">10 caractères minimum.</p>
+    </div>
+    <div class="field">
+      <label for="a-confirm">Confirmer le nouveau mot de passe</label>
+      <input id="a-confirm" name="confirm" type="password" autocomplete="new-password" minlength="10" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Changer le mot de passe</button>
+  </form>
+</section>
+{% endblock %}

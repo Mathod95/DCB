@@ -3,7 +3,43 @@
 use askama::Template;
 use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Skin, limits};
 
+use crate::auth::{Role, User};
 use crate::rules::{self, Rules, TypeEntry, inline};
+
+/// Ce que la barre du haut et les pages doivent savoir du visiteur.
+#[derive(Clone, Default)]
+pub struct Ctx {
+    pub username: Option<String>,
+    pub is_admin: bool,
+    /// Admin avec l'éditeur activé : boutons de création, modification, rechargement.
+    pub can_edit: bool,
+}
+
+impl Ctx {
+    pub fn anonymous() -> Self {
+        Self::default()
+    }
+
+    /// Initiale affichée dans l'avatar de la barre du haut.
+    pub fn initial(&self) -> String {
+        self.username
+            .as_deref()
+            .and_then(|n| n.chars().next())
+            .map(|c| c.to_uppercase().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn for_user(user: Option<&User>, editor_enabled: bool) -> Self {
+        match user {
+            None => Self::default(),
+            Some(u) => Self {
+                username: Some(u.username.clone()),
+                is_admin: u.is_admin(),
+                can_edit: u.is_admin() && editor_enabled,
+            },
+        }
+    }
+}
 
 /// Ce dont le partial `card.html` a besoin pour dessiner une carte.
 pub struct CardView {
@@ -107,6 +143,7 @@ pub fn foil_choices() -> Vec<Choice> {
 #[derive(Template)]
 #[template(path = "menu.html")]
 pub struct MenuPage {
+    pub ctx: Ctx,
     pub card_count: i64,
 }
 
@@ -120,6 +157,7 @@ pub struct FilterLink {
 #[derive(Template)]
 #[template(path = "gallery.html")]
 pub struct GalleryPage {
+    pub ctx: Ctx,
     pub cards: Vec<CardView>,
     pub type_links: Vec<FilterLink>,
     pub foil_links: Vec<FilterLink>,
@@ -131,6 +169,7 @@ pub struct GalleryPage {
 #[derive(Template)]
 #[template(path = "detail.html")]
 pub struct DetailPage {
+    pub ctx: Ctx,
     pub card: CardView,
     /// Chemin du fichier source, affiché pour savoir quoi commiter.
     pub file: String,
@@ -183,6 +222,7 @@ impl FormValues {
 #[derive(Template)]
 #[template(path = "form.html")]
 pub struct FormPage {
+    pub ctx: Ctx,
     pub title: &'static str,
     pub action: String,
     pub cancel_href: String,
@@ -200,6 +240,7 @@ pub struct FormPage {
 
 impl FormPage {
     pub fn new(
+        ctx: Ctx,
         title: &'static str,
         action: String,
         cancel_href: String,
@@ -208,6 +249,7 @@ impl FormPage {
         card: CardView,
     ) -> Self {
         Self {
+            ctx,
             title,
             action,
             cancel_href,
@@ -244,7 +286,131 @@ pub struct CardPreview {
 
 #[derive(Template)]
 #[template(path = "not_found.html")]
-pub struct NotFoundPage;
+pub struct NotFoundPage {
+    pub ctx: Ctx,
+}
+
+#[derive(Template)]
+#[template(path = "forbidden.html")]
+pub struct ForbiddenPage {
+    pub ctx: Ctx,
+}
+
+#[derive(Template)]
+#[template(path = "login.html")]
+pub struct LoginPage {
+    pub ctx: Ctx,
+    pub next: String,
+    pub username: String,
+    pub error: Option<String>,
+    /// Aucun compte n'existe encore : on explique comment créer le premier admin.
+    pub no_users: bool,
+}
+
+#[derive(Template)]
+#[template(path = "account.html")]
+pub struct AccountPage {
+    pub ctx: Ctx,
+    pub role_label: &'static str,
+    pub error: Option<String>,
+    pub done: bool,
+}
+
+pub struct UserRowView {
+    pub id: i64,
+    pub username: String,
+    pub role_label: &'static str,
+    pub other_role: &'static str,
+    pub other_role_label: &'static str,
+    pub active: bool,
+    pub is_self: bool,
+    pub created: String,
+    pub last_login: String,
+}
+
+/// Date UTC lisible (AAAA-MM-JJ) d'un horodatage Unix, sans dépendance de date.
+pub fn date(ts: i64) -> String {
+    let is_leap = |y: i64| (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let mut days = ts.div_euclid(86_400);
+    let mut year = 1970;
+    loop {
+        let len = if is_leap(year) { 366 } else { 365 };
+        if days < len {
+            break;
+        }
+        days -= len;
+        year += 1;
+    }
+    let months = [
+        31,
+        if is_leap(year) { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    let mut month = 0;
+    while days >= months[month] {
+        days -= months[month];
+        month += 1;
+    }
+    format!("{year:04}-{:02}-{:02}", month + 1, days + 1)
+}
+
+impl UserRowView {
+    pub fn new(u: &User, me: &User) -> Self {
+        let other = if u.role == Role::Admin {
+            Role::User
+        } else {
+            Role::Admin
+        };
+        Self {
+            id: u.id,
+            username: u.username.clone(),
+            role_label: u.role.label(),
+            other_role: other.slug(),
+            other_role_label: other.label(),
+            active: u.active,
+            is_self: u.id == me.id,
+            created: date(u.created_at),
+            last_login: u.last_login_at.map(date).unwrap_or_else(|| "jamais".into()),
+        }
+    }
+}
+
+/// Message affiché en haut de la page d'administration après une action.
+pub struct Notice {
+    pub ok: bool,
+    pub text: String,
+    /// Mot de passe à transmettre à la personne, affiché une seule fois.
+    pub password: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin_users.html")]
+pub struct AdminUsersPage {
+    pub ctx: Ctx,
+    pub users: Vec<UserRowView>,
+    pub notice: Option<Notice>,
+    pub new_username: String,
+    pub editor_enabled: bool,
+}
+
+#[cfg(test)]
+mod date_tests {
+    #[test]
+    fn formats_unix_dates() {
+        assert_eq!(super::date(0), "1970-01-01");
+        assert_eq!(super::date(951_782_400), "2000-02-29");
+        assert_eq!(super::date(1_792_000_000), "2026-10-14");
+    }
+}
 
 // ---------------------------------------------------------------------------------------------
 // Page des règles. Les textes sont convertis en HTML sûr par `rules::inline` (d'où `|safe`
@@ -335,6 +501,7 @@ pub struct RulesContent {
 #[derive(Template)]
 #[template(path = "rules.html")]
 pub struct RulesPage {
+    pub ctx: Ctx,
     pub content: Option<RulesContent>,
     /// Erreur du dernier chargement de `rules/regles.toml` (les règles affichées sont alors
     /// les dernières valides).
@@ -342,14 +509,16 @@ pub struct RulesPage {
 }
 
 impl RulesPage {
-    pub fn missing(error: Option<String>) -> Self {
+    pub fn missing(ctx: Ctx, error: Option<String>) -> Self {
         Self {
+            ctx,
             content: None,
             error,
         }
     }
 
     pub fn new(
+        ctx: Ctx,
         r: &Rules,
         error: Option<String>,
         types: Vec<RulesType>,
@@ -414,6 +583,7 @@ impl RulesPage {
             foils,
         };
         Self {
+            ctx,
             content: Some(content),
             error,
         }

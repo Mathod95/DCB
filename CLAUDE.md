@@ -16,12 +16,15 @@ Design source : fichier Figma `DevCardBattle` (fileKey `pG6o4Zvee9YjNf3AzGKV81`)
 - Source de vérité : `cards/<slug>.toml` + `cards/art/` (commités par l'utilisateur). SQLite (`data/cache.db`) n'est qu'un cache reconstruit au démarrage et via `POST /reload`
 - Page `/regles` : texte dans `rules/regles.toml` (lu au démarrage et au rechargement, en cas d'erreur la dernière version valide reste affichée), mise en forme `***terme***` et montants `$…` via `rules::inline`. Exemples de cartes tirés au hasard par `db::random_card` (cartes remplies d'abord)
 - Ordre d'écriture : fichier TOML (atomique : tmp + rename) puis cache, sous le verrou de `CardStore`
+- Comptes : seconde base SQLite persistante `data/app.db` (`migrations-app/`, module `auth`), jamais reconstruite. Argon2id, sessions en cookie `dcb_session` (SHA-256 du jeton en base). Accès par extracteurs : `MaybeUser`, `CurrentUser` (sinon redirection `/login?next=`), `AdminUser` (403), `EditorUser` (admin + `DCB_EDITOR`, sinon 404 si éditeur coupé). Middleware `same_origin_only` contre le CSRF. Pas d'inscription : comptes créés par l'admin (`/admin/users` ou `dcb-server user add`)
+- Prod : image `ghcr.io/mathod95/dcb` (Dockerfile, workflow `image.yml`), `DCB_EDITOR=0`, volume `/data`. Cartes en lecture seule en prod : création en local, push, nouvelle image
 - Requêtes SQL en `&'static str` (sqlx 0.9 refuse les chaînes construites à l'exécution) : composer avec `concat!` et la macro `columns!` dans `db.rs`
 
 ## Commandes
 
 ```bash
 cargo run -p dcb-server                 # http://127.0.0.1:3000
+cargo run -p dcb-server -- user add <nom> --admin
 cargo test --all
 cargo clippy --all-targets -- -D warnings
 cargo fmt --all
@@ -40,6 +43,6 @@ cargo fmt --all
 
 ## État
 
-Fait : page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 61 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
+Fait : connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
 
-À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket, comptes joueurs, déploiement.
+À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket, hébergement (cible à choisir : VPS + Caddy, Fly.io ou Kubernetes/ArgoCD).

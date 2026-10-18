@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Connexion · DevCardBattle{% endblock %}
+{% block content %}
+<section class="auth">
+  <div class="auth-intro">
+    <p class="eyebrow">Accès sur invitation</p>
+    <h1>Connexion</h1>
+    <p class="muted">Les comptes sont créés par l'admin du jeu. Si tu n'en as pas encore, demande-lui une invitation.</p>
+  </div>
+
+  {% if no_users %}
+  <div class="alert alert-info" role="status">
+    <strong>Aucun compte n'existe encore.</strong> Crée le premier admin depuis un terminal, à la racine du projet:
+    <pre><code>cargo run -p dcb-server -- user add ton-identifiant --admin</code></pre>
+  </div>
+  {% endif %}
+
+  <form class="auth-form" method="post" action="/login" hx-boost="false">
+    {% if let Some(e) = error %}<div class="alert" role="alert">{{ e }}</div>{% endif %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="field">
+      <label for="l-username">Identifiant</label>
+      <input id="l-username" name="username" value="{{ username }}" autocomplete="username" autocapitalize="none" spellcheck="false" required {% if username.is_empty() %}autofocus{% endif %}>
+    </div>
+    <div class="field">
+      <label for="l-password">Mot de passe</label>
+      <input id="l-password" name="password" type="password" autocomplete="current-password" required {% if !username.is_empty() %}autofocus{% endif %}>
+    </div>
+    <button class="btn btn-primary" type="submit">Se connecter</button>
+  </form>
+</section>
+{% endblock %}

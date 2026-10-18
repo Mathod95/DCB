@@ -53,6 +53,25 @@
   });
 
   document.addEventListener("htmx:load", (e) => initCounters(e.detail.elt));
+  // Bouton « Copier » (mot de passe généré dans l'administration des comptes).
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest?.("[data-copy]");
+    if (!btn) return;
+    try {
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      btn.textContent = "Copié";
+    } catch {
+      const value = btn.parentElement?.querySelector(".secret-value");
+      if (value) window.getSelection()?.selectAllChildren(value);
+    }
+  });
+
+  // Confirmation avant une action destructrice sur un formulaire classique (sans htmx).
+  document.addEventListener("submit", (e) => {
+    const msg = e.target.dataset?.confirm;
+    if (msg && !window.confirm(msg)) e.preventDefault();
+  });
+
   // Souligne le lien de la barre du haut correspondant à la page affichée.
   function markCurrentNav() {
     const path = location.pathname;
