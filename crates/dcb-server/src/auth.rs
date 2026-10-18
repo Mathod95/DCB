@@ -403,14 +403,15 @@ pub fn safe_next(next: Option<&str>) -> String {
 #[derive(Clone)]
 struct Resolved(Option<User>);
 
-async fn resolve(parts: &mut Parts, state: &AppState) -> Result<Option<User>, Response> {
+async fn resolve(
+    parts: &mut Parts,
+    state: &AppState,
+) -> Result<Option<User>, crate::web::AppError> {
     if let Some(Resolved(u)) = parts.extensions.get::<Resolved>() {
         return Ok(u.clone());
     }
     let user = match session_token(parts) {
-        Some(token) => user_for_session(&state.app_db, &token)
-            .await
-            .map_err(|e| crate::web::AppError::from(e).into_response())?,
+        Some(token) => user_for_session(&state.app_db, &token).await?,
         None => None,
     };
     parts.extensions.insert(Resolved(user.clone()));
@@ -453,7 +454,11 @@ impl FromRequestParts<AppState> for MaybeUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        Ok(MaybeUser(resolve(parts, state).await?))
+        Ok(MaybeUser(
+            resolve(parts, state)
+                .await
+                .map_err(IntoResponse::into_response)?,
+        ))
     }
 }
 
@@ -467,7 +472,10 @@ impl FromRequestParts<AppState> for CurrentUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        match resolve(parts, state).await? {
+        match resolve(parts, state)
+            .await
+            .map_err(IntoResponse::into_response)?
+        {
             Some(u) => Ok(CurrentUser(u)),
             None => Err(login_redirect(parts)),
         }
