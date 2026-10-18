@@ -276,16 +276,6 @@ input[type="file"]::file-selector-button {
   .editor-preview { position: static; order: -1; }
   .editor-preview .card-frame { --s: 0.72; margin: 0 auto; }
 }
-@media (max-width: 560px) {
-  :root { --grid-scale: 0.44; }
-  .page { padding: 20px 16px 48px; }
-  .topbar { padding: 10px 16px; }
-  .topnav > a:not(.btn) { display: none; }
-  .page-head { flex-wrap: wrap; align-items: flex-start; }
-  .field-row { grid-template-columns: 1fr; gap: 0; }
-  .grid { gap: 16px 12px; justify-content: center; }
-  .detail-card { --s: 0.85; }
-}
 
 
 /* ------------------------------------------------------------------------------------------
@@ -402,13 +392,6 @@ input[type="file"]::file-selector-button {
   .type-row { grid-template-columns: 1fr; justify-items: center; }
   .type-body { justify-self: stretch; }
 }
-@media (max-width: 560px) {
-  .rules { gap: 64px; }
-  .foils { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .foil-item .card-frame { --s: 0.38; }
-  .goal, .type-row, .phase { padding: 18px; }
-  .points { grid-template-columns: 1fr; }
-}
 
 /* ------------------------------------------------------------------------------------------
    Comptes : connexion, mon compte, administration
@@ -478,9 +461,4 @@ input[type="file"]::file-selector-button {
 
 @media (max-width: 960px) {
   .admin { grid-template-columns: 1fr; }
-}
-@media (max-width: 560px) {
-  .usermenu-name { display: none; }
-  .auth { margin-top: 8px; }
-  .auth-form { padding: 18px; }
 }
