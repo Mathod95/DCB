@@ -6,7 +6,7 @@ Contexte pour reprendre le projet dans Claude Code.
 
 DevCardBattle (DCB) : jeu de cartes stratégique DevOps, inspiré de AWS Card Clash. Objectif final : duels multijoueurs tour par tour sur un site web. Jalon actuel : collection de cartes (galerie, éditeur). Pour l'instant c'est un projet Rust local, sans déploiement ni prod.
 
-Design source : fichier Figma `DevCardBattle` (fileKey `pG6o4Zvee9YjNf3AzGKV81`), composant `card` (node `30:1386`), calques `cardTypeStroke/*` (`30:1488`), `skin/*` (`30:1652`), `rarityLayer/*` (`30:1653`). Finitions holographiques : section `foilLayer` (`107:1435`, composants `foilLayer/Stars|Glitter|Shards|Rainbow`, statiques) et démo `foilDemo` (`107:1470`). La section `Collection` (`36:1521`) contient les cartes maquettées ; le frame `Board` (`36:2621`) esquisse le plateau de jeu.
+Design source : fichier Figma `DevCardBattle` (fileKey `pG6o4Zvee9YjNf3AzGKV81`), composant `card` (node `30:1386`), calques `cardTypeStroke/*` (`30:1488`), `skin/*` (`30:1652`). Finitions : section `foilLayer` (`107:1435`, composants `foilLayer/Basic|Gold|Stars|Glitter|Shards|Rainbow`, statiques ; l'ancien `rarityLayer` y a été fusionné) et démo `foilDemo` (`107:1470`). La section `Collection` (`36:1521`) contient les cartes maquettées ; le frame `Board` (`36:2621`) esquisse le plateau de jeu.
 
 ## Stack
 
