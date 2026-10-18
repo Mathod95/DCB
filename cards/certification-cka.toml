@@ -1,0 +1,10 @@
+name = "CERTIFICATION CKA"
+type = "hr"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un de vos collègues devient Kubernetes Administrator."
+effect = """
+- +1 deployment MAX pour ce collègue
+- Divise par 2 les effets de PodCrashLoopBackOff"""
+flavor_text = "Deux heures de kubectl sous pression."

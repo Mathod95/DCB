@@ -1,0 +1,8 @@
+name = "VELERO"
+type = "app"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Sauvegarde et restauration de vos clusters Kubernetes."
+effect = "- Débloque la carte BACKUP"
+flavor_text = "Le parachute du cluster."

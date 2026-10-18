@@ -1,0 +1,10 @@
+name = "HACKER NEWS FRONT PAGE"
+type = "event"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Votre app est en première page de Hacker News."
+effect = """
+- +1000% de trafic pendant 1 jour
+- +$5.000,00 si vous survivez"""
+flavor_text = "Show HN"

@@ -1,0 +1,10 @@
+name = "FREELANCE"
+type = "hr"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un expert disponible tout de suite, mais cher."
+effect = """
+- +2 deployment MAX pendant 5 jours
+- Coûte $1.000,00 par jour"""
+flavor_text = "Mon TJM n'est pas négociable."

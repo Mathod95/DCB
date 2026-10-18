@@ -1,0 +1,10 @@
+name = "FRIDAY DEPLOY"
+type = "incident"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Quelqu'un a déployé en production un vendredi à 17h."
+effect = """
+- +30% d'instabilité pendant 2 jours
+- Sans effet si l'adversaire possède CI/CD PIPELINE"""
+flavor_text = "Ça marchait sur ma machine."

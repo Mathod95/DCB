@@ -1,0 +1,10 @@
+name = "OOMKILLED"
+type = "incident"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un pod dépasse sa limite mémoire et redémarre."
+effect = """
+- -10% de stabilité
+- Sans effet si l'adversaire possède AUTO-SCALING"""
+flavor_text = "Exit code 137"

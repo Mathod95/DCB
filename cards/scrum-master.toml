@@ -1,0 +1,8 @@
+name = "SCRUM MASTER"
+type = "hr"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Il protège l'équipe et anime le daily."
+effect = "- +1 point de déploiement à chaque phase Sprint du lundi"
+flavor_text = "On en parle au daily ?"

@@ -1,0 +1,10 @@
+name = "KYVERNO"
+type = "app"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Des policies Kubernetes pour sécuriser votre cluster."
+effect = """
+- Immunité contre FRIDAY DEPLOY
+- Bloque les images :latest"""
+flavor_text = "Admission refusée."

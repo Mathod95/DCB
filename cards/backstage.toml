@@ -1,0 +1,8 @@
+name = "BACKSTAGE"
+type = "app"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un portail développeur qui recense toutes vos apps."
+effect = "- Vos nouvelles apps coûtent 1 déploiement de moins"
+flavor_text = "Le catalogue que personne ne remplit."

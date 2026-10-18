@@ -1,0 +1,10 @@
+name = "KUBECON"
+type = "event"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Votre équipe part à la KubeCon."
+effect = """
+- Aucun déploiement pendant 2 jours
+- Un collègue obtient une certification"""
+flavor_text = "On revient avec 40 t-shirts."

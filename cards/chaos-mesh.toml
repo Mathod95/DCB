@@ -1,0 +1,10 @@
+name = "CHAOS MESH"
+type = "app"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Injectez des pannes pour tester votre résilience."
+effect = """
+- Subissez un incident au hasard pendant 1 jour
+- Puis +15% de stabilité pour le reste de la partie"""
+flavor_text = "Casser exprès pour ne plus casser par hasard."

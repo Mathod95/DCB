@@ -1,0 +1,8 @@
+name = "RUNBOOK"
+type = "resource"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Une procédure écrite pour chaque incident connu."
+effect = "- Résoudre un incident que vous avez déjà subi coûte 1 déploiement de moins"
+flavor_text = "À jour depuis 2019."

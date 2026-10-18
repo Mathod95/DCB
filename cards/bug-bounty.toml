@@ -1,0 +1,8 @@
+name = "BUG BOUNTY"
+type = "event"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un chercheur vous signale une faille."
+effect = "- Payez $2.000,00 ou subissez immédiatement CVE CRITIQUE"
+flavor_text = "Responsible disclosure."

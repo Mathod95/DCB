@@ -1,0 +1,8 @@
+name = "BACKUP"
+type = "resource"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Une sauvegarde quotidienne de vos bases de données."
+effect = "- Annule entièrement les effets de DROP DATABASE;"
+flavor_text = "Personne ne l'a jamais testée, mais elle existe."

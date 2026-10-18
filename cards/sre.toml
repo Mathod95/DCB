@@ -1,0 +1,10 @@
+name = "SRE"
+type = "hr"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Garant de la fiabilité de vos services."
+effect = """
+- -10% d'instabilité chaque semaine
+- Débloque la carte RUNBOOK"""
+flavor_text = "Hope is not a strategy."

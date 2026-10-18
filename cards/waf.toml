@@ -1,0 +1,8 @@
+name = "WAF"
+type = "resource"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un pare-feu applicatif filtre le trafic malveillant."
+effect = "- Immunité contre DDOS ATTACK pendant 3 jours"
+flavor_text = "403 pour tout le monde."

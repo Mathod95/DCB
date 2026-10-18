@@ -1,0 +1,8 @@
+name = "ROLLBACK"
+type = "resource"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Retour instantané à la version stable."
+effect = "- Annule le dernier INCIDENT joué contre vous"
+flavor_text = "Ctrl+Z en production."

@@ -1,0 +1,10 @@
+name = "STAGIAIRE"
+type = "hr"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Motivé, curieux, et un peu dangereux."
+effect = """
+- +1 deployment MAX
+- À chaque déploiement, lancez une pièce: si c'est face, il casse quelque chose"""
+flavor_text = "Il a les droits admin, c'est normal ?"

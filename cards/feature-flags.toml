@@ -1,0 +1,8 @@
+name = "FEATURE FLAGS"
+type = "resource"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Activez une fonctionnalité sans redéployer."
+effect = "- Votre prochaine feature ne consomme pas de point de déploiement"
+flavor_text = "Le if le plus cher du monde."

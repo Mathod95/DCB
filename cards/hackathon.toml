@@ -1,0 +1,10 @@
+name = "HACKATHON"
+type = "event"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Toute l'équipe code pendant un week-end entier."
+effect = """
+- +2 points de déploiement cette semaine
+- +10% d'instabilité"""
+flavor_text = "Pizza et dette technique."

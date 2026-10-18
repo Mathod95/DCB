@@ -1,0 +1,10 @@
+name = "DNS PROPAGATION"
+type = "incident"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+description = "Un changement DNS met des heures à se propager."
+effect = """
+- Bloque le trafic de l'adversaire pendant 1 jour
+- Lancez une pièce: si c'est face, 1 jour de plus"""
+flavor_text = "C'est toujours le DNS."
