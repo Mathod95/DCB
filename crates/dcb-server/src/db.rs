@@ -161,3 +161,36 @@ pub async fn replace_all(pool: &SqlitePool, cards: &[Card]) -> sqlx::Result<()> 
     }
     tx.commit().await
 }
+
+/// Nombre de cartes par type (les types sans carte sont absents).
+pub async fn count_by_type(pool: &SqlitePool) -> sqlx::Result<Vec<(CardType, i64)>> {
+    let rows: Vec<(String, i64)> =
+        sqlx::query_as("SELECT card_type, COUNT(*) FROM cards GROUP BY card_type")
+            .fetch_all(pool)
+            .await?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(t, n)| t.parse().ok().map(|t| (t, n)))
+        .collect())
+}
+
+/// Une carte tirée au hasard, d'un type donné ou de toute la collection. Les cartes qui ont
+/// une description ou un effet passent en priorité : une carte encore vide n'est tirée que
+/// s'il n'y en a pas d'autre.
+pub async fn random_card(
+    pool: &SqlitePool,
+    card_type: Option<CardType>,
+) -> sqlx::Result<Option<Card>> {
+    const SQL: &str = concat!(
+        "SELECT ",
+        columns!(),
+        " FROM cards WHERE (?1 IS NULL OR card_type = ?1) ",
+        "ORDER BY (description = '' AND effect = ''), RANDOM() LIMIT 1"
+    );
+    sqlx::query_as::<_, CardRow>(SQL)
+        .bind(card_type.map(|t| t.slug()))
+        .fetch_optional(pool)
+        .await?
+        .map(Card::try_from)
+        .transpose()
+}

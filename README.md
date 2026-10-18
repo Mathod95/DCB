@@ -16,6 +16,7 @@ Puis ouvrir <http://127.0.0.1:3000>. Lance le serveur depuis la racine du repo :
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `DCB_CARDS_DIR` | `cards` | Dossier des cartes (source de vérité) |
+| `DCB_RULES_FILE` | `rules/regles.toml` | Contenu de la page des règles |
 | `DATABASE_URL` | `sqlite://data/cache.db` | Cache SQLite, reconstruit à chaque démarrage |
 | `DCB_BIND` | `127.0.0.1:3000` | Adresse d'écoute |
 | `RUST_LOG` | `dcb_server=info,tower_http=info` | Niveau de logs |
@@ -39,6 +40,7 @@ La base SQLite n'est qu'un cache : elle est vidée et reconstruite depuis `cards
 
 - **Galerie** : grille de toutes les cartes, filtres par type et par finition.
 - **Éditeur** : création et modification avec aperçu de la carte mis à jour pendant la saisie, compteurs de caractères calés sur la place disponible dans la carte, upload d'illustration (PNG, JPEG, WebP, GIF, 5 Mo max).
+- **Règles** (`/regles`) : contexte, début de partie, condition de victoire, types de cartes, phases d'une journée, cycle de vie des apps et finitions. Chaque type montre une carte de la collection tirée au hasard à chaque chargement (les cartes qui ont un texte d'abord), avec son nombre de cartes et un lien vers la galerie filtrée. Le texte vient de `rules/regles.toml`.
 - **Fiche carte** : affichage en grand, modification, suppression (le fichier TOML et l'illustration sont supprimés avec la carte), et rappel des fichiers à commiter.
 - **API JSON** pour les futurs clients du jeu :
   - `GET /api/cards` (filtres `?type=incident&foil=gold`)
@@ -70,6 +72,7 @@ crates/
     templates/    Pages et partial de carte
     static/       CSS de l'app et de la carte, htmx embarqué
 cards/          Les cartes : un .toml par carte + art/ (à commiter)
+rules/          Texte de la page des règles (regles.toml, à commiter)
 migrations/     Schéma du cache SQLite
 ```
 

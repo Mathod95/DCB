@@ -29,7 +29,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let pool = db::connect(&database_url).await?;
-    let state = AppState::new(pool, CardStore::new(&cards_dir));
+    let rules_file = PathBuf::from(
+        std::env::var("DCB_RULES_FILE").unwrap_or_else(|_| "rules/regles.toml".into()),
+    );
+    let state = AppState::new(pool, CardStore::new(&cards_dir)).with_rules_file(&rules_file);
     let n = state.reload().await?;
     tracing::info!(
         "{n} carte{} chargée{} depuis {}",

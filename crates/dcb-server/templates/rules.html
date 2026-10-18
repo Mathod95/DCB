@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Règles · DevCardBattle{% endblock %}
+{% block content %}
+{% if let Some(e) = error %}
+<div class="alert" role="alert">
+  <strong>rules/regles.toml n'a pas pu être lu</strong>{% if content.is_some() %}, la page affiche la dernière version valide{% endif %}:
+  <ul><li><code>{{ e }}</code></li></ul>
+</div>
+{% endif %}
+
+{% if let Some(c) = content %}
+<div class="rules">
+
+  <section class="rules-hero" aria-labelledby="t-hero">
+    <div class="rules-hero-text">
+      {% if !c.draft_notice.is_empty() %}<span class="draft">{{ c.draft_notice }}</span>{% endif %}
+      <p class="eyebrow">Règles du jeu</p>
+      <h1 id="t-hero">{{ c.title }}</h1>
+      <div class="prose rules-lead">
+        {% for p in c.context %}<p>{{ p|safe }}</p>{% endfor %}
+      </div>
+    </div>
+    {% if !c.facts.is_empty() %}
+    <dl class="ledger" aria-label="La partie en chiffres">
+      <p class="eyebrow ledger-title">La partie en chiffres</p>
+      {% for (label, value) in c.facts %}
+      <div><dt>{{ label|safe }}</dt><dd>{{ value|safe }}</dd></div>
+      {% endfor %}
+    </dl>
+    {% endif %}
+  </section>
+
+  <section class="rules-split" aria-labelledby="t-start">
+    <div class="section-head">
+      <p class="eyebrow">Début de partie</p>
+      <h2 id="t-start">{{ c.start_title }}</h2>
+      <div class="prose"><p>{{ c.start_text|safe }}</p></div>
+    </div>
+    <div class="roster">
+      {% for g in c.groups %}
+      <div class="roster-group">
+        <p class="eyebrow">{{ g.title }}</p>
+        <div class="tiles">
+          {% for t in g.items %}<div class="tile" style="--c: {{ t.color }}">{{ t.label }}</div>{% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section aria-labelledby="t-goal">
+    <div class="section-head">
+      <p class="eyebrow">Condition de victoire</p>
+      <h2 id="t-goal">{{ c.victory_title }}</h2>
+    </div>
+    <div class="goal">
+      <p class="rules-lead">{{ c.victory_text|safe }}</p>
+      <div class="track" role="img" aria-label="Le budget de départ représente {{ c.start_percent }} % de l'objectif">
+        <div class="track-fill" style="width: {{ c.start_percent }}%"></div>
+      </div>
+      <div class="track-legend">
+        <span>Départ <span class="money">{{ c.start_label }}</span></span>
+        <span>Objectif <span class="money">{{ c.goal_label }}</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-types">
+    <div class="section-head">
+      <p class="eyebrow">Les cartes</p>
+      <h2 id="t-types">{{ c.types_title }}</h2>
+    </div>
+    <div class="types">
+      {% for t in c.types %}
+      <article class="type-row" style="--c: {{ t.color }}">
+        {% if let Some(card) = t.card %}
+        <a class="card-frame" href="/cards/{% if let Some(slug) = card.slug %}{{ slug }}{% endif %}" aria-label="Voir la carte {{ card.name }}">{% include "card.html" %}</a>
+        {% else %}
+        <div class="type-empty">Aucune carte de ce type pour l'instant</div>
+        {% endif %}
+        <div class="type-body">
+          <div class="type-name"><h3>{{ t.name }}</h3><a class="count" href="{{ t.gallery_href }}">{{ t.count_label }}</a></div>
+          <p>{{ t.text|safe }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section aria-labelledby="t-day">
+    <div class="section-head">
+      <p class="eyebrow">Phases de jeu</p>
+      <h2 id="t-day">{{ c.day_title }}</h2>
+      <div class="prose"><p>{{ c.day_intro|safe }}</p></div>
+    </div>
+    <div class="day">
+      {% for p in c.phases %}
+      <article class="phase">
+        <div class="phase-top"><h3>{{ p.name }}</h3>{% if !p.when.is_empty() %}<span class="when">{{ p.when }}</span>{% endif %}</div>
+        {% for para in p.paragraphs %}<p>{{ para|safe }}</p>{% endfor %}
+      </article>
+      {% endfor %}
+    </div>
+    <div class="points">
+      <span class="points-badge" aria-hidden="true">+1</span>
+      <div>
+        <h3>{{ c.points_title }}</h3>
+        <ul>{% for i in c.points %}<li>{{ i|safe }}</li>{% endfor %}</ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="rules-split" aria-labelledby="t-life">
+    <div class="section-head">
+      <p class="eyebrow">App lifecycle</p>
+      <h2 id="t-life">{{ c.life_title }}</h2>
+      <div class="prose"><p>{{ c.life_text|safe }}</p></div>
+    </div>
+    <div class="stack">
+      <p class="eyebrow">Types de features</p>
+      <div class="versions">
+        {% for f in c.features %}{% if !loop.first %}<span class="sep" aria-hidden="true">›</span>{% endif %}<span class="tag code">{{ f }}</span>{% endfor %}
+      </div>
+      <p class="eyebrow stack-gap">Key Performance Indicators</p>
+      <div class="tags">{% for k in c.kpis %}<span class="tag">{{ k }}</span>{% endfor %}</div>
+    </div>
+  </section>
+
+  {% if !c.foils.is_empty() %}
+  <section aria-labelledby="t-foils">
+    <div class="section-head">
+      <p class="eyebrow">Rareté</p>
+      <h2 id="t-foils">{{ c.rarity_title }}</h2>
+      <div class="prose"><p>{{ c.rarity_text|safe }}</p></div>
+    </div>
+    <div class="foils">
+      {% for f in c.foils %}
+      {% let card = f.card %}
+      <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+{% else %}
+<div class="empty">
+  <p class="eyebrow">Règles</p>
+  <h1>Les règles ne sont pas encore disponibles.</h1>
+  <p class="muted">Ajoute le fichier <code>rules/regles.toml</code> puis recharge les fichiers depuis la galerie.</p>
+</div>
+{% endif %}
+{% endblock %}

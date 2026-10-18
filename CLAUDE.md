@@ -14,6 +14,7 @@ Design source : fichier Figma `DevCardBattle` (fileKey `pG6o4Zvee9YjNf3AzGKV81`)
 - `dcb-core` : types de domaine + validation, sans dépendance serveur
 - `dcb-server` : axum 0.8, askama 0.16, sqlx 0.9 (SQLite), toml, htmx 2 embarqué
 - Source de vérité : `cards/<slug>.toml` + `cards/art/` (commités par l'utilisateur). SQLite (`data/cache.db`) n'est qu'un cache reconstruit au démarrage et via `POST /reload`
+- Page `/regles` : texte dans `rules/regles.toml` (lu au démarrage et au rechargement, en cas d'erreur la dernière version valide reste affichée), mise en forme `***terme***` et montants `$…` via `rules::inline`. Exemples de cartes tirés au hasard par `db::random_card` (cartes remplies d'abord)
 - Ordre d'écriture : fichier TOML (atomique : tmp + rename) puis cache, sous le verrou de `CardStore`
 - Requêtes SQL en `&'static str` (sqlx 0.9 refuse les chaînes construites à l'exécution) : composer avec `concat!` et la macro `columns!` dans `db.rs`
 
@@ -39,6 +40,6 @@ cargo fmt --all
 
 ## État
 
-Fait : finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 61 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
+Fait : page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 61 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
 
 À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket, comptes joueurs, déploiement.

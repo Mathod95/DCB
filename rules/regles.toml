@@ -1,0 +1,131 @@
+# Contenu de la page /regles. À modifier puis commiter, comme les cartes.
+# Après une modification : bouton « Recharger les fichiers » de la galerie (ou relancer le serveur).
+#
+# Mise en forme dans les textes :
+#   ***terme***      gras italique (termes de statut : to-do, pending, done…)
+#   $25.000,00       les montants en dollars sont mis en évidence automatiquement
+
+draft_notice = "Version de travail, les règles vont évoluer"
+title = "Atteignez le million avant l'équipe d'en face."
+context = [
+  "Vous êtes DevOps ! Avec une petite équipe de passionnés, vous avez créé une application qui peut rapporter des millions ! Vous finissez par vous faire repérer et intégrez un incubateur de startups qui croit en votre potentiel et investit $25.000,00. À vous d'en faire bon usage pour faire de votre startup une grande entreprise, et essayer de devenir riche !",
+  "Ah ! J'oubliais: vous n'êtes pas les seuls à avoir obtenu ce premier investissement. En face de vous, une autre équipe va tout faire pour atteindre le million avant vous :)",
+]
+
+# Encadré « La partie en chiffres »
+facts = [
+  { label = "Budget de départ", value = "$25.000,00" },
+  { label = "Objectif", value = "$1.000.000,00" },
+  { label = "Main de départ", value = "10 cartes" },
+  { label = "Un tour", value = "une journée" },
+  { label = "Joueurs", value = "2 équipes en duel" },
+]
+
+[start]
+title = "Une startup, le strict minimum"
+text = "Vous démarrez la partie dans un incubateur de startups avec un budget de $25.000,00 et le strict minimum en ressources."
+
+[[start.groups]]
+title = "L'équipe"
+items = [
+  { label = "Un DevOps", type = "hr" },
+  { label = "Un CEO", type = "hr" },
+  { label = "Un CSM", type = "hr" },
+  { label = "Un Marketing", type = "hr" },
+]
+
+[[start.groups]]
+title = "L'infrastructure"
+items = [
+  { label = "Un cluster Kubernetes", type = "resource" },
+  { label = "Une application", type = "app" },
+]
+
+[victory]
+title = "Une seule façon de gagner"
+text = "Il n'y a qu'une seule façon de gagner à D.C.B, et elle est très simple: vous devez être le premier à atteindre $1.000.000,00 (ou ne pas finir en banqueroute)."
+start_amount = 25000
+goal_amount = 1000000
+
+# Les types de cartes, dans l'ordre d'affichage. Chacun montre une carte de la collection
+# tirée au hasard à chaque chargement de la page.
+[types]
+title = "Il existe 5 types de cartes"
+
+[[types.items]]
+type = "hr"
+name = "RESSOURCES HUMAINES"
+text = "Elles vous permettent de recruter de nouveaux collègues pour augmenter votre nombre de déploiements journaliers."
+
+[[types.items]]
+type = "incident"
+name = "INCIDENTS"
+text = "Elles vous permettent d'agir sur l'infrastructure de votre adversaire. Ces cartes ont des effets négatifs sur son infrastructure, immédiats ou dans la durée. Elles peuvent être contrées par des cartes RESOURCES."
+
+[[types.items]]
+type = "event"
+name = "EVENTS"
+text = "La vie est faite de surprises ! Des événements aléatoires, aussi bien positifs que négatifs, se déclenchent tout au long de la partie (1 à 3 événements par semaine)."
+
+[[types.items]]
+type = "app"
+name = "APPS"
+text = "Dans Age of Empires, vous construisez des bâtiments pour créer de nouvelles unités et les faire évoluer. C'est un peu le même principe ici avec les cartes APPS: elles vous permettent de déployer des applications Platform et Métier, qui augmentent vos revenus journaliers ou renforcent les défenses de votre infrastructure."
+
+[[types.items]]
+type = "resource"
+name = "RESOURCES"
+text = "Encore une fois, voyez les RESOURCES comme votre armée: elle vous aide à garder le cap sur votre budget."
+
+[day]
+title = "Le tour par tour devient jour par jour"
+intro = "Dans ce jeu, la notion de tour par tour devient jour par jour (pour bien rester dans le RP). Vous démarrez la partie avec 10 cartes. Ensuite, chaque journée se découpe en 3 phases."
+
+[[day.phases]]
+name = "Sprint"
+when = "9h30 · daily"
+text = [
+  "Vous arrivez au travail, petit café (vous piochez une carte), les salutations habituelles, puis 9h30: daily meeting ! On passe en revue les tâches du Kanban en ***to-do***, ***pending*** et ***done***. Dans cette phase, vous planifiez et dépensez des points de déploiement, qui seront utilisés dans la phase suivante.",
+]
+
+[[day.phases]]
+name = "Deployment"
+when = "7 h de travail"
+text = [
+  "Fin du daily, on passe aux choses sérieuses ! Vous avez 7 h (pas vraiment, encore une fois on reste dans le RP) pour effectuer les tâches planifiées pendant le Sprint: faire évoluer votre infrastructure, ajouter une application Platform, faire évoluer une application Métier, créer de nouvelles ressources…",
+  "Comme dans la vraie vie, vous ne pourrez pas tout faire en un jour: vous êtes limité par les points de déploiement dépensés pendant le Sprint.",
+]
+
+[[day.phases]]
+name = "End of the day"
+when = "fin de journée"
+text = [
+  "Que vos déploiements se soient bien passés ou non, il est temps d'implorer le saint patron des DevOps et de mettre des bâtons dans les roues de l'équipe d'en face ! Dans cette phase, vous pouvez jouer vos cartes INCIDENT, qui se répercutent dans le Kanban de votre adversaire.",
+]
+
+[day.points]
+title = "Comment obtenir des points de déploiement"
+items = [
+  "Chaque semaine, +1 point de déploiement",
+  "En recrutant de nouveaux collègues",
+  "En faisant évoluer vos collègues grâce aux certifications",
+]
+
+[lifecycle]
+title = "Une application, ça s'entretient"
+text = "Pour qu'une application Métier vous rapporte des revenus, vous devrez l'entretenir ! Vous pourrez créer de nouvelles features qui vous rapporteront des points de KPI."
+features = ["fix", "patch", "minor", "major"]
+kpis = [
+  "Stabilité",
+  "Trafic",
+  "Taux de réponse",
+  "Taux de disponibilité",
+  "Taux de conversion",
+  "SLA",
+  "Taux de clic",
+  "Temps de réponse moyen",
+]
+
+[rarity]
+title = "Six finitions"
+text = "La finition indique la rareté d'une carte. Survolez une carte pour voir le reflet bouger."

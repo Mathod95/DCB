@@ -3,6 +3,7 @@
 //! Chaque modification écrit d'abord le fichier `cards/<slug>.toml` (source de vérité, à
 //! commiter), puis met à jour le cache SQLite.
 
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use askama::Template;
@@ -20,6 +21,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::db::{self, Filter};
+use crate::rules::Rules;
 use crate::store::{CardStore, LoadError, is_safe_file_name};
 use crate::views::*;
 
@@ -32,6 +34,17 @@ pub struct AppState {
     pub store: Arc<CardStore>,
     /// Fichiers ignorés au dernier chargement, affichés dans la galerie.
     pub load_errors: Arc<RwLock<Vec<LoadError>>>,
+    /// Fichier des règles (`rules/regles.toml`), absent dans certains tests.
+    pub rules_path: Option<PathBuf>,
+    pub rules: Arc<RwLock<RulesState>>,
+}
+
+/// Dernières règles valides, et l'erreur du dernier chargement s'il a échoué : une faute de
+/// frappe dans le fichier n'efface pas la page, elle est signalée au-dessus.
+#[derive(Default)]
+pub struct RulesState {
+    pub rules: Option<Rules>,
+    pub error: Option<String>,
 }
 
 impl AppState {
@@ -40,7 +53,14 @@ impl AppState {
             pool,
             store: Arc::new(store),
             load_errors: Arc::default(),
+            rules_path: None,
+            rules: Arc::default(),
         }
+    }
+
+    pub fn with_rules_file(mut self, path: impl Into<PathBuf>) -> Self {
+        self.rules_path = Some(path.into());
+        self
     }
 
     /// Relit `cards/*.toml` et reconstruit le cache. Renvoie le nombre de cartes chargées.
@@ -52,7 +72,26 @@ impl AppState {
             tracing::warn!("cards/{e}");
         }
         *self.load_errors.write().expect("verrou empoisonné") = errors;
+        self.reload_rules().await;
         Ok(cards.len())
+    }
+
+    async fn reload_rules(&self) {
+        let Some(path) = &self.rules_path else { return };
+        let loaded = Rules::load(path).await;
+        let mut state = self.rules.write().expect("verrou empoisonné");
+        match loaded {
+            Ok(rules) => {
+                *state = RulesState {
+                    rules: Some(rules),
+                    error: None,
+                }
+            }
+            Err(e) => {
+                tracing::warn!("règles: {e}");
+                state.error = Some(e);
+            }
+        }
     }
 }
 
@@ -69,6 +108,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/", get(menu))
         .route("/gallery", get(gallery))
+        .route("/regles", get(rules_page))
         .route("/reload", post(reload))
         .route("/cards/new", get(new_form))
         .route("/cards", post(create))
@@ -268,6 +308,46 @@ async fn gallery(
         filtered: filter.card_type.is_some() || filter.foil.is_some(),
         load_errors,
     })
+}
+
+async fn rules_page(State(s): State<AppState>) -> AppResult<Response> {
+    let (rules, error) = {
+        let state = s.rules.read().expect("verrou empoisonné");
+        (state.rules.clone(), state.error.clone())
+    };
+    let Some(rules) = rules else {
+        let page = RulesPage::missing(error);
+        return Ok((StatusCode::SERVICE_UNAVAILABLE, render(page)?).into_response());
+    };
+
+    let counts = db::count_by_type(&s.pool).await?;
+    let mut types = Vec::with_capacity(rules.types.items.len());
+    for entry in &rules.types.items {
+        let card = db::random_card(&s.pool, Some(entry.card_type)).await?;
+        let count = counts
+            .iter()
+            .find(|(t, _)| *t == entry.card_type)
+            .map_or(0, |(_, n)| *n);
+        types.push(RulesType::new(entry, count, card.as_ref()));
+    }
+
+    // Une même carte pour les six finitions, pour que seule la finition change.
+    let foils = match db::random_card(&s.pool, None).await? {
+        Some(card) => Foil::ALL
+            .iter()
+            .map(|&foil| {
+                let mut draft = card.draft.clone();
+                draft.foil = foil;
+                FoilSample {
+                    label: foil.label(),
+                    card: CardView::new(Some(&card.slug), &draft),
+                }
+            })
+            .collect(),
+        None => Vec::new(),
+    };
+
+    Ok(render(RulesPage::new(&rules, error, types, foils))?.into_response())
 }
 
 async fn reload(State(s): State<AppState>) -> AppResult<Redirect> {

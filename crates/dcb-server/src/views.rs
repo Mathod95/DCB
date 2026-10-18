@@ -1,7 +1,9 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
-use dcb_core::{CardDraft, CardType, FieldError, Foil, Skin, limits};
+use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Skin, limits};
+
+use crate::rules::{self, Rules, TypeEntry, inline};
 
 /// Ce dont le partial `card.html` a besoin pour dessiner une carte.
 pub struct CardView {
@@ -243,3 +245,177 @@ pub struct CardPreview {
 #[derive(Template)]
 #[template(path = "not_found.html")]
 pub struct NotFoundPage;
+
+// ---------------------------------------------------------------------------------------------
+// Page des règles. Les textes sont convertis en HTML sûr par `rules::inline` (d'où `|safe`
+// dans le template).
+
+/// Couleur CSS d'un type de carte, définie dans app.css (`--t-<type>`).
+fn type_color(t: CardType) -> String {
+    format!("var(--t-{})", t.slug())
+}
+
+pub struct RulesType {
+    pub name: String,
+    pub color: String,
+    pub text: String,
+    pub count_label: String,
+    pub gallery_href: String,
+    pub card: Option<CardView>,
+}
+
+impl RulesType {
+    pub fn new(entry: &TypeEntry, count: i64, card: Option<&Card>) -> Self {
+        Self {
+            name: entry.name.clone(),
+            color: type_color(entry.card_type),
+            text: inline(&entry.text),
+            count_label: match count {
+                0 => "Aucune carte pour l'instant".to_owned(),
+                1 => "1 carte dans la collection".to_owned(),
+                n => format!("{n} cartes dans la collection"),
+            },
+            gallery_href: format!("/gallery?type={}", entry.card_type.slug()),
+            card: card.map(|c| CardView::new(Some(&c.slug), &c.draft)),
+        }
+    }
+}
+
+pub struct FoilSample {
+    pub label: &'static str,
+    pub card: CardView,
+}
+
+pub struct TileView {
+    pub label: String,
+    pub color: String,
+}
+
+pub struct TileGroupView {
+    pub title: String,
+    pub items: Vec<TileView>,
+}
+
+pub struct PhaseView {
+    pub name: String,
+    pub when: String,
+    pub paragraphs: Vec<String>,
+}
+
+/// Contenu prêt à afficher, construit depuis `rules/regles.toml`.
+pub struct RulesContent {
+    pub draft_notice: String,
+    pub title: String,
+    pub context: Vec<String>,
+    pub facts: Vec<(String, String)>,
+    pub start_title: String,
+    pub start_text: String,
+    pub groups: Vec<TileGroupView>,
+    pub victory_title: String,
+    pub victory_text: String,
+    pub start_label: String,
+    pub goal_label: String,
+    pub start_percent: String,
+    pub types_title: String,
+    pub types: Vec<RulesType>,
+    pub day_title: String,
+    pub day_intro: String,
+    pub phases: Vec<PhaseView>,
+    pub points_title: String,
+    pub points: Vec<String>,
+    pub life_title: String,
+    pub life_text: String,
+    pub features: Vec<String>,
+    pub kpis: Vec<String>,
+    pub rarity_title: String,
+    pub rarity_text: String,
+    pub foils: Vec<FoilSample>,
+}
+
+#[derive(Template)]
+#[template(path = "rules.html")]
+pub struct RulesPage {
+    pub content: Option<RulesContent>,
+    /// Erreur du dernier chargement de `rules/regles.toml` (les règles affichées sont alors
+    /// les dernières valides).
+    pub error: Option<String>,
+}
+
+impl RulesPage {
+    pub fn missing(error: Option<String>) -> Self {
+        Self {
+            content: None,
+            error,
+        }
+    }
+
+    pub fn new(
+        r: &Rules,
+        error: Option<String>,
+        types: Vec<RulesType>,
+        foils: Vec<FoilSample>,
+    ) -> Self {
+        let percent = r.start_percent();
+        let content = RulesContent {
+            draft_notice: r.draft_notice.clone(),
+            title: r.title.clone(),
+            context: r.context.iter().map(|p| inline(p)).collect(),
+            facts: r
+                .facts
+                .iter()
+                .map(|f| (inline(&f.label), inline(&f.value)))
+                .collect(),
+            start_title: r.start.title.clone(),
+            start_text: inline(&r.start.text),
+            groups: r
+                .start
+                .groups
+                .iter()
+                .map(|g| TileGroupView {
+                    title: g.title.clone(),
+                    items: g
+                        .items
+                        .iter()
+                        .map(|t| TileView {
+                            label: t.label.clone(),
+                            color: type_color(t.card_type),
+                        })
+                        .collect(),
+                })
+                .collect(),
+            victory_title: r.victory.title.clone(),
+            victory_text: inline(&r.victory.text),
+            start_label: rules::money(r.victory.start_amount),
+            goal_label: rules::money(r.victory.goal_amount),
+            // Point décimal même en locale française : c'est une valeur CSS.
+            start_percent: format!("{percent:.2}"),
+            types_title: r.types.title.clone(),
+            types,
+            day_title: r.day.title.clone(),
+            day_intro: inline(&r.day.intro),
+            phases: r
+                .day
+                .phases
+                .iter()
+                .map(|p| PhaseView {
+                    name: p.name.clone(),
+                    when: p.when.clone(),
+                    paragraphs: p.text.iter().map(|t| inline(t)).collect(),
+                })
+                .collect(),
+            points_title: r.day.points.title.clone(),
+            points: r.day.points.items.iter().map(|i| inline(i)).collect(),
+            life_title: r.lifecycle.title.clone(),
+            life_text: inline(&r.lifecycle.text),
+            features: r.lifecycle.features.clone(),
+            kpis: r.lifecycle.kpis.clone(),
+            rarity_title: r.rarity.title.clone(),
+            rarity_text: inline(&r.rarity.text),
+            foils,
+        };
+        Self {
+            content: Some(content),
+            error,
+        }
+    }
+}

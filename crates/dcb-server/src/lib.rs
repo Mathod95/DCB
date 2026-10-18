@@ -1,4 +1,5 @@
 pub mod db;
+pub mod rules;
 pub mod store;
 pub mod views;
 pub mod web;

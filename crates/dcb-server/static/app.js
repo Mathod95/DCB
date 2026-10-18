@@ -53,7 +53,22 @@
   });
 
   document.addEventListener("htmx:load", (e) => initCounters(e.detail.elt));
-  document.addEventListener("DOMContentLoaded", () => initCounters(document));
+  // Souligne le lien de la barre du haut correspondant à la page affichée.
+  function markCurrentNav() {
+    const path = location.pathname;
+    document.querySelectorAll(".topnav > a:not(.btn)").forEach((a) => {
+      const href = a.getAttribute("href");
+      const current = path === href || path.startsWith(href + "/");
+      if (current) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initCounters(document);
+    markCurrentNav();
+  });
+  document.addEventListener("htmx:afterSettle", markCurrentNav);
 
   // Reflet holographique : la carte survolée suit la souris (position du reflet + inclinaison).
   // Délégation sur document, donc valable aussi pour l'aperçu remplacé par htmx.

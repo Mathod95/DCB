@@ -356,3 +356,93 @@ async fn api_rejects_unknown_filter() {
     let (status, _, _) = send(&t.app, get("/static/foil/..%2Fapp.css")).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
+
+const RULES: &str = include_str!("../../../rules/regles.toml");
+
+async fn app_with_rules(files: &[(&str, &str)], rules: Option<&str>) -> TestApp {
+    let mut t = app(files).await;
+    let path = t.dir.join("regles.toml");
+    if let Some(r) = rules {
+        std::fs::write(&path, r).unwrap();
+    }
+    t.state = t.state.clone().with_rules_file(&path);
+    t.state.reload().await.unwrap();
+    t.app = router(t.state.clone());
+    t
+}
+
+#[tokio::test]
+async fn rules_page_shows_rules_counts_and_random_examples() {
+    let t = app_with_rules(
+        &[
+            (
+                "ddos.toml",
+                "name = \"DDOS\"\ntype = \"incident\"\ndescription = \"Trafic massif\"\n",
+            ),
+            (
+                "empty-incident.toml",
+                "name = \"VIDE\"\ntype = \"incident\"\n",
+            ),
+            ("argo-cd.toml", ARGO),
+        ],
+        Some(RULES),
+    )
+    .await;
+    let (status, _, body) = send(&t.app, get("/regles")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("Atteignez le million"));
+    assert!(
+        body.contains("2 cartes dans la collection"),
+        "compteur des incidents"
+    );
+    assert!(
+        body.contains("1 carte dans la collection"),
+        "compteur des apps"
+    );
+    assert!(
+        body.contains("Aucune carte pour l&#39;instant")
+            || body.contains("Aucune carte pour l'instant")
+    );
+    assert!(body.contains(r#"href="/gallery?type=incident""#));
+    // la carte remplie passe avant la carte vide
+    assert!(
+        body.contains("DDOS") && !body.contains(">VIDE<"),
+        "exemple d'incident"
+    );
+    // mise en forme : montants et termes de statut
+    assert!(body.contains(r#"<span class="money">$25.000,00</span>"#));
+    assert!(body.contains("<strong><em>to-do</em></strong>"));
+    // six finitions sur la même carte
+    assert_eq!(body.matches(r#"<div class="foil-item">"#).count(), 6);
+    for foil in ["basic", "gold", "stars", "glitter", "shards", "rainbow"] {
+        assert!(body.contains(&format!(r#"data-foil="{foil}""#)), "{foil}");
+    }
+}
+
+#[tokio::test]
+async fn rules_page_handles_empty_collection() {
+    let t = app_with_rules(&[], Some(RULES)).await;
+    let (status, _, body) = send(&t.app, get("/regles")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.matches("Aucune carte de ce type pour l").count(), 5);
+    assert!(!body.contains("foil-item"));
+}
+
+#[tokio::test]
+async fn broken_rules_file_keeps_last_valid_version() {
+    let t = app_with_rules(&[], Some(RULES)).await;
+    std::fs::write(t.dir.join("regles.toml"), "title = \"oups\"\n").unwrap();
+    t.state.reload().await.unwrap();
+    let (status, _, body) = send(&t.app, get("/regles")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains("Atteignez le million"),
+        "ancienne version conservée"
+    );
+    assert!(body.contains("n&#39;a pas pu être lu") || body.contains("n'a pas pu être lu"));
+
+    let missing = app_with_rules(&[], None).await;
+    let (status, _, body) = send(&missing.app, get("/regles")).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert!(body.contains("pas encore disponibles"));
+}
