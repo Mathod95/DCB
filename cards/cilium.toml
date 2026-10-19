@@ -1,0 +1,6 @@
+name = "CILIUM"
+type = "app"
+skin = "light"
+deploy_cost = 0
+daily_cost = 0
+art = "cilium.png"

@@ -8,3 +8,4 @@ effect = """
 - Immunité contre FRIDAY DEPLOY
 - Bloque les images :latest"""
 flavor_text = "Admission refusée."
+art = "kyverno.png"

@@ -8,3 +8,4 @@ effect = """
 - Une de vos applications métier ne fonctionne plus: si vous avez une backup, -1 déploiement.
 Si vous n'avez pas de backup, 2 jours d'inactivité et -1 déploiement par jour"""
 flavor_text = "C'est réel, je connais un gars qui l'a déjà fait !"
+art = "drop-database.png"

@@ -8,3 +8,4 @@ effect = """
 - Aucun déploiement pendant 2 jours
 - Un collègue obtient une certification"""
 flavor_text = "On revient avec 40 t-shirts."
+art = "kubecon.png"
