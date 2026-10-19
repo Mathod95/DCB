@@ -1,0 +1,228 @@
+# Texte de la page /regles/concepts (document « Carte DCB v2 » : pistes de design).
+# Les cartes d'exemple sont tirées au hasard dans la collection à chaque affichage, comme sur
+# la page des règles. Chaque section est reconnue par sa `key` : changer une clé change
+# l'exemple affiché, une clé inconnue est signalée en haut de la page.
+
+title = "Carte DCB v2"
+intro = "Pistes de design pour la carte: styles de contour, idées de modernisation, skins et skins animées, dessinées avec des cartes de la collection tirées au hasard. Cliquez sur une carte pour la voir en grand."
+
+# ---------------------------------------------------------------------------------------------
+# Contours : clés = valeurs de `shape` (déjà sélectionnables dans l'éditeur)
+
+[[parts]]
+kind = "shapes"
+eyebrow = "Contour de type"
+title = "Moderniser le contour de la carte"
+lead = "Neuf styles pour le contour aux couleurs du type (cardTypeStroke), déjà sélectionnables dans l'éditeur. Les cartes portent la base envisagée pour la suite: case Rarity retirée, bloc effect.yaml arrondi à 6 px, titre en Inter 600 et code en mono."
+
+[[parts.sections]]
+key = "solid"
+title = "Plein"
+text = "Trait plein de 4 px, comme le calque cardTypeStroke du Figma. C'est le contour par défaut."
+
+[[parts.sections]]
+key = "neon"
+title = "Néon"
+text = "Trait fin de 2 px avec un halo lumineux de la couleur du type, à l'intérieur et à l'extérieur."
+
+[[parts.sections]]
+key = "gradient"
+title = "Dégradé"
+text = "Trait de 3 px qui passe de la couleur du type à une version éclaircie, en diagonale."
+
+[[parts.sections]]
+key = "sweep"
+title = "Reflet qui tourne"
+text = "Un trait fin, avec une lumière de la couleur du type qui fait le tour de la carte (6 s par tour). Survolez une carte pour le lancer."
+
+[[parts.sections]]
+key = "double"
+title = "Double filet"
+text = "Deux traits fins, un plein, un plus transparent juste à l'intérieur. Style carte premium."
+
+[[parts.sections]]
+key = "corners"
+title = "Coins de viseur"
+text = "Seuls les quatre coins sont marqués, reliés par un filet très fin. Style interface, HUD."
+
+[[parts.sections]]
+key = "chamfer"
+title = "Coins coupés"
+text = "Carte et trait aux coins biseautés au lieu d'arrondis. Style tech, terminal."
+
+[[parts.sections]]
+key = "topbar"
+title = "Barre d'accent"
+text = "Filet fin tout autour, et une barre épaisse de la couleur du type en haut de la carte."
+
+[[parts.sections]]
+key = "tinted"
+title = "Fond teinté"
+text = "Plus de trait épais, le fond de la carte prend une teinte du type, avec un filet fin."
+
+# ---------------------------------------------------------------------------------------------
+# Idées : artfill, badge, chips, overlay, notitle, comment, serial, term, refs, relief, all
+
+[[parts]]
+kind = "ideas"
+eyebrow = "Autres idées"
+title = "Moderniser le reste de la carte"
+lead = "Une section par idée, toutes avec le contour plein pour ne comparer qu'une chose à la fois. La dernière combine tout."
+
+[[parts.sections]]
+key = "artfill"
+title = "1. Cartes sans illustration"
+text = "Fond dans la couleur du type avec un motif de points et une grande icône du type, au lieu du cadre blanc et de l'icône grise. Déjà en place dans l'app."
+
+[[parts.sections]]
+key = "badge"
+title = "2. Badge de type"
+text = "Pastille de la couleur du type avec une icône, posée sur l'illustration. Le nom prend toute la largeur de son bloc. Les cinq types."
+
+[[parts.sections]]
+key = "chips"
+title = "3. Coûts compacts"
+text = "Deux chips avec une icône (fusée, pièce) au lieu des grandes cases pastel. Les 25 px gagnés vont au bloc effect.yaml."
+
+[[parts.sections]]
+key = "overlay"
+title = "4. Nom sur l'illustration"
+text = "Plus de bloc nom, le nom est écrit sur le bas de l'image, sur un dégradé sombre, et l'illustration grandit de 70 px. Le type passe en badge."
+
+[[parts.sections]]
+key = "notitle"
+title = "5a. Description sans titre"
+text = "Le titre Description disparaît, le texte commence en haut du bloc, ce qui donne une ligne de plus."
+
+[[parts.sections]]
+key = "comment"
+title = "5b. Description en commentaire YAML"
+text = "Le bloc Description disparaît, la description devient un commentaire en tête de effect.yaml, et le bloc gagne 70 px de haut."
+
+[[parts.sections]]
+key = "serial"
+title = "6. Numéro de collection"
+text = "Un numéro en bas à droite, comme sur un jeu de cartes à collectionner (ici l'ordre alphabétique des fichiers)."
+
+[[parts.sections]]
+key = "term"
+title = "7. Texte d'ambiance façon terminal"
+text = "Police mono, un $ de la couleur du type devant et un curseur qui clignote."
+
+[[parts.sections]]
+key = "refs"
+title = "8. Cartes citées dans les effets"
+text = "Le nom d'une autre carte du jeu cité dans un effet prend la couleur de son type et se souligne. Sur la fiche, il pourrait mener à cette carte."
+
+[[parts.sections]]
+key = "relief"
+title = "9. Relief de la peau claire"
+text = "Blocs blancs avec une ombre douce et une bordure plus légère, pour mieux les détacher du fond."
+
+[[parts.sections]]
+key = "all"
+title = "Tout ensemble"
+text = "Les idées 1, 2, 3, 4, 5b, 6, 7, 8 et 9 combinées."
+
+# ---------------------------------------------------------------------------------------------
+# Skins : current, terminal, dracula, solarized, nord, blueprint, synthwave, glass, kraft, crt
+
+[[parts]]
+kind = "skins"
+eyebrow = "Skins"
+title = "Nouvelles skins"
+lead = "Huit skins en plus de Light et Dark, et un écran cathodique animé. Chaque skin règle le fond, les blocs, les textes, le bloc de code et les deux cases de coût."
+
+[[parts.sections]]
+key = "current"
+title = "Actuelles, Light et Dark"
+text = "Les deux skins de l'app, pour comparer."
+
+[[parts.sections]]
+key = "terminal"
+title = "Terminal"
+text = "Noir profond et vert phosphore, avec de fines lignes de balayage comme un vieil écran."
+
+[[parts.sections]]
+key = "dracula"
+title = "Dracula"
+text = "Le thème d'éditeur bien connu: gris violacé, rose, violet et cyan."
+
+[[parts.sections]]
+key = "solarized"
+title = "Solarized Light"
+text = "Fond crème chaud et texte ardoise, avec un bloc de code en Solarized Dark."
+
+[[parts.sections]]
+key = "nord"
+title = "Nord"
+text = "Gris bleutés froids et accents givrés, calme et lisible."
+
+[[parts.sections]]
+key = "blueprint"
+title = "Blueprint"
+text = "Plan d'architecte: fond bleu quadrillé, blocs transparents à bords pointillés, texte blanc."
+
+[[parts.sections]]
+key = "synthwave"
+title = "Synthwave"
+text = "Dégradé violet nuit, rose et cyan néon, ambiance années 80."
+
+[[parts.sections]]
+key = "glass"
+title = "Verre"
+text = "Fond sombre teinté par la couleur du type, blocs en verre dépoli translucides."
+
+[[parts.sections]]
+key = "kraft"
+title = "Kraft"
+text = "Carton kraft et papier, avec un bloc de code sombre. Côté jeu de plateau."
+
+[[parts.sections]]
+key = "crt"
+title = "Terminal CRT, animé"
+text = "Écran cathodique inspiré des terminaux de Fallout. Tout passe au vert phosphore, illustration comprise. Police pixel pour les titres, texte qui luit, lignes de balayage qui défilent, bande lumineuse qui descend, léger scintillement, coins assombris comme un écran bombé, et un curseur qui clignote après le texte d'ambiance. Seul le contour garde la couleur du type."
+
+# ---------------------------------------------------------------------------------------------
+# Skins animées : ascii, matrix, glitch, circuit, monitoring, drive, aurora
+
+[[parts]]
+kind = "dynamic"
+eyebrow = "Skins dynamiques"
+title = "Skins animées"
+lead = "Sept skins avec un effet en mouvement. Dans la galerie, elles ne s'animeraient qu'au survol, comme le reflet qui tourne."
+
+[[parts.sections]]
+key = "ascii"
+title = "ASCII"
+text = "Toute la carte en caractères. L'illustration est convertie en art ASCII (les cartes sans image affichent le sigle du type), avec des cadres en tirets et des crochets autour des valeurs. Des caractères changent au hasard en continu, et le nom se brouille puis se recompose au survol."
+
+[[parts.sections]]
+key = "matrix"
+title = "Matrix"
+text = "Pluie de caractères verts qui tombe derrière des blocs sombres translucides, à une vitesse différente par colonne."
+
+[[parts.sections]]
+key = "glitch"
+title = "Glitch"
+text = "Fond noir, magenta et cyan. Le nom et l'illustration se décalent en couleurs séparées par à-coups, avec une bande de parasites qui traverse la carte."
+
+[[parts.sections]]
+key = "circuit"
+title = "Circuit"
+text = "Pistes de circuit imprimé dans la couleur du type, parcourues par des impulsions lumineuses."
+
+[[parts.sections]]
+key = "monitoring"
+title = "Monitoring"
+text = "Fond de dashboard façon Grafana, avec une grille, trois courbes qui défilent, et une LED d'état qui pulse dans le bloc du nom (rouge pour un Incident)."
+
+[[parts.sections]]
+key = "drive"
+title = "Synthwave Drive"
+text = "Soleil rayé et sol quadrillé en perspective qui défile vers l'avant, derrière des blocs translucides."
+
+[[parts.sections]]
+key = "aurora"
+title = "Aurore"
+text = "Trois nappes de couleur floues, dont une de la couleur du type, qui dérivent lentement derrière des blocs en verre."

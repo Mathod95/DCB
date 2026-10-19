@@ -1,0 +1,35 @@
+{#- Carte de la page Concepts (gabarit v2 envisagé) : variables `c` (ConceptCard) et `card` (CardView). -#}
+<div class="st font-mixed-light{{ c.wrap }}"><div class="card-frame"><div class="card v2{{ c.opts_class }}" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}">
+  <div class="card-skin">{{ c.fx|safe }}</div>
+  <div class="card-block card-name" data-size="{{ card.name_size }}"><span{% if c.data_text %} data-text="{{ card.name }}"{% endif %}>{{ card.name }}</span></div>
+  {% if c.ascii -%}
+  <div class="card-block card-art"><pre class="ascii-art" data-src="{% if let Some(art) = card.art_url %}{{ art }}{% endif %}" data-word="{{ c.ascii_word }}"></pre></div>
+  {%- else if let Some(art) = card.art_url -%}
+  <div class="card-block card-art"><img src="{{ art }}" alt="" loading="lazy" draggable="false">{% if c.opts.overlay %}<div class="art-shade"></div>{% endif %}</div>
+  {%- else -%}
+  <div class="card-block card-art is-empty"><svg class="card-art-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{% include "card_icon.html" %}</svg>{% if c.opts.overlay %}<div class="art-shade"></div>{% endif %}</div>
+  {%- endif %}
+  {% if !c.opts.comment -%}
+  <div class="card-block card-description">{% if !c.opts.notitle %}<p class="card-block-title">Description</p>{% endif %}<p class="card-block-text">{{ card.description }}</p></div>
+  {%- endif %}
+  <div class="card-block card-effect card-code r-small">
+    <div class="code-head"><span class="code-file">effect.yaml</span></div>
+    <ol class="code-body">{% for r in c.effect_rows %}{{ r|safe }}{% endfor %}</ol>
+  </div>
+  {% if c.opts.chips -%}
+  <div class="card-stat card-stat-deploy"><i class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2"/><path d="M9 15l-3-3c1-3 3-6 6.5-8.5C15 2 19 2 21 3c1 2 1 6-.5 8.5C18 15 15 17 12 18l-3-3z"/><circle cx="15" cy="9" r="1.5"/></svg></i><div class="card-stat-value">{{ card.deploy_cost }}</div><div class="card-stat-label">Deploy Cost</div></div>
+  <div class="card-stat card-stat-daily"><i class="stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5v1.5M12 16v1.5"/></svg></i><div class="card-stat-value">{{ card.daily_cost }}<small>$</small></div><div class="card-stat-label">Daily Cost</div></div>
+  {%- else -%}
+  <div class="card-stat card-stat-deploy"><div class="card-stat-value">{{ card.deploy_cost }}</div><div class="card-stat-label">Deploy Cost</div></div>
+  <div class="card-stat card-stat-daily"><div class="card-stat-value">{{ card.daily_cost }}<small>$</small></div><div class="card-stat-label">Daily Cost</div></div>
+  {%- endif %}
+  <p class="card-flavor{% if card.flavor_text.is_empty() %} is-placeholder{% endif %}">{% if c.opts.term %}<b>$</b> {% endif %}{% if card.flavor_text.is_empty() %}Texte d'ambiance{% else %}{{ card.flavor_text }}{% endif %}{% if c.opts.term %}<i class="cursor"></i>{% endif %}</p>
+  {%- if c.opts.serial %}<p class="card-serial">{{ c.serial|safe }}</p>{% endif %}
+  <div class="card-stroke"></div>
+  {% if c.opts.badge -%}
+  <div class="type-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{% include "card_icon.html" %}</svg><span>{{ c.type_label }}</span></div>
+  {%- else -%}
+  <div class="card-type">{% for line in card.type_label_lines() %}<span>{{ line }}</span>{% endfor %}</div>
+  {%- endif %}
+  {% if card.foil != "basic" %}<div class="card-foil" aria-hidden="true"><i class="card-foil-glare"></i></div>{% endif %}
+</div></div></div>

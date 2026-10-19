@@ -990,33 +990,66 @@ async fn shape_is_saved_rendered_and_filterable() {
 }
 
 #[tokio::test]
-async fn concepts_document_is_served_behind_login() {
-    let t = app_with_rules(&[], Some(RULES)).await;
-    // sans document généré : page explicative en 404
-    let (status, _, body) = send(&t.app, get("/regles/concepts")).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
-    assert!(body.contains("tools/concepts/gen.py"));
-    assert_eq!(
-        send(&t.app, get("/regles/concepts/document")).await.0,
-        StatusCode::NOT_FOUND
-    );
-
-    std::fs::write(
-        t.dir.join("concepts.html"),
-        "<title>Carte DCB v2</title><p>doc</p>",
+async fn concepts_page_renders_live_cards_with_a_toc() {
+    const CONCEPTS: &str = include_str!("../../../rules/concepts.toml");
+    let argo = "name = \"ARGO CD\"\ntype = \"app\"\neffect = \"- Débloque la carte Application Set\\n- Ajoute +1 deployment MAX\"\n";
+    let set = "name = \"APPLICATION SET\"\ntype = \"app\"\n";
+    let t = app_with_rules(
+        &[
+            ("argo-cd.toml", argo),
+            ("application-set.toml", set),
+            ("ddos.toml", DDOS),
+        ],
+        Some(RULES),
     )
-    .unwrap();
+    .await;
+    // sans concepts.toml : page explicative
     let (status, _, body) = send(&t.app, get("/regles/concepts")).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert!(body.contains("rules/concepts.toml"));
+
+    std::fs::write(t.dir.join("concepts.toml"), CONCEPTS).unwrap();
+    t.state.reload().await.unwrap();
+    let (status, _, body) = send(&t.user, get("/regles/concepts")).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains(r#"<iframe class="concepts-frame" src="/regles/concepts/document""#));
-    let (status, _, body) = send(&t.user, get("/regles/concepts/document")).await;
+    // sommaire avec les quatre parties et leurs sections
+    assert!(body.contains(r#"<nav class="cdoc-toc""#));
+    assert!(body.contains(r##"href="#p1""##) && body.contains(r##"href="#p4-s7""##));
+    // vraies cartes de la collection, au gabarit v2
+    assert!(body.contains("ARGO CD") && body.contains("DDOS"));
+    assert!(body.contains(r#"<span class="code-file">effect.yaml</span>"#));
+    assert!(body.contains(r#"<span class="y-num">+1</span>"#));
+    for shape in ["neon", "chamfer", "tinted"] {
+        assert!(
+            body.contains(&format!(r#"data-shape="{shape}""#)),
+            "{shape}"
+        );
+    }
+    assert!(
+        body.contains("sk-dracula") && body.contains("dyn-matrix") && body.contains("fx-matrix")
+    );
+    assert!(body.contains(r#"class="ascii-art""#));
+    // carte citée dans un effet
+    assert!(body.contains(r#"<span class="y-ref" data-type="app">Application Set</span>"#));
+    assert!(body.contains("DCB-"));
+    let (status, _, _) = send(&t.app, get("/static/concepts.css")).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("<p>doc</p>"));
-    // réservé aux joueurs connectés
-    let (status, location, _) = send(&t.anon, get("/regles/concepts/document")).await;
-    assert_eq!(status, StatusCode::SEE_OTHER);
-    assert!(location.unwrap().starts_with("/login"));
-    // lien depuis les règles
+    // réservé aux joueurs connectés, lien depuis les règles
+    assert_eq!(
+        send(&t.anon, get("/regles/concepts")).await.0,
+        StatusCode::SEE_OTHER
+    );
     let (_, _, rules) = send(&t.app, get("/regles")).await;
     assert!(rules.contains(r#"href="/regles/concepts""#));
+
+    // une clé inconnue est signalée, la dernière version valide reste affichée
+    std::fs::write(
+        t.dir.join("concepts.toml"),
+        CONCEPTS.replacen("key = \"neon\"", "key = \"neonn\"", 1),
+    )
+    .unwrap();
+    t.state.reload().await.unwrap();
+    let (status, _, body) = send(&t.app, get("/regles/concepts")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("neonn") && body.contains("dernière version valide"));
 }

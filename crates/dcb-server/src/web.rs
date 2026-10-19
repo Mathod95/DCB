@@ -23,6 +23,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::auth::{CurrentUser, EditorUser, MaybeUser, User};
+use crate::concepts::{self, ConceptsDoc};
 use crate::db::{self, Filter};
 use crate::rules::Rules;
 use crate::store::{CardStore, LoadError, is_safe_file_name};
@@ -56,6 +57,9 @@ pub struct AppState {
 pub struct RulesState {
     pub rules: Option<Rules>,
     pub error: Option<String>,
+    /// Texte de la page Concepts (`rules/concepts.toml`, à côté des règles).
+    pub concepts: Option<ConceptsDoc>,
+    pub concepts_error: Option<String>,
 }
 
 impl AppState {
@@ -107,17 +111,26 @@ impl AppState {
     async fn reload_rules(&self) {
         let Some(path) = &self.rules_path else { return };
         let loaded = Rules::load(path).await;
+        let concepts = ConceptsDoc::load(&path.with_file_name("concepts.toml")).await;
         let mut state = self.rules.write().expect("verrou empoisonné");
         match loaded {
             Ok(rules) => {
-                *state = RulesState {
-                    rules: Some(rules),
-                    error: None,
-                }
+                state.rules = Some(rules);
+                state.error = None;
             }
             Err(e) => {
                 tracing::warn!("règles: {e}");
                 state.error = Some(e);
+            }
+        }
+        match concepts {
+            Ok(doc) => {
+                state.concepts = Some(doc);
+                state.concepts_error = None;
+            }
+            Err(e) => {
+                tracing::warn!("concepts: {e}");
+                state.concepts_error = Some(e);
             }
         }
     }
@@ -140,7 +153,6 @@ pub fn router(state: AppState) -> Router {
         .route("/gallery", get(gallery))
         .route("/regles", get(rules_page))
         .route("/regles/concepts", get(concepts_page))
-        .route("/regles/concepts/document", get(concepts_document))
         .route("/reload", post(reload))
         .route("/cards/new", get(new_form))
         .route("/cards", post(create))
@@ -170,6 +182,14 @@ pub fn router(state: AppState) -> Router {
             }),
         )
         .route("/static/foil/{name}", get(foil_texture))
+        .route(
+            "/static/concepts.css",
+            get(|| async { asset("text/css", include_str!("../static/concepts.css")) }),
+        )
+        .route(
+            "/static/concepts.js",
+            get(|| async { asset("text/javascript", include_str!("../static/concepts.js")) }),
+        )
         .route(
             "/static/app.js",
             get(|| async { asset("text/javascript", include_str!("../static/app.js")) }),
@@ -485,50 +505,68 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
     Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, samples))?.into_response())
 }
 
-/// Document « Carte DCB v2 » (pistes de design), généré par `tools/concepts/gen.py` et rangé
-/// à côté du fichier des règles. Affiché dans la page /regles/concepts.
-fn concepts_file(s: &AppState) -> Option<std::path::PathBuf> {
-    s.rules_path
-        .as_ref()
-        .map(|p| p.with_file_name("concepts.html"))
-}
-
+/// Document « Carte DCB v2 » (pistes de design) : texte de `rules/concepts.toml`, cartes de
+/// la collection tirées au hasard à chaque affichage, comme la page des règles.
 async fn concepts_page(
     State(s): State<AppState>,
     CurrentUser(u): CurrentUser,
 ) -> AppResult<Response> {
-    let available = match concepts_file(&s) {
-        Some(p) => tokio::fs::try_exists(&p).await.unwrap_or(false),
-        None => false,
+    let (doc, error) = {
+        let state = s.rules.read().expect("verrou empoisonné");
+        (state.concepts.clone(), state.concepts_error.clone())
     };
+    let Some(doc) = doc else {
+        let page = ConceptsPage {
+            ctx: s.ctx(&u),
+            doc: None,
+            parts: Vec::new(),
+            error,
+        };
+        return Ok((StatusCode::SERVICE_UNAVAILABLE, render(page)?).into_response());
+    };
+
+    let mut trio = Vec::new();
+    for t in [CardType::App, CardType::Incident, CardType::Hr] {
+        trio.extend(db::random_card(&s.pool, Some(t)).await?);
+    }
+    let mut types = Vec::new();
+    for &t in CardType::ALL {
+        types.extend(db::random_card(&s.pool, Some(t)).await?);
+    }
+    let all = db::list(&s.pool, Filter::default()).await?;
+    let refs = {
+        let mut citing: Vec<Card> = concepts::citing_cards(&all).into_iter().cloned().collect();
+        // trois cartes au hasard parmi celles qui en citent une autre
+        let mut seed = [0u8; 8];
+        let _ = getrandom::fill(&mut seed);
+        let mut n = u64::from_le_bytes(seed) | 1;
+        let mut picked = Vec::new();
+        while !citing.is_empty() && picked.len() < 3 {
+            n ^= n << 13;
+            n ^= n >> 7;
+            n ^= n << 17;
+            picked.push(citing.swap_remove((n % citing.len() as u64) as usize));
+        }
+        if picked.is_empty() {
+            trio.clone()
+        } else {
+            picked
+        }
+    };
+    let picks = concepts::Picks {
+        trio,
+        types,
+        refs,
+        all,
+    };
+    let parts = concepts::build(&doc, &picks);
     let page = ConceptsPage {
         ctx: s.ctx(&u),
-        available,
+        doc: Some(doc),
+        parts,
+        error,
     };
-    let status = if available {
-        StatusCode::OK
-    } else {
-        StatusCode::NOT_FOUND
-    };
-    Ok((status, render(page)?).into_response())
-}
-
-async fn concepts_document(State(s): State<AppState>, _user: CurrentUser) -> AppResult<Response> {
-    let Some(path) = concepts_file(&s) else {
-        return Err(AppError::NotFound);
-    };
-    match tokio::fs::read_to_string(&path).await {
-        Ok(body) => Ok((
-            [
-                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
-                (header::CACHE_CONTROL, "no-cache"),
-            ],
-            body,
-        )
-            .into_response()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(AppError::NotFound),
-        Err(e) => Err(AppError::Internal(e.into())),
-    }
+    Ok(render(page)?.into_response())
 }
 
 async fn reload(State(s): State<AppState>, _editor: EditorUser) -> AppResult<Redirect> {

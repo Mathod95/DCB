@@ -3,22 +3,78 @@
 {% block title %}Carte DCB v2 · Concepts{% endblock %}
 
 {% block content %}
-<div class="page-head concepts-head">
-  <div>
-    <a class="back" href="/regles">&larr; Règles</a>
-    <p class="eyebrow">Concepts</p>
-    <h1>Carte DCB v2</h1>
-    <p class="muted">Pistes de design pour la carte: styles de contour, idées de modernisation, skins et skins animées, dessinées avec les cartes de la collection. Clique sur une carte pour la voir en grand.</p>
-  </div>
-  {% if available %}<a class="btn" href="/regles/concepts/document" target="_blank" rel="noopener">Ouvrir en plein écran</a>{% endif %}
-</div>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap">
+<link rel="stylesheet" href="/static/concepts.css">
 
-{% if available %}
-<iframe class="concepts-frame" src="/regles/concepts/document" title="Document Carte DCB v2"></iframe>
+{% if let Some(e) = error %}
+<div class="alert" role="alert"><strong>Le fichier rules/concepts.toml contient une erreur, la dernière version valide est affichée :</strong> <code>{{ e }}</code></div>
+{% endif %}
+
+{% if let Some(doc) = doc %}
+<div class="cdoc">
+  <nav class="cdoc-toc" aria-label="Sommaire">
+    <a class="back" href="/regles">&larr; Règles</a>
+    <p class="cdoc-toc-title">Sommaire</p>
+    <ol>
+      {% for part in parts %}
+      {% let pi = loop.index %}
+      <li>
+        <a href="#p{{ pi }}" class="toc-part">{{ part.title }}</a>
+        <ol>
+          {% for s in part.sections %}<li><a href="#p{{ pi }}-s{{ loop.index }}">{{ s.title }}</a></li>{% endfor %}
+        </ol>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  <div class="cdoc-body">
+    <header class="cdoc-intro">
+      <p class="eyebrow">Concepts</p>
+      <h1>{{ doc.title }}</h1>
+      <p class="lead">{{ doc.intro }}</p>
+    </header>
+
+    {% if parts.is_empty() || parts[0].sections.is_empty() || parts[0].sections[0].cards.is_empty() %}
+    <div class="empty"><p>Les exemples apparaîtront dès qu'une carte sera dans la collection.</p></div>
+    {% endif %}
+
+    {% for part in parts %}
+    {% let pi = loop.index %}
+    <header class="part" id="p{{ pi }}">
+      <p class="eyebrow">{{ part.eyebrow }}</p>
+      <h1>{{ part.title }}</h1>
+      <p class="lead">{{ part.lead }}</p>
+    </header>
+    {% for s in part.sections %}
+    <section class="stroke" id="p{{ pi }}-s{{ loop.index }}">
+      <h2>{{ s.title }}</h2>
+      <p class="lead">{{ s.text }}</p>
+      <div class="gallery">
+        {% for c in s.cards %}
+        {% let card = c.card %}
+        {% include "concept_card.html" %}
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+    {% endfor %}
+  </div>
+
+  <dialog id="card-modal" aria-label="Carte agrandie">
+    <button class="modal-btn modal-close" type="button" aria-label="Fermer">✕</button>
+    <button class="modal-btn modal-prev" type="button" aria-label="Carte précédente">‹</button>
+    <div class="modal-stage"></div>
+    <button class="modal-btn modal-next" type="button" aria-label="Carte suivante">›</button>
+    <p class="modal-info"><span class="modal-caption"></span><span class="modal-count"></span></p>
+  </dialog>
+</div>
+<script src="/static/concepts.js" defer></script>
 {% else %}
 <div class="empty">
-  <p>Le document n'a pas encore été généré.</p>
-  <p class="muted">Lance <code>python3 tools/concepts/gen.py</code> pour créer <code>rules/concepts.html</code>.</p>
+  <p class="eyebrow">Concepts</p>
+  <h1>Le document n'est pas encore disponible.</h1>
+  <p class="muted">Ajoute le fichier <code>rules/concepts.toml</code> puis recharge les fichiers depuis la galerie.</p>
 </div>
 {% endif %}
 {% endblock %}

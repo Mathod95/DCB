@@ -313,8 +313,10 @@ pub struct NotFoundPage {
 #[template(path = "concepts.html")]
 pub struct ConceptsPage {
     pub ctx: Ctx,
-    /// `rules/concepts.html` existe.
-    pub available: bool,
+    pub doc: Option<crate::concepts::ConceptsDoc>,
+    pub parts: Vec<crate::concepts::PartView>,
+    /// Erreur du dernier chargement de `rules/concepts.toml`.
+    pub error: Option<String>,
 }
 
 #[derive(Template)]
