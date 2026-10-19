@@ -383,6 +383,17 @@ input[type="file"]::file-selector-button {
 .foils.is-skins { grid-template-columns: repeat(2, max-content); gap: 24px; }
 .foils.is-shapes { grid-template-columns: repeat(5, minmax(0, 1fr)); row-gap: 24px; }
 .concepts { display: grid; gap: 40px; }
+.concepts-head { align-items: flex-end; }
+.concepts-head .muted { max-width: 70ch; margin: 6px 0 0; }
+.concepts-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 120px);
+  min-height: 600px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #070b14;
+}
 .concepts > .section-head { margin-bottom: 0; }
 .concept { display: grid; gap: 18px; padding-top: 28px; border-top: 1px solid var(--line); }
 .concept-head { display: grid; gap: 6px; max-width: 70ch; }

@@ -1,0 +1,257 @@
+/* ------------------------------------------------------------------ skins dynamiques */
+.dyn .card-skin { overflow: hidden; }
+/* l'inclinaison 3D casse parfois le découpage par overflow : on découpe la carte explicitement */
+.dyn .card { clip-path: inset(0 round 20px); }
+.dyn-ascii .card { clip-path: inset(0 round 4px); }
+
+/* ASCII */
+.dyn-ascii .card {
+  --skin-from: #101010; --skin-to: #080808;
+  --block-bg: #0c0c0c; --block-border: #5a5a5a; --art-border: #5a5a5a;
+  --title: #f2f2f2; --text: #cfcfcf; --flavor: #9a9a9a;
+  --c-bg: #0c0c0c; --c-head: #0c0c0c; --c-line: #5a5a5a; --c-text: #d8d8d8; --c-title: #f2f2f2; --c-key: #fff; --c-num: #fff;
+  --d-bg: #0c0c0c; --d-line: #5a5a5a; --d-text: #f2f2f2;
+  --y-bg: #0c0c0c; --y-line: #5a5a5a; --y-text: #f2f2f2;
+  font-family: var(--mono);
+  border-radius: 4px;
+}
+.dyn-ascii .card-skin { border-radius: 4px; }
+.dyn-ascii .card-block, .dyn-ascii .card-stat { border-style: dashed; border-radius: 0; }
+.dyn-ascii .card-code { border-radius: 0; }
+.dyn-ascii .code-head { border-bottom-style: dashed; }
+.dyn-ascii .card-name, .dyn-ascii .card-block-title, .dyn-ascii .code-file, .dyn-ascii .card-type,
+.dyn-ascii .card-stat-value, .dyn-ascii .card-stat-label, .dyn-ascii .card-flavor { font-family: var(--mono); }
+.dyn-ascii .card-name { font-size: 18px; }
+.dyn-ascii .card-name span::before { content: "[ "; color: #777; }
+.dyn-ascii .card-name span::after { content: " ]"; color: #777; }
+.dyn-ascii .card-block-title::before, .dyn-ascii .code-file::before { content: "## "; color: #777; }
+.dyn-ascii .card-block-title, .dyn-ascii .code-file { font-size: 12px; }
+.dyn-ascii .card-block-text { font-size: 11px; }
+.dyn-ascii .card-stat-value::before { content: "["; color: #777; font-weight: 400; }
+.dyn-ascii .card-stat-value::after { content: "]"; color: #777; font-weight: 400; }
+.dyn-ascii .card-stat-label { font-size: 10px; }
+.dyn-ascii .card-flavor { font-style: normal; font-size: 11px; }
+.dyn-ascii .card-flavor::before { content: "/* "; }
+.dyn-ascii .card-flavor::after { content: " */"; }
+.dyn-ascii .card-type { font-size: 12px; }
+.dyn-ascii .card[data-type="hr"] .card-type { font-size: 11px; }
+.dyn-ascii .card-stroke { border-style: dashed; border-width: 2px; border-radius: 0; }
+.dyn-ascii .card-art { background: #0c0c0c; display: block; }
+.ascii-art {
+  margin: 0;
+  padding: 4px 0 0;
+  font: 500 10.3px/8.6px var(--mono);
+  letter-spacing: -.2px;
+  color: color-mix(in srgb, var(--type) 45%, #eee);
+  text-align: center;
+  white-space: pre;
+  overflow: hidden;
+}
+
+/* Matrix */
+.dyn-matrix .card {
+  --skin-from: #000; --skin-to: #000;
+  --block-bg: rgb(0 8 2 / .72); --block-border: rgb(0 255 70 / .35); --art-border: rgb(0 255 70 / .4);
+  --title: #b8ffc8; --text: #6dff8f; --flavor: #3cff6a;
+  --c-bg: rgb(0 0 0 / .78); --c-head: rgb(0 30 8 / .7); --c-line: rgb(0 255 70 / .35); --c-text: #b8ffc8; --c-title: #b8ffc8; --c-key: #fff; --c-num: #fff;
+  --d-bg: rgb(0 20 6 / .75); --d-line: rgb(0 255 70 / .45); --d-text: #b8ffc8;
+  --y-bg: rgb(0 20 6 / .75); --y-line: rgb(0 255 70 / .45); --y-text: #b8ffc8;
+}
+.dyn-matrix .card-art { background: rgb(0 8 2 / .55); }
+.fx-matrix { position: absolute; inset: 0; }
+.fx-matrix span {
+  position: absolute;
+  top: 0;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font: 600 14px/1 var(--mono);
+  letter-spacing: 2px;
+  color: #22ff55;
+  text-shadow: 0 0 6px rgb(34 255 85 / .8);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 75%, #fff);
+  mask-image: linear-gradient(to bottom, transparent, #000 75%, #fff);
+  animation: mx-fall linear infinite;
+}
+@keyframes mx-fall { from { transform: translateY(-110%); } to { transform: translateY(600px); } }
+
+/* Glitch */
+.dyn-glitch .card {
+  --skin-from: #0b0b14; --skin-to: #050508;
+  --block-bg: #10101c; --block-border: #2a2a44; --art-border: #2a2a44;
+  --title: #f4f4ff; --text: #c9c9e6; --flavor: #ff2bd6;
+  --c-bg: #07070d; --c-head: #12121f; --c-line: #2a2a44; --c-text: #e6e6ff; --c-title: #f4f4ff; --c-key: #00f0ff; --c-num: #ff2bd6;
+  --d-bg: rgb(0 240 255 / .08); --d-line: #00f0ff; --d-text: #00f0ff;
+  --y-bg: rgb(255 43 214 / .08); --y-line: #ff2bd6; --y-text: #ff2bd6;
+}
+.dyn-glitch .card-art { background: #10101c; }
+.dyn-glitch .card-name span { position: relative; display: inline-block; }
+.dyn-glitch .card-name span::before, .dyn-glitch .card-name span::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.dyn-glitch .card-name span::before { color: #00f0ff; animation: gl-a 3.2s infinite steps(1); }
+.dyn-glitch .card-name span::after { color: #ff2bd6; animation: gl-b 3.2s infinite steps(1); }
+@keyframes gl-a {
+  0%, 88%, 100% { opacity: 0; transform: none; }
+  89% { opacity: .9; transform: translate(-3px, -1px); clip-path: inset(0 0 55% 0); }
+  92% { opacity: .9; transform: translate(2px, 1px); clip-path: inset(40% 0 10% 0); }
+  95% { opacity: 0; }
+}
+@keyframes gl-b {
+  0%, 88%, 100% { opacity: 0; transform: none; }
+  89% { opacity: .9; transform: translate(3px, 1px); clip-path: inset(50% 0 0 0); }
+  93% { opacity: .9; transform: translate(-2px, 0); clip-path: inset(10% 0 60% 0); }
+  96% { opacity: 0; }
+}
+.dyn-glitch .card-art img, .dyn-glitch .card-art svg { animation: gl-img 3.2s infinite steps(1); }
+@keyframes gl-img {
+  0%, 88%, 100% { transform: none; filter: none; clip-path: none; }
+  89% { transform: translateX(-6px); filter: drop-shadow(4px 0 #ff2bd6) drop-shadow(-4px 0 #00f0ff); clip-path: inset(10% 0 55% 0); }
+  91% { transform: translateX(5px); filter: drop-shadow(-3px 0 #ff2bd6) drop-shadow(3px 0 #00f0ff); clip-path: inset(50% 0 20% 0); }
+  93% { transform: none; filter: drop-shadow(2px 0 #ff2bd6) drop-shadow(-2px 0 #00f0ff); clip-path: none; }
+}
+/* bande de parasites, posée au-dessus des blocs (le fond n'est pas découpé pour cette skin) */
+.dyn-glitch .card-skin { overflow: visible; }
+.dyn-glitch .card { clip-path: inset(0 round 20px); }
+.fx-noise {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 26px;
+  z-index: 7;
+  background: repeating-linear-gradient(90deg, rgb(255 43 214 / .45) 0 3px, transparent 3px 7px, rgb(0 240 255 / .45) 7px 9px, transparent 9px 16px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: gl-noise 3.2s infinite steps(1);
+}
+@keyframes gl-noise {
+  0%, 87%, 100% { opacity: 0; }
+  88% { opacity: 1; transform: translateY(120px); }
+  91% { opacity: 1; transform: translateY(380px); }
+  94% { opacity: 0; }
+}
+
+/* Circuit */
+.dyn-circuit .card {
+  --skin-from: #04130f; --skin-to: #020a08;
+  --block-bg: rgb(4 19 15 / .82); --block-border: rgb(52 211 153 / .3); --art-border: rgb(52 211 153 / .35);
+  --title: #ecfdf5; --text: #a7f3d0; --flavor: #6ee7b7;
+  --c-bg: rgb(1 8 6 / .88); --c-head: rgb(6 28 22 / .9); --c-line: rgb(52 211 153 / .3); --c-text: #d1fae5; --c-title: #ecfdf5; --c-key: #fcd34d; --c-num: #fcd34d;
+  --d-bg: rgb(6 28 22 / .85); --d-line: rgb(52 211 153 / .45); --d-text: #6ee7b7;
+  --y-bg: rgb(28 24 6 / .85); --y-line: rgb(252 211 77 / .45); --y-text: #fcd34d;
+}
+.dyn-circuit .card-art { background: rgb(4 19 15 / .5); }
+.fx-circuit { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fx-circuit .trace { fill: none; stroke: color-mix(in srgb, var(--type) 40%, #0d3b2e); stroke-width: 2; }
+.fx-circuit .node { fill: #04130f; stroke: color-mix(in srgb, var(--type) 70%, #34d399); stroke-width: 2; }
+.fx-circuit .pulse {
+  fill: none;
+  stroke: color-mix(in srgb, var(--type) 60%, #fff);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 18 900;
+  filter: drop-shadow(0 0 4px var(--type));
+  animation: ci-pulse linear infinite;
+}
+@keyframes ci-pulse { from { stroke-dashoffset: 918; } to { stroke-dashoffset: 0; } }
+
+/* Monitoring */
+.dyn-monitoring .card {
+  --skin-from: #111217; --skin-to: #0b0c10;
+  --block-bg: rgb(24 27 31 / .86); --block-border: #2c3038; --art-border: #2c3038;
+  --title: #e6e8eb; --text: #b5bac4; --flavor: #8e94a0;
+  --c-bg: rgb(13 14 18 / .92); --c-head: #1a1d23; --c-line: #2c3038; --c-text: #d8dbe0; --c-title: #e6e8eb; --c-key: #73bf69; --c-num: #f2cc0c;
+  --d-bg: rgb(24 27 31 / .9); --d-line: #5794f2; --d-text: #8ab8ff;
+  --y-bg: rgb(24 27 31 / .9); --y-line: #f2cc0c; --y-text: #f2cc0c;
+}
+.dyn-monitoring .card-skin {
+  background:
+    linear-gradient(rgb(255 255 255 / .05) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(90deg, rgb(255 255 255 / .05) 1px, transparent 1px) 0 0 / 31px 100%,
+    linear-gradient(var(--skin-from), var(--skin-to));
+}
+.dyn-monitoring .card-art { background: rgb(24 27 31 / .6); }
+.fx-mon { position: absolute; inset: 0; overflow: hidden; }
+.fx-mon svg { width: 200%; height: 100%; animation: mon-scroll 12s linear infinite; }
+.fx-mon polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.fx-mon .l1 { stroke: #73bf69; }
+.fx-mon .l2 { stroke: #5794f2; }
+.fx-mon .l3 { stroke: color-mix(in srgb, var(--type) 80%, #fff); }
+@keyframes mon-scroll { to { transform: translateX(-50%); } }
+.dyn-monitoring .card-name::after {
+  content: "";
+  position: absolute;
+  right: 92px;
+  top: 25px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #73bf69;
+  animation: mon-led 1.6s ease-out infinite;
+}
+.dyn-monitoring .card[data-type="incident"] .card-name::after { background: #f2495c; animation-name: mon-led-red; }
+@keyframes mon-led { from { box-shadow: 0 0 0 0 rgb(115 191 105 / .7); } to { box-shadow: 0 0 0 9px rgb(115 191 105 / 0); } }
+@keyframes mon-led-red { from { box-shadow: 0 0 0 0 rgb(242 73 92 / .8); } to { box-shadow: 0 0 0 9px rgb(242 73 92 / 0); } }
+
+/* Synthwave Drive */
+.dyn-drive .card {
+  --skin-from: #12002b; --skin-to: #050010;
+  --block-bg: rgb(18 4 40 / .62); --block-border: rgb(255 79 216 / .45); --art-border: rgb(255 79 216 / .5);
+  --title: #ffe9fb; --text: #ffc7f2; --flavor: #ff71ce;
+  --c-bg: rgb(10 0 24 / .82); --c-head: rgb(30 6 60 / .85); --c-line: rgb(255 79 216 / .4); --c-text: #ffe9fb; --c-title: #ffe9fb; --c-key: #01cdfe; --c-num: #fffb96;
+  --d-bg: rgb(1 205 254 / .14); --d-line: #01cdfe; --d-text: #01cdfe;
+  --y-bg: rgb(255 251 150 / .1); --y-line: #fffb96; --y-text: #fffb96;
+}
+.dyn-drive .card-skin { background: linear-gradient(to bottom, #12002b, #3a0a5a 46%, #050010 46.2%); }
+.dyn-drive .card-art { background: rgb(18 4 40 / .45); }
+.fx-sun {
+  position: absolute;
+  left: 50%;
+  top: 96px;
+  width: 210px;
+  height: 210px;
+  margin-left: -105px;
+  border-radius: 50%;
+  background: linear-gradient(#fffb96, #ff71ce 55%, #b026ff);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 52%, transparent 52% 56%, #000 56% 64%, transparent 64% 69%, #000 69% 76%, transparent 76% 82%, #000 82% 88%, transparent 88%);
+  mask-image: linear-gradient(to bottom, #000 0 52%, transparent 52% 56%, #000 56% 64%, transparent 64% 69%, #000 69% 76%, transparent 76% 82%, #000 82% 88%, transparent 88%);
+}
+.fx-floor { position: absolute; left: -40%; right: -40%; top: 46%; bottom: 0; perspective: 160px; overflow: hidden; }
+.fx-grid {
+  position: absolute;
+  inset: 0 0 -100%;
+  transform-origin: 50% 0;
+  transform: rotateX(62deg);
+  background:
+    linear-gradient(rgb(255 79 216 / .9) 2px, transparent 2px) 0 0 / 100% 36px,
+    linear-gradient(90deg, rgb(1 205 254 / .7) 2px, transparent 2px) 0 0 / 36px 100%;
+  animation: dr-run 1.2s linear infinite;
+}
+@keyframes dr-run { to { background-position: 0 36px, 0 0; } }
+
+/* Aurore */
+.dyn-aurora .card {
+  --skin-from: #050816; --skin-to: #02030a;
+  --block-bg: rgb(255 255 255 / .07); --block-border: rgb(255 255 255 / .16); --art-border: rgb(255 255 255 / .2);
+  --title: #fff; --text: #e2e8f0; --flavor: #cbd5e1;
+  --c-bg: rgb(2 6 23 / .55); --c-head: rgb(255 255 255 / .05); --c-line: rgb(255 255 255 / .14); --c-text: #e2e8f0; --c-title: #f1f5f9;
+  --d-bg: rgb(103 232 249 / .1); --d-line: rgb(103 232 249 / .4); --d-text: #a5f3fc;
+  --y-bg: rgb(253 224 71 / .1); --y-line: rgb(253 224 71 / .4); --y-text: #fde68a;
+}
+.dyn-aurora .card-skin { background: linear-gradient(#050816, #02030a); }
+.dyn-aurora .card-art { background: rgb(255 255 255 / .05); }
+.dyn-aurora .card-block, .dyn-aurora .card-stat { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.fx-blob { position: absolute; width: 300px; height: 300px; border-radius: 50%; filter: blur(46px); opacity: .85; }
+.fx-blob.b1 { background: var(--type); left: -80px; top: -40px; animation: au-1 14s ease-in-out infinite alternate; }
+.fx-blob.b2 { background: #22d3ee; right: -110px; top: 200px; animation: au-2 17s ease-in-out infinite alternate; }
+.fx-blob.b3 { background: #a855f7; left: 20px; bottom: -140px; animation: au-3 12s ease-in-out infinite alternate; }
+@keyframes au-1 { to { transform: translate(140px, 160px) scale(1.2); } }
+@keyframes au-2 { to { transform: translate(-150px, -120px) scale(.85); } }
+@keyframes au-3 { to { transform: translate(120px, -200px) scale(1.15); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dyn *, .dyn *::before, .dyn *::after { animation: none !important; }
+}

@@ -988,3 +988,35 @@ async fn shape_is_saved_rendered_and_filterable() {
         "{body}"
     );
 }
+
+#[tokio::test]
+async fn concepts_document_is_served_behind_login() {
+    let t = app_with_rules(&[], Some(RULES)).await;
+    // sans document généré : page explicative en 404
+    let (status, _, body) = send(&t.app, get("/regles/concepts")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(body.contains("tools/concepts/gen.py"));
+    assert_eq!(
+        send(&t.app, get("/regles/concepts/document")).await.0,
+        StatusCode::NOT_FOUND
+    );
+
+    std::fs::write(
+        t.dir.join("concepts.html"),
+        "<title>Carte DCB v2</title><p>doc</p>",
+    )
+    .unwrap();
+    let (status, _, body) = send(&t.app, get("/regles/concepts")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains(r#"<iframe class="concepts-frame" src="/regles/concepts/document""#));
+    let (status, _, body) = send(&t.user, get("/regles/concepts/document")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("<p>doc</p>"));
+    // réservé aux joueurs connectés
+    let (status, location, _) = send(&t.anon, get("/regles/concepts/document")).await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    assert!(location.unwrap().starts_with("/login"));
+    // lien depuis les règles
+    let (_, _, rules) = send(&t.app, get("/regles")).await;
+    assert!(rules.contains(r#"href="/regles/concepts""#));
+}

@@ -1,0 +1,706 @@
+<meta charset="utf-8">
+<title>Carte DCB v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap">
+<style>
+/* Mise en page : comparaison avant/après en tête, puis la proposition appliquée à six vraies cartes. */
+:root {
+  --bg: #070b14;
+  --panel: #0e1524;
+  --line: #1e293b;
+  --text: #e2e8f0;
+  --text-2: #94a3b8;
+  --accent: #38bdf8;
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 56px;
+}
+.eyebrow { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+h1 { margin: 0; font-size: 34px; line-height: 1.15; text-wrap: balance; }
+h2 { margin: 0 0 20px; font-size: 20px; text-wrap: balance; }
+.lead { margin: 10px 0 0; max-width: 62ch; color: var(--text-2); }
+section > .lead { margin: -12px 0 20px; }
+.lead code, .notes code { font-family: var(--mono); font-size: .88em; color: var(--text); }
+
+.compare { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.side { display: grid; gap: 14px; justify-items: start; }
+.side .card-frame { --s: .72; }
+.radius .side .card-frame { --s: .9; }
+.side .note { margin: 0; max-width: 337px; font-size: 13px; color: var(--text-2); }
+.tag { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.tag b { color: var(--accent); font-weight: 600; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: -24px; }
+.notes article { min-width: 0; border-top: 1px solid var(--line); padding-top: 14px; }
+.notes h3 { margin: 0 0 4px; font-size: 15px; }
+.notes p { margin: 0; color: var(--text-2); font-size: 14px; }
+
+.gallery { display: flex; flex-wrap: wrap; gap: 28px 24px; }
+.pick { margin: 0; display: grid; gap: 10px; }
+.pick .card-frame { --s: .62; }
+.pick figcaption { font-size: 13px; color: var(--text-2); }
+
+/* ------------------------------------------------------------------ carte (card.css du repo) */
+/*CARD_CSS*/
+
+/* Ancienne icône d'image vide (l'app affiche désormais l'icône du type, voir l'idée 1) */
+.card-art-empty { width: 56px; height: 56px; color: #cbd5e1; }
+
+/* ------------------------------------------------------------------ proposition v2 */
+/* 1. Plus de case Rarity : les deux cases restantes se partagent la largeur. */
+.card.v2 .card-stat { width: 163px; }
+.card.v2 .card-stat-daily { left: 192px; }
+
+/* 2. Bloc Effect façon éditeur de code, même cadre et mêmes cotes que l'actuel. */
+.card-code {
+  --code-bg: #0b1120;
+  --code-head: #111a2e;
+  --code-line: #1e293b;
+  background: var(--code-bg);
+  border-color: var(--code-line);
+  font-family: var(--mono);
+}
+.card[data-skin="dark"] .card-code { --code-bg: #060a14; --code-head: #0d1424; border-color: #334155; }
+.code-head {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  background: var(--code-head);
+  border-bottom: 1px solid var(--code-line);
+  font-size: 10px;
+  color: #94a3b8;
+}
+.code-dots { display: flex; gap: 4px; }
+.code-dots i { width: 6px; height: 6px; border-radius: 50%; background: #334155; }
+.code-dots i:first-child { background: var(--type); }
+.code-file { font-weight: 500; color: #cbd5e1; }
+/* Titre effect.yaml à la taille du titre Description (14 px, gras). */
+.code-head { height: 24px; font-size: 14px; }
+.code-file { font-weight: 700; color: #f1f5f9; }
+.code-lang { margin-left: auto; font-size: 9px; font-weight: 600; letter-spacing: .08em; color: var(--type); }
+.code-body {
+  list-style: none;
+  margin: 0;
+  padding: 5px 8px 0 0;
+  counter-reset: ln;
+  font-size: 11px;
+  line-height: 15px;
+  color: #e2e8f0;
+}
+.code-body li {
+  counter-increment: ln;
+  display: grid;
+  grid-template-columns: 22px 13px 1fr;
+}
+.code-body li::before {
+  content: counter(ln);
+  padding-right: 7px;
+  text-align: right;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+.y-val { min-width: 0; overflow-wrap: anywhere; }
+.y-dash { color: #64748b; }
+.y-key { color: #7dd3fc; }
+.y-num { color: #fdba74; }
+.y-comment { color: #64748b; font-style: italic; }
+.code-body li > .y-dash:only-child { grid-column: 2 / -1; }
+
+/* 3. Version B : bloc YAML nu, clé effect: puis la liste indentée. */
+.card-yaml {
+  background: #0b1120;
+  border-color: #1e293b;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: #e2e8f0;
+  padding: 8px 10px 0;
+}
+.card[data-skin="dark"] .card-yaml { background: #060a14; border-color: #334155; }
+.yaml-root { margin: 0; }
+.yaml-list { list-style: none; margin: 0; padding: 0; }
+.yaml-list li { display: grid; grid-template-columns: 2ch 2ch 1fr; }
+.yaml-list li::before { content: ""; }
+/* Variantes d'arrondi de la version A (le bloc garde 12 px sur les autres cartes). */
+.card-code.r-small { border-radius: 6px; }
+.card-code.r-corner { border-radius: 0 12px 12px 12px; }
+
+/* Sans numéros de ligne. */
+.code-body { padding: 5px 8px 0 9px; }
+.code-body li { grid-template-columns: 13px 1fr; }
+.code-body li::before { content: none; }
+.code-body li > .y-dash:only-child { grid-column: 1 / -1; }
+
+/* Polices : trois essais. */
+.font-mono .card, .font-mono .card-code { font-family: var(--mono); }
+.font-inter .card-code { font-family: "Inter", system-ui, sans-serif; }
+.font-inter .code-body { font-size: 12px; }
+.font-mixed .code-file, .font-mixed-light .code-file { font-family: "Inter", system-ui, sans-serif; }
+.font-mixed-light .code-file { font-weight: 600; color: #d5dde8; }
+
+/* Type de carte en capitales */
+.card-type { text-transform: uppercase; font-weight: 600; letter-spacing: .02em; }
+/* RESSOURCE en capitales dépasse les 76 px du badge à 14 px */
+.card[data-type="hr"] .card-type { font-size: 12px; letter-spacing: 0; }
+
+/* ------------------------------------------------------------------ contours */
+.stroke .card-frame { --s: .56; }
+.stroke .gallery { gap: 20px; }
+
+/* Néon */
+.st-glow .card-stroke {
+  border-width: 2px;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--type) 60%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--type) 35%, transparent);
+}
+
+/* Dégradé, et reflet qui tourne : trait dessiné par un fond découpé au masque */
+.st-gradient .card-stroke, .st-sweep .card-stroke {
+  border: 0;
+  padding: 3px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.st-gradient .card-stroke {
+  background: linear-gradient(135deg,
+    var(--type) 0%,
+    color-mix(in srgb, var(--type) 35%, #fff) 45%,
+    var(--type) 75%,
+    color-mix(in srgb, var(--type) 70%, #000) 100%);
+}
+@property --sweep { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes dcb-sweep { to { --sweep: 360deg; } }
+.st-sweep .card-stroke {
+  padding: 2.5px;
+  background:
+    conic-gradient(from var(--sweep),
+      transparent 0deg, var(--type) 40deg, color-mix(in srgb, var(--type) 30%, #fff) 60deg,
+      var(--type) 80deg, transparent 130deg, transparent 360deg),
+    color-mix(in srgb, var(--type) 35%, transparent);
+  animation: dcb-sweep 6s linear infinite;
+}
+
+/* Double filet */
+.st-double .card-stroke { border-width: 2px; }
+.st-double .card-stroke::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--type) 45%, transparent);
+  border-radius: 11px;
+}
+
+/* Coins de viseur */
+.st-corners .card-stroke {
+  -webkit-mask:
+    linear-gradient(#000 0 0) top left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) top right / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 56px 56px no-repeat;
+  mask:
+    linear-gradient(#000 0 0) top left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) top right / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 56px 56px no-repeat;
+}
+.st-corners .card-skin {
+  outline: 1px solid color-mix(in srgb, var(--type) 40%, transparent);
+  outline-offset: -9px;
+}
+
+/* Coins coupés : la carte et le trait sont biseautés (carte 374 × 574, trait 360 × 560) */
+.st-chamfer .card {
+  border-radius: 0;
+  clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 22px, 100% calc(100% - 22px),
+                     calc(100% - 22px) 100%, 22px 100%, 0 calc(100% - 22px), 0 22px);
+}
+.st-chamfer .card-skin { border-radius: 0; }
+.st-chamfer .card-stroke {
+  border: 0;
+  border-radius: 0;
+  background: var(--type);
+  clip-path: polygon(evenodd,
+    16px 0, 344px 0, 360px 16px, 360px 544px, 344px 560px, 16px 560px, 0 544px, 0 16px, 16px 0,
+    17.5px 3px, 3px 17.5px, 3px 542.5px, 17.5px 557px, 342.5px 557px, 357px 542.5px, 357px 17.5px, 342.5px 3px, 17.5px 3px);
+}
+.st-chamfer.st { filter: drop-shadow(0 8px 18px rgb(2 6 23 / .45)); }
+
+/* Barre d'accent */
+.st-topbar .card-stroke { border-width: 1.5px; border-color: color-mix(in srgb, var(--type) 70%, transparent); }
+.st-topbar .card-stroke::before {
+  content: "";
+  position: absolute;
+  top: -1.5px;
+  left: 60px;
+  right: 60px;
+  height: 5px;
+  border-radius: 0 0 5px 5px;
+  background: var(--type);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--type) 55%, transparent);
+}
+
+/* Fond teinté */
+.st-tinted .card-skin {
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--type) 22%, var(--skin-from)),
+    color-mix(in srgb, var(--type) 8%, var(--skin-to)));
+}
+.st-tinted .card-stroke { border-width: 1px; border-color: color-mix(in srgb, var(--type) 55%, transparent); }
+
+@media (prefers-reduced-motion: reduce) { .st-sweep .card-stroke { animation: none; } }
+
+/* ------------------------------------------------------------------ idées */
+.part { border-top: 1px solid var(--line); padding-top: 48px; }
+
+/* 1. Illustration absente : fond du type, motif et icône */
+.o-artfill .card-art {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--type) 24%, #fff), color-mix(in srgb, var(--type) 8%, #fff));
+  border-color: color-mix(in srgb, var(--type) 25%, var(--art-border));
+}
+.o-artfill[data-skin="dark"] .card-art {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--type) 30%, #0f172a), #0b1120);
+}
+.art-fill {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background-image: radial-gradient(color-mix(in srgb, var(--type) 35%, transparent) 1.2px, transparent 1.6px);
+  background-size: 14px 14px;
+}
+.art-fill-icon { width: 76px; height: 76px; color: var(--type); stroke-width: 1.4; opacity: .9; }
+
+/* 2. Badge de type */
+.type-pill {
+  position: absolute;
+  top: 101px;
+  left: 31px;
+  z-index: 3;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  background: var(--type);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(2 6 23 / .3);
+}
+.type-pill svg { width: 14px; height: 14px; stroke-width: 2.2; }
+.card[data-type="resource"] .type-pill { color: #082f49; }
+.o-badge .card-name { padding-right: 12px; }
+
+/* 3. Coûts compacts */
+.o-chips .card-effect { height: 135px; }
+.o-chips .card-stat {
+  top: 494px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  text-align: left;
+}
+.o-chips .card-stat-value { position: static; font-size: 22px; line-height: 1; }
+.o-chips .card-stat-label { position: static; margin-left: auto; font-size: 11px; font-weight: 600; }
+.stat-ico { display: grid; place-items: center; width: 20px; height: 20px; }
+.stat-ico svg { width: 18px; height: 18px; }
+
+/* 4. Nom sur l'illustration */
+.o-overlay .card-art { top: 19px; height: 250px; }
+.art-shade { position: absolute; inset: auto 0 0; height: 55%; background: linear-gradient(transparent, rgb(2 6 23 / .82)); }
+.o-overlay .card-name {
+  top: 197px;
+  height: 70px;
+  z-index: 2;
+  align-items: flex-end;
+  padding: 0 14px 12px;
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 24px;
+  text-shadow: 0 1px 8px rgb(2 6 23 / .6);
+}
+.o-overlay .card-name[data-size="m"] { font-size: 20px; }
+.o-overlay .card-name[data-size="s"] { font-size: 17px; }
+.o-overlay .type-pill { top: 31px; }
+
+/* 5a. Description sans titre */
+.o-notitle .card-description .card-block-text { top: 7px; }
+
+/* 5b. Description en commentaire */
+.o-comment .card-effect { top: 279px; height: 180px; }
+.o-comment.o-chips .card-effect { height: 205px; }
+.code-body li.y-c { display: block; padding-left: 2ch; text-indent: -2ch; margin-bottom: 3px; }
+.code-body li.y-c .y-comment { color: #7c8aa3; }
+
+/* 6. Numéro de collection */
+.o-serial .card-flavor { left: 18px; right: 96px; text-align: left; }
+.card-serial {
+  position: absolute;
+  top: 546px;
+  right: 18px;
+  margin: 0;
+  font: 600 10px/18px var(--mono);
+  letter-spacing: .04em;
+  color: var(--type);
+}
+.card-serial span { opacity: .55; }
+
+/* 7. Texte d'ambiance terminal */
+.o-term .card-flavor { font-family: var(--mono); font-style: normal; font-size: 11px; line-height: 18px; }
+.o-term .card-flavor b { color: var(--type); }
+.cursor {
+  display: inline-block;
+  width: 6px;
+  height: 11px;
+  margin-left: 3px;
+  vertical-align: -1px;
+  background: var(--type);
+  animation: dcb-blink 1.1s steps(1) infinite;
+}
+@keyframes dcb-blink { 50% { opacity: 0; } }
+
+/* 8. Cartes citées */
+.y-ref { --rtype: #94a3b8; color: color-mix(in srgb, var(--rtype) 65%, #fff); text-decoration: underline dotted; text-underline-offset: 2px; }
+.y-ref[data-type="resource"] { --rtype: #38bdf8; }
+.y-ref[data-type="incident"] { --rtype: #f83838; }
+.y-ref[data-type="hr"]       { --rtype: #6d68ff; }
+.y-ref[data-type="app"]      { --rtype: #f88838; }
+.y-ref[data-type="event"]    { --rtype: #a538f8; }
+
+/* 9. Relief de la peau claire */
+.o-relief[data-skin="light"] .card-block:not(.card-code),
+.o-relief[data-skin="light"] .card-stat {
+  border-color: #eef2f7;
+  box-shadow: 0 1px 2px rgb(15 23 42 / .06), 0 8px 18px -8px rgb(15 23 42 / .18);
+}
+.o-relief[data-skin="light"] .card-skin { background: linear-gradient(to bottom, #eef2f7, #d9e1ec); }
+
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+
+/* ------------------------------------------------------------------ skins */
+/* Variables communes : celles de card.css, plus le bloc de code et les deux cases de coût. */
+.sk .card-art { background: var(--block-bg); }
+.sk .card-art-empty { color: color-mix(in srgb, var(--text) 35%, transparent); }
+.sk .card-code { --code-bg: var(--c-bg); --code-head: var(--c-head); --code-line: var(--c-line); border-color: var(--c-line); }
+.sk .code-body { color: var(--c-text); }
+.sk .code-file { color: var(--c-title); }
+.sk .y-key { color: var(--c-key, #7dd3fc); }
+.sk .y-num { color: var(--c-num, #fdba74); }
+.sk .card-stat-deploy { background: var(--d-bg); border-color: var(--d-line); color: var(--d-text); }
+.sk .card-stat-daily  { background: var(--y-bg); border-color: var(--y-line); color: var(--y-text); }
+
+.sk-terminal .card {
+  --skin-from: #0b120b; --skin-to: #020502;
+  --block-bg: #050b06; --block-border: #14532d; --art-border: #166534;
+  --title: #86efac; --text: #4ade80; --flavor: #22c55e;
+  --c-bg: #000; --c-head: #03140a; --c-line: #14532d; --c-text: #bbf7d0; --c-title: #86efac; --c-key: #fde047; --c-num: #67e8f9;
+  --d-bg: #04210f; --d-line: #166534; --d-text: #86efac;
+  --y-bg: #1f1a05; --y-line: #713f12; --y-text: #fcd34d;
+}
+.sk-terminal .card-skin {
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(34 197 94 / .05) 2px 3px),
+    linear-gradient(to bottom, var(--skin-from), var(--skin-to));
+}
+
+.sk-dracula .card {
+  --skin-from: #343746; --skin-to: #1e1f29;
+  --block-bg: #282a36; --block-border: #44475a; --art-border: #44475a;
+  --title: #f8f8f2; --text: #e6e6e0; --flavor: #bd93f9;
+  --c-bg: #1e1f29; --c-head: #2b2d3a; --c-line: #44475a; --c-text: #f8f8f2; --c-title: #f8f8f2; --c-key: #ff79c6; --c-num: #bd93f9;
+  --d-bg: #1f2b3a; --d-line: #8be9fd; --d-text: #8be9fd;
+  --y-bg: #2e2e22; --y-line: #f1fa8c; --y-text: #f1fa8c;
+}
+
+.sk-solarized .card {
+  --skin-from: #fdf6e3; --skin-to: #eee8d5;
+  --block-bg: #fffbf0; --block-border: #e4dcc4; --art-border: #e4dcc4;
+  --title: #073642; --text: #586e75; --flavor: #657b83;
+  --c-bg: #002b36; --c-head: #073642; --c-line: #0b4452; --c-text: #93a1a1; --c-title: #eee8d5; --c-key: #268bd2; --c-num: #cb4b16;
+  --d-bg: #e7f1f5; --d-line: #268bd2; --d-text: #1a6a9a;
+  --y-bg: #f6eed6; --y-line: #b58900; --y-text: #8a6800;
+}
+
+.sk-nord .card {
+  --skin-from: #3b4252; --skin-to: #2e3440;
+  --block-bg: #3b4252; --block-border: #4c566a; --art-border: #4c566a;
+  --title: #eceff4; --text: #d8dee9; --flavor: #88c0d0;
+  --c-bg: #2e3440; --c-head: #353c4a; --c-line: #4c566a; --c-text: #e5e9f0; --c-title: #eceff4; --c-key: #88c0d0; --c-num: #d08770;
+  --d-bg: #344152; --d-line: #88c0d0; --d-text: #8fbcbb;
+  --y-bg: #44413a; --y-line: #ebcb8b; --y-text: #ebcb8b;
+}
+
+.sk-blueprint .card {
+  --skin-from: #1e4fa3; --skin-to: #123473;
+  --block-bg: rgb(255 255 255 / .06); --block-border: rgb(255 255 255 / .55); --art-border: rgb(255 255 255 / .6);
+  --title: #fff; --text: #dbeafe; --flavor: #bfdbfe;
+  --c-bg: rgb(4 18 48 / .6); --c-head: rgb(255 255 255 / .08); --c-line: rgb(255 255 255 / .45); --c-text: #e0ecff; --c-title: #fff; --c-key: #fde68a; --c-num: #fde68a;
+  --d-bg: rgb(255 255 255 / .06); --d-line: rgb(255 255 255 / .55); --d-text: #fff;
+  --y-bg: rgb(255 255 255 / .06); --y-line: rgb(255 255 255 / .55); --y-text: #fff;
+}
+.sk-blueprint .card-skin {
+  background:
+    linear-gradient(rgb(255 255 255 / .1) 1px, transparent 1px) 0 0 / 100% 94px,
+    linear-gradient(90deg, rgb(255 255 255 / .1) 1px, transparent 1px) 0 0 / 94px 100%,
+    linear-gradient(rgb(255 255 255 / .05) 1px, transparent 1px) 0 0 / 100% 18.8px,
+    linear-gradient(90deg, rgb(255 255 255 / .05) 1px, transparent 1px) 0 0 / 18.8px 100%,
+    linear-gradient(to bottom, var(--skin-from), var(--skin-to));
+}
+.sk-blueprint .card-block:not(.card-code), .sk-blueprint .card-stat { border-style: dashed; }
+
+.sk-synthwave .card {
+  --skin-from: #2d1b4e; --skin-to: #0d0221;
+  --block-bg: rgb(20 6 40 / .78); --block-border: rgb(255 47 214 / .45); --art-border: rgb(255 47 214 / .55);
+  --title: #ffe5fb; --text: #f9c6f0; --flavor: #ff71ce;
+  --c-bg: #12021f; --c-head: #1d0633; --c-line: rgb(255 47 214 / .45); --c-text: #fbe3f7; --c-title: #ffe5fb; --c-key: #01cdfe; --c-num: #fffb96;
+  --d-bg: rgb(1 205 254 / .12); --d-line: #01cdfe; --d-text: #01cdfe;
+  --y-bg: rgb(255 251 150 / .1); --y-line: #fffb96; --y-text: #fffb96;
+}
+.sk-synthwave .card-skin {
+  background:
+    radial-gradient(120% 40% at 50% 100%, rgb(255 47 214 / .35), transparent 70%),
+    repeating-linear-gradient(to bottom, transparent 0 22px, rgb(255 113 206 / .12) 22px 23px) 0 70% / 100% 30% no-repeat,
+    linear-gradient(to bottom, var(--skin-from), #1a0b2e 55%, var(--skin-to));
+}
+
+.sk-glass .card {
+  --skin-from: #0f172a; --skin-to: #020617;
+  --block-bg: rgb(255 255 255 / .08); --block-border: rgb(255 255 255 / .18); --art-border: rgb(255 255 255 / .22);
+  --title: #fff; --text: #e2e8f0; --flavor: #cbd5e1;
+  --c-bg: rgb(2 6 23 / .55); --c-head: rgb(255 255 255 / .06); --c-line: rgb(255 255 255 / .16); --c-text: #e2e8f0; --c-title: #f1f5f9;
+  --d-bg: rgb(103 232 249 / .1); --d-line: rgb(103 232 249 / .45); --d-text: #a5f3fc;
+  --y-bg: rgb(253 224 71 / .1); --y-line: rgb(253 224 71 / .45); --y-text: #fde68a;
+}
+.sk-glass .card-skin {
+  background:
+    radial-gradient(60% 45% at 15% 10%, color-mix(in srgb, var(--type) 70%, transparent), transparent 70%),
+    radial-gradient(55% 40% at 90% 70%, color-mix(in srgb, var(--type) 45%, transparent), transparent 70%),
+    linear-gradient(160deg, #1e293b, #020617);
+}
+.sk-glass .card-block, .sk-glass .card-stat { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+.sk-kraft .card {
+  --skin-from: #d8c39c; --skin-to: #c3a97c;
+  --block-bg: #f5eddd; --block-border: #b9a27a; --art-border: #b9a27a;
+  --title: #3b2f1e; --text: #5b4a33; --flavor: #5b4a33;
+  --c-bg: #2b2418; --c-head: #362d1f; --c-line: #4a3e2b; --c-text: #f5eddd; --c-title: #f5eddd; --c-key: #e9b872; --c-num: #f0a35e;
+  --d-bg: #e5eee7; --d-line: #7aa08a; --d-text: #2f5d46;
+  --y-bg: #f3e3c3; --y-line: #b8893b; --y-text: #7a5416;
+}
+/*DYN_CSS*/
+
+/* ------------------------------------------------------------------ fenêtre agrandie */
+.wrap .card-frame { cursor: zoom-in; }
+.wrap .card-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 12px; }
+#card-modal {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgb(3 6 14 / .82);
+  color: var(--text);
+  overflow: hidden;
+}
+#card-modal::backdrop { background: rgb(3 6 14 / .5); backdrop-filter: blur(6px); }
+#card-modal[open] { display: grid; grid-template: 1fr auto / auto 1fr auto; align-items: center; animation: modal-in .22s ease-out; }
+#card-modal[open] .modal-holder { animation: modal-card-in .32s cubic-bezier(.2, .8, .2, 1); }
+@keyframes modal-in { from { opacity: 0; } }
+@keyframes modal-card-in { from { opacity: 0; transform: translateY(18px) scale(.94); } }
+.modal-stage { grid-column: 2; grid-row: 1; height: 100%; display: grid; place-items: center; }
+.modal-holder .card-frame { cursor: default; filter: drop-shadow(0 30px 60px rgb(0 0 0 / .55)); }
+.modal-info { grid-column: 1 / -1; grid-row: 2; display: flex; justify-content: center; gap: 16px; margin: 0; padding: 0 0 22px; font-size: 14px; color: var(--text-2); }
+.modal-count { font-variant-numeric: tabular-nums; opacity: .7; }
+.modal-btn {
+  width: 48px;
+  height: 48px;
+  margin: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  font: 400 26px/1 var(--sans);
+  cursor: pointer;
+}
+.modal-btn:hover { border-color: var(--accent); }
+.modal-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modal-prev { grid-column: 1; grid-row: 1; }
+.modal-next { grid-column: 3; grid-row: 1; }
+.modal-close { position: absolute; top: 18px; right: 0; width: 42px; height: 42px; font-size: 18px; z-index: 2; }
+/* reflet qui suit la souris, sur toutes les cartes de la fenêtre */
+.modal-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgb(255 255 255 / .38), rgb(255 255 255 / .08) 28%, transparent 55%);
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.card.is-lit .modal-glare { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #card-modal[open], #card-modal[open] .modal-holder { animation: none; }
+}
+
+/* Terminal CRT animé */
+.sk-crt .card {
+  --phos: #39ff6e;
+  --skin-from: #04200b; --skin-to: #010a03;
+  --block-bg: rgb(57 255 110 / .04); --block-border: rgb(57 255 110 / .45); --art-border: rgb(57 255 110 / .5);
+  --title: #8dffab; --text: #39ff6e; --flavor: #39ff6e;
+  --c-bg: rgb(0 0 0 / .4); --c-head: rgb(57 255 110 / .08); --c-line: rgb(57 255 110 / .4); --c-text: #5dff8a; --c-title: #8dffab; --c-key: #c4ffd4; --c-num: #c4ffd4;
+  --d-bg: rgb(57 255 110 / .05); --d-line: rgb(57 255 110 / .5); --d-text: #8dffab;
+  --y-bg: rgb(57 255 110 / .05); --y-line: rgb(57 255 110 / .5); --y-text: #8dffab;
+  animation: crt-flicker 7s infinite;
+}
+.sk-crt .card * { text-shadow: 0 0 3px rgb(57 255 110 / .75), 0 0 12px rgb(57 255 110 / .3); }
+.sk-crt .y-dash { color: rgb(57 255 110 / .55); }
+.sk-crt .card-name, .sk-crt .card-block-title, .sk-crt .code-file,
+.sk-crt .card-stat-value, .sk-crt .card-stat-label, .sk-crt .card-type, .sk-crt .card-flavor {
+  font-family: "VT323", var(--mono);
+  font-weight: 400;
+}
+.sk-crt .card-name { font-size: 28px; }
+.sk-crt .card-name[data-size="m"] { font-size: 22px; }
+.sk-crt .card-name[data-size="s"] { font-size: 19px; }
+.sk-crt .card-block-title, .sk-crt .code-file { font-size: 18px; top: 2px; }
+.sk-crt .card-block-text { font-family: var(--mono); font-size: 11.5px; }
+.sk-crt .card-type { color: var(--phos); font-size: 18px; }
+.sk-crt .card[data-type="hr"] .card-type { font-size: 16px; }
+.sk-crt .card-stat-value { font-size: 40px; }
+.sk-crt .card-stat-label { font-size: 15px; top: 45px; }
+.sk-crt .card-flavor { font-size: 16px; font-style: normal; }
+.sk-crt .card-flavor::before { content: "> "; }
+.sk-crt .card-flavor::after { content: "\2588"; margin-left: 4px; animation: dcb-blink 1s steps(1) infinite; }
+.sk-crt .card-art img { filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(5) brightness(.85) contrast(1.25); }
+.sk-crt .card-art-empty { color: rgb(57 255 110 / .6); }
+.sk-crt .card-skin {
+  background: radial-gradient(ellipse at 50% 45%, var(--skin-from), var(--skin-to) 80%);
+  box-shadow: inset 0 0 50px rgb(0 0 0 / .85), inset 0 0 8px rgb(57 255 110 / .3);
+}
+.sk-crt .card-stroke { box-shadow: 0 0 10px color-mix(in srgb, var(--type) 60%, transparent); }
+/* lignes de balayage qui défilent + coins assombris */
+.sk-crt .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: 20px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / .32) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 58%, rgb(0 0 0 / .6) 100%);
+  animation: crt-scan .35s linear infinite;
+}
+/* bande lumineuse qui descend */
+.sk-crt .card-stroke::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  right: -7px;
+  top: -7px;
+  height: 110px;
+  background: linear-gradient(to bottom, transparent, rgb(57 255 110 / .09) 50%, transparent);
+  animation: crt-roll 6s linear infinite;
+}
+@keyframes crt-scan { to { background-position: 0 3px, 0 0; } }
+@keyframes crt-roll { from { transform: translateY(-120px); } to { transform: translateY(600px); } }
+@keyframes crt-flicker {
+  0%, 100% { filter: brightness(1); }
+  2% { filter: brightness(.88); }
+  3% { filter: brightness(1.04); }
+  4% { filter: brightness(1); }
+  51% { filter: brightness(.95); }
+  52% { filter: brightness(1); }
+  80% { filter: brightness(1.03) blur(.15px); }
+  81% { filter: brightness(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-crt .card, .sk-crt .card::after, .sk-crt .card-stroke::after, .sk-crt .card-flavor::after { animation: none; }
+}
+
+.sk-kraft .card-skin {
+  background:
+    radial-gradient(rgb(90 64 30 / .12) 1px, transparent 1.4px) 0 0 / 7px 7px,
+    radial-gradient(rgb(255 255 255 / .12) 1px, transparent 1.4px) 3px 4px / 9px 9px,
+    linear-gradient(to bottom, var(--skin-from), var(--skin-to));
+}
+
+/* Version C : même bloc, interligne 14 px et marge haute réduite (6 lignes sous effect:). */
+.card-yaml.is-tight { line-height: 14px; padding-top: 5px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Maquette · contour de type</p>
+    <h1>Moderniser le contour de la carte</h1>
+    <p class="lead">Neuf styles pour le contour aux couleurs du type (cardTypeStroke), sur la base retenue (case Rarity retirée, bloc <code>effect.yaml</code> arrondi à 6 px, titre en Inter 600 et code en mono). Chaque style est montré sur App, Incident et Ressource humaine.</p>
+  </header>
+
+<!--STROKE-SECTIONS-->
+
+  <header class="part">
+    <p class="eyebrow">Maquette · autres idées</p>
+    <h1>Moderniser le reste de la carte</h1>
+    <p class="lead">Une section par idée, toutes avec le contour plein actuel pour ne comparer qu'une chose à la fois. La dernière combine tout.</p>
+  </header>
+
+<!--IDEA-SECTIONS-->
+
+  <header class="part">
+    <p class="eyebrow">Maquette · skins</p>
+    <h1>Nouvelles skins</h1>
+    <p class="lead">Huit skins en plus de Light et Dark, toutes sur la base retenue (contour plein, bloc <code>effect.yaml</code>, types en capitales). Chaque skin règle le fond, les blocs, les textes, le bloc de code et les deux cases de coût.</p>
+  </header>
+
+<!--SKIN-SECTIONS-->
+
+  <header class="part">
+    <p class="eyebrow">Maquette · skins dynamiques</p>
+    <h1>Skins animées</h1>
+    <p class="lead">Sept skins avec un effet en mouvement, sur la même base. Dans la galerie, elles ne s'animeraient qu'au survol, comme le reflet qui tourne.</p>
+  </header>
+
+<!--DYNAMIC-SECTIONS-->
+</div>
+<dialog id="card-modal" aria-label="Carte agrandie">
+  <button class="modal-btn modal-close" type="button" aria-label="Fermer">✕</button>
+  <button class="modal-btn modal-prev" type="button" aria-label="Carte précédente">‹</button>
+  <div class="modal-stage"></div>
+  <button class="modal-btn modal-next" type="button" aria-label="Carte suivante">›</button>
+  <p class="modal-info"><span class="modal-caption"></span><span class="modal-count"></span></p>
+</dialog>
+<script>
+/*DYN_JS*/
+</script>

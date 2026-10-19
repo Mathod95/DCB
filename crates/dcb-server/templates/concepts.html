@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Carte DCB v2 · Concepts{% endblock %}
+
+{% block content %}
+<div class="page-head concepts-head">
+  <div>
+    <a class="back" href="/regles">&larr; Règles</a>
+    <p class="eyebrow">Concepts</p>
+    <h1>Carte DCB v2</h1>
+    <p class="muted">Pistes de design pour la carte: styles de contour, idées de modernisation, skins et skins animées, dessinées avec les cartes de la collection. Clique sur une carte pour la voir en grand.</p>
+  </div>
+  {% if available %}<a class="btn" href="/regles/concepts/document" target="_blank" rel="noopener">Ouvrir en plein écran</a>{% endif %}
+</div>
+
+{% if available %}
+<iframe class="concepts-frame" src="/regles/concepts/document" title="Document Carte DCB v2"></iframe>
+{% else %}
+<div class="empty">
+  <p>Le document n'a pas encore été généré.</p>
+  <p class="muted">Lance <code>python3 tools/concepts/gen.py</code> pour créer <code>rules/concepts.html</code>.</p>
+</div>
+{% endif %}
+{% endblock %}

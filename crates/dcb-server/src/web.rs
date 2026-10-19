@@ -139,6 +139,8 @@ pub fn router(state: AppState) -> Router {
         .route("/", get(menu))
         .route("/gallery", get(gallery))
         .route("/regles", get(rules_page))
+        .route("/regles/concepts", get(concepts_page))
+        .route("/regles/concepts/document", get(concepts_document))
         .route("/reload", post(reload))
         .route("/cards/new", get(new_form))
         .route("/cards", post(create))
@@ -481,6 +483,52 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
     };
 
     Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, samples))?.into_response())
+}
+
+/// Document « Carte DCB v2 » (pistes de design), généré par `tools/concepts/gen.py` et rangé
+/// à côté du fichier des règles. Affiché dans la page /regles/concepts.
+fn concepts_file(s: &AppState) -> Option<std::path::PathBuf> {
+    s.rules_path
+        .as_ref()
+        .map(|p| p.with_file_name("concepts.html"))
+}
+
+async fn concepts_page(
+    State(s): State<AppState>,
+    CurrentUser(u): CurrentUser,
+) -> AppResult<Response> {
+    let available = match concepts_file(&s) {
+        Some(p) => tokio::fs::try_exists(&p).await.unwrap_or(false),
+        None => false,
+    };
+    let page = ConceptsPage {
+        ctx: s.ctx(&u),
+        available,
+    };
+    let status = if available {
+        StatusCode::OK
+    } else {
+        StatusCode::NOT_FOUND
+    };
+    Ok((status, render(page)?).into_response())
+}
+
+async fn concepts_document(State(s): State<AppState>, _user: CurrentUser) -> AppResult<Response> {
+    let Some(path) = concepts_file(&s) else {
+        return Err(AppError::NotFound);
+    };
+    match tokio::fs::read_to_string(&path).await {
+        Ok(body) => Ok((
+            [
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                (header::CACHE_CONTROL, "no-cache"),
+            ],
+            body,
+        )
+            .into_response()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(AppError::NotFound),
+        Err(e) => Err(AppError::Internal(e.into())),
+    }
 }
 
 async fn reload(State(s): State<AppState>, _editor: EditorUser) -> AppResult<Redirect> {

@@ -310,6 +310,14 @@ pub struct NotFoundPage {
 }
 
 #[derive(Template)]
+#[template(path = "concepts.html")]
+pub struct ConceptsPage {
+    pub ctx: Ctx,
+    /// `rules/concepts.html` existe.
+    pub available: bool,
+}
+
+#[derive(Template)]
 #[template(path = "forbidden.html")]
 pub struct ForbiddenPage {
     pub ctx: Ctx,
