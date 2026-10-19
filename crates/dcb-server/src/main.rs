@@ -132,6 +132,8 @@ async fn main() -> anyhow::Result<()> {
     // En production : éditeur coupé (cartes en lecture seule) et cookies Secure (HTTPS).
     let editor = env_flag("DCB_EDITOR", true);
     let secure_cookies = env_flag("DCB_SECURE_COOKIES", false);
+    // Mode démo : éditeur ouvert à tous, cartes créées en ligne perdues au déploiement suivant.
+    let sandbox = env_flag("DCB_SANDBOX", false);
 
     ensure_parent(&database_url)?;
     let pool = db::connect(&database_url).await?;
@@ -158,14 +160,17 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState::new(pool, accounts, CardStore::new(&cards_dir))
         .with_rules_file(&rules_file)
         .with_editor(editor)
-        .with_secure_cookies(secure_cookies);
+        .with_secure_cookies(secure_cookies)
+        .with_sandbox(sandbox);
     let n = state.reload().await?;
     tracing::info!(
         "{n} carte{} chargée{} depuis {}{}",
         if n > 1 { "s" } else { "" },
         if n > 1 { "s" } else { "" },
         cards_dir.display(),
-        if editor {
+        if sandbox {
+            " (mode démo: éditeur ouvert à tous, cartes non conservées)"
+        } else if editor {
             ""
         } else {
             " (éditeur désactivé, lecture seule)"

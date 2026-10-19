@@ -153,6 +153,20 @@ h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; }
   vertical-align: 3px;
 }
 .page-actions { display: flex; align-items: center; gap: 10px; }
+.demo-banner {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--money) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--money) 8%, var(--panel));
+  font-size: 14px;
+  color: var(--text-2);
+}
+.demo-banner strong { color: var(--money); white-space: nowrap; }
+.demo-note { margin: 0 0 14px; font-size: 14px; color: var(--money); }
 .page-actions form { margin: 0; }
 .menu-item:hover { text-decoration: none; transform: translateX(4px); border-color: var(--line-2); }
 .menu-item-title { font-size: 19px; font-weight: 700; }

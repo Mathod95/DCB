@@ -1084,3 +1084,90 @@ async fn simplified_menu_and_top_bar() {
     let (_, _, menu) = send(&t.user, get("/")).await;
     assert!(menu.contains("Documentation") && !menu.contains("/admin/users"));
 }
+
+#[tokio::test]
+async fn sandbox_lets_players_create_and_edit_only_their_cards() {
+    let mut t = app(&[("ddos.toml", DDOS)]).await;
+    t.state = t.state.clone().with_editor(false).with_sandbox(true);
+    t.rebuild();
+    // un second joueur
+    let other = auth::create_user(&t.state.app_db, "voisin", USER_PASSWORD, Role::User)
+        .await
+        .unwrap()
+        .unwrap();
+    let other_token = auth::create_session(&t.state.app_db, other).await.unwrap();
+    let voisin = with_session(router(t.state.clone()), &other_token);
+
+    // bandeau et bouton de création pour un joueur, sans rechargement ni fichiers à commiter
+    let (_, _, gallery) = send(&t.user, get("/gallery")).await;
+    assert!(gallery.contains("Mode démo") && gallery.contains("Nouvelle carte"));
+    assert!(!gallery.contains("Recharger"));
+    let (status, _, form_page) = send(&t.user, get("/cards/new")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(form_page.contains("Mode démo"));
+
+    // le joueur crée sa carte et peut la modifier
+    let (status, location, _) =
+        send(&t.user, multipart("/cards", &card_fields("Ma Carte", &[]))).await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    assert_eq!(location.as_deref(), Some("/cards/ma-carte"));
+    let (_, _, detail) = send(&t.user, get("/cards/ma-carte")).await;
+    assert!(detail.contains("/cards/ma-carte/edit") && detail.contains("Carte de démo"));
+    assert!(!detail.contains("Fichiers à commiter"));
+    assert_eq!(
+        send(&t.user, get("/cards/ma-carte/edit")).await.0,
+        StatusCode::OK
+    );
+    let (status, _, _) = send(
+        &t.user,
+        multipart("/cards/ma-carte", &card_fields("Ma Carte v2", &[])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+
+    // cartes du dépôt et cartes d'un autre joueur : lecture seule
+    let (_, _, detail) = send(&t.user, get("/cards/ddos")).await;
+    assert!(!detail.contains("/cards/ddos/edit") && !detail.contains("Carte de démo"));
+    let (_, _, detail) = send(&voisin, get("/cards/ma-carte")).await;
+    assert!(!detail.contains("/cards/ma-carte/edit"));
+    for (who, req) in [
+        (&t.user, get("/cards/ddos/edit")),
+        (
+            &t.user,
+            multipart("/cards/ddos", &card_fields("Pirate", &[])),
+        ),
+        (&t.user, post("/cards/ddos/delete")),
+        (&t.user, post("/reload")),
+        (&voisin, get("/cards/ma-carte/edit")),
+        (&voisin, post("/cards/ma-carte/delete")),
+    ] {
+        let uri = req.uri().to_string();
+        assert_eq!(send(who, req).await.0, StatusCode::FORBIDDEN, "{uri}");
+    }
+    assert!(t.cards().join("ddos.toml").exists());
+
+    // les visiteurs anonymes sont toujours renvoyés vers la connexion
+    assert_eq!(
+        send(&t.anon, get("/cards/new")).await.0,
+        StatusCode::SEE_OTHER
+    );
+
+    // l'admin peut tout faire, y compris supprimer la carte d'un joueur
+    assert_eq!(
+        send(&t.app, get("/cards/ddos/edit")).await.0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        send(&t.app, post("/cards/ma-carte/delete")).await.0,
+        StatusCode::SEE_OTHER
+    );
+    assert!(!t.cards().join("ma-carte.toml").exists());
+
+    // le joueur supprime sa propre carte
+    send(&t.user, multipart("/cards", &card_fields("Autre", &[]))).await;
+    assert_eq!(
+        send(&t.user, post("/cards/autre/delete")).await.0,
+        StatusCode::SEE_OTHER
+    );
+    assert!(!t.cards().join("autre.toml").exists());
+}

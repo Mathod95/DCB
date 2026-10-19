@@ -11,8 +11,13 @@ use crate::rules::{self, Rules, TypeEntry, inline};
 pub struct Ctx {
     pub username: Option<String>,
     pub is_admin: bool,
-    /// Admin avec l'éditeur activé : boutons de création, modification, rechargement.
+    /// Admin avec l'éditeur activé : rechargement, fichiers à commiter, erreurs de chargement.
     pub can_edit: bool,
+    /// Peut créer des cartes : l'admin quand l'éditeur est activé, tout joueur en mode démo.
+    pub can_create: bool,
+    /// Mode démo (`DCB_SANDBOX`) : les cartes créées en ligne disparaissent au prochain
+    /// déploiement.
+    pub sandbox: bool,
 }
 
 impl Ctx {
@@ -29,14 +34,19 @@ impl Ctx {
             .unwrap_or_default()
     }
 
-    pub fn for_user(user: Option<&User>, editor_enabled: bool) -> Self {
+    pub fn for_user(user: Option<&User>, editor_enabled: bool, sandbox: bool) -> Self {
         match user {
             None => Self::default(),
-            Some(u) => Self {
-                username: Some(u.username.clone()),
-                is_admin: u.is_admin(),
-                can_edit: u.is_admin() && editor_enabled,
-            },
+            Some(u) => {
+                let editor = editor_enabled || sandbox;
+                Self {
+                    username: Some(u.username.clone()),
+                    is_admin: u.is_admin(),
+                    can_edit: u.is_admin() && editor,
+                    can_create: editor && (u.is_admin() || sandbox),
+                    sandbox,
+                }
+            }
         }
     }
 }
@@ -184,6 +194,10 @@ pub struct GalleryPage {
 #[template(path = "detail.html")]
 pub struct DetailPage {
     pub ctx: Ctx,
+    /// Le visiteur peut modifier et supprimer cette carte.
+    pub can_modify: bool,
+    /// Carte créée en ligne en mode démo (elle disparaîtra au prochain déploiement).
+    pub demo_card: bool,
     pub card: CardView,
     /// Chemin du fichier source, affiché pour savoir quoi commiter.
     pub file: String,
@@ -429,6 +443,7 @@ pub struct AdminUsersPage {
     pub notice: Option<Notice>,
     pub new_username: String,
     pub editor_enabled: bool,
+    pub sandbox: bool,
 }
 
 #[cfg(test)]

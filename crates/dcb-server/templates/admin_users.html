@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Administration</p>
     <h1>Comptes</h1>
-    <p class="muted">{{ users.len() }} compte{% if users.len() != 1 %}s{% endif %}. Pas d'inscription libre: chaque joueur reçoit un compte créé ici.{% if !editor_enabled %} Éditeur de cartes désactivé sur ce serveur.{% endif %}</p>
+    <p class="muted">{{ users.len() }} compte{% if users.len() != 1 %}s{% endif %}. Pas d'inscription libre: chaque joueur reçoit un compte créé ici.{% if sandbox %} Mode démo: tous les joueurs peuvent créer des cartes, non conservées au déploiement suivant.{% else if !editor_enabled %} Éditeur de cartes désactivé sur ce serveur.{% endif %}</p>
   </div>
 </div>
 

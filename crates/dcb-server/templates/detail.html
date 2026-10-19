@@ -13,13 +13,16 @@
       <div><dt>Skin</dt><dd>{{ card.skin }}</dd></div>
     </dl>
     {% if let Some(slug) = card.slug %}
-    {% if ctx.can_edit %}
+    {% if demo_card %}<p class="demo-note">Carte de démo, créée en ligne: elle disparaîtra à la prochaine mise à jour du site.</p>{% endif %}
+    {% if can_modify %}
     <div class="actions">
       <a class="btn btn-primary" href="/cards/{{ slug }}/edit">Modifier</a>
       <form method="post" action="/cards/{{ slug }}/delete" hx-confirm="Supprimer « {{ card.name }} » ? Le fichier {{ file }} sera supprimé.">
         <button class="btn btn-danger" type="submit">Supprimer</button>
       </form>
     </div>
+    {% endif %}
+    {% if ctx.can_edit && !ctx.sandbox %}
     <div class="files">
       <p class="eyebrow">Fichiers à commiter</p>
       <code>{{ file }}</code>

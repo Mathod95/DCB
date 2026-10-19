@@ -3,6 +3,7 @@
 //! Chaque modification écrit d'abord le fichier `cards/<slug>.toml` (source de vérité, à
 //! commiter), puis met à jour le cache SQLite.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -41,6 +42,13 @@ pub struct AppState {
     /// Éditeur de cartes (création, modification, rechargement), réservé à l'admin. Coupé en
     /// production (`DCB_EDITOR=0`) : les cartes arrivent alors avec l'image.
     pub editor_enabled: bool,
+    /// Mode démo (`DCB_SANDBOX=1`) : tout joueur connecté peut créer des cartes et ne modifie
+    /// que les siennes ; l'admin modifie tout. Les cartes vivent dans le conteneur et
+    /// disparaissent au déploiement suivant.
+    pub sandbox: bool,
+    /// Auteur de chaque carte créée en ligne (slug → id du compte). Gardé en mémoire : il
+    /// disparaît avec le conteneur, comme les cartes de démo.
+    pub owners: Arc<RwLock<HashMap<String, i64>>>,
     /// Cookie de session marqué `Secure` (servi en HTTPS).
     pub secure_cookies: bool,
     pub store: Arc<CardStore>,
@@ -68,6 +76,8 @@ impl AppState {
             pool,
             app_db,
             editor_enabled: true,
+            sandbox: false,
+            owners: Arc::default(),
             secure_cookies: false,
             store: Arc::new(store),
             load_errors: Arc::default(),
@@ -86,13 +96,34 @@ impl AppState {
         self
     }
 
+    pub fn with_sandbox(mut self, enabled: bool) -> Self {
+        self.sandbox = enabled;
+        self
+    }
+
+    /// L'éditeur est ouvert (admin en local, ou tout le monde en mode démo).
+    pub fn editor_open(&self) -> bool {
+        self.editor_enabled || self.sandbox
+    }
+
+    /// Le compte peut modifier ou supprimer cette carte : l'admin toujours, un joueur en mode
+    /// démo seulement pour les cartes qu'il a créées.
+    pub fn may_modify(&self, user: &User, slug: &str) -> bool {
+        if !self.editor_open() {
+            return false;
+        }
+        user.is_admin()
+            || (self.sandbox
+                && self.owners.read().expect("verrou empoisonné").get(slug) == Some(&user.id))
+    }
+
     pub fn with_secure_cookies(mut self, secure: bool) -> Self {
         self.secure_cookies = secure;
         self
     }
 
     pub fn ctx(&self, user: &User) -> Ctx {
-        Ctx::for_user(Some(user), self.editor_enabled)
+        Ctx::for_user(Some(user), self.editor_enabled, self.sandbox)
     }
 
     /// Relit `cards/*.toml` et reconstruit le cache. Renvoie le nombre de cartes chargées.
@@ -249,12 +280,12 @@ fn not_found_response() -> Response {
 }
 
 pub(crate) fn not_found_for(user: Option<&User>, state: &AppState) -> Response {
-    not_found_with(Ctx::for_user(user, state.editor_enabled))
+    not_found_with(Ctx::for_user(user, state.editor_enabled, state.sandbox))
 }
 
 pub(crate) fn forbidden_response(user: Option<&User>, state: &AppState) -> Response {
     let body = ForbiddenPage {
-        ctx: Ctx::for_user(user, state.editor_enabled),
+        ctx: Ctx::for_user(user, state.editor_enabled, state.sandbox),
     }
     .render()
     .unwrap_or_else(|_| "Accès refusé".into());
@@ -569,9 +600,12 @@ async fn concepts_page(
     Ok(render(page)?.into_response())
 }
 
-async fn reload(State(s): State<AppState>, _editor: EditorUser) -> AppResult<Redirect> {
+async fn reload(State(s): State<AppState>, EditorUser(u): EditorUser) -> AppResult<Response> {
+    if !u.is_admin() {
+        return Ok(forbidden_response(Some(&u), &s));
+    }
     s.reload().await?;
-    Ok(Redirect::to("/gallery"))
+    Ok(Redirect::to("/gallery").into_response())
 }
 
 async fn load(pool: &SqlitePool, slug: &str) -> AppResult<Card> {
@@ -595,8 +629,15 @@ async fn detail(
     Path(slug): Path<String>,
 ) -> AppResult<Html<String>> {
     let card = load(&s.pool, &slug).await?;
+    let demo_card = s.sandbox
+        && s.owners
+            .read()
+            .expect("verrou empoisonné")
+            .contains_key(&card.slug);
     render(DetailPage {
         ctx: s.ctx(&u),
+        can_modify: s.may_modify(&u, &card.slug),
+        demo_card,
         file: card_file(&s, &card.slug),
         art_file: card
             .draft
@@ -625,9 +666,12 @@ async fn edit_form(
     State(s): State<AppState>,
     EditorUser(u): EditorUser,
     Path(slug): Path<String>,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
     let card = load(&s.pool, &slug).await?;
-    render(FormPage::new(
+    if !s.may_modify(&u, &slug) {
+        return Ok(forbidden_response(Some(&u), &s));
+    }
+    Ok(render(FormPage::new(
         s.ctx(&u),
         "Modifier la carte",
         format!("/cards/{slug}"),
@@ -635,7 +679,8 @@ async fn edit_form(
         FormValues::from_draft(&card.draft),
         Vec::new(),
         CardView::new(Some(&slug), &card.draft),
-    ))
+    ))?
+    .into_response())
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -877,6 +922,12 @@ async fn create(
     let card = Card { slug, draft };
     s.store.write(&card).await?;
     db::upsert(&s.pool, &card).await?;
+    if s.sandbox {
+        s.owners
+            .write()
+            .expect("verrou empoisonné")
+            .insert(card.slug.clone(), u.id);
+    }
     Ok(Redirect::to(&format!("/cards/{}", card.slug)).into_response())
 }
 
@@ -887,6 +938,9 @@ async fn update(
     mp: Multipart,
 ) -> AppResult<Response> {
     let existing = load(&s.pool, &slug).await?;
+    if !s.may_modify(&u, &slug) {
+        return Ok(forbidden_response(Some(&u), &s));
+    }
     let mut sub = read_submission(mp).await?;
     sub.values.current_art = existing.draft.art.clone();
 
@@ -925,17 +979,21 @@ async fn update(
 
 async fn delete(
     State(s): State<AppState>,
-    _editor: EditorUser,
+    EditorUser(u): EditorUser,
     Path(slug): Path<String>,
-) -> AppResult<Redirect> {
+) -> AppResult<Response> {
     let card = load(&s.pool, &slug).await?;
+    if !s.may_modify(&u, &slug) {
+        return Ok(forbidden_response(Some(&u), &s));
+    }
     let _guard = s.store.lock().await;
     s.store.remove(&slug).await?;
     db::delete(&s.pool, &slug).await?;
     if let Some(art) = &card.draft.art {
         s.store.remove_art(art).await;
     }
-    Ok(Redirect::to("/gallery"))
+    s.owners.write().expect("verrou empoisonné").remove(&slug);
+    Ok(Redirect::to("/gallery").into_response())
 }
 
 #[derive(Deserialize)]

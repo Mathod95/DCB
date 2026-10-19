@@ -4,7 +4,7 @@ Contexte pour reprendre le projet dans Claude Code.
 
 ## Projet
 
-DevCardBattle (DCB) : jeu de cartes stratégique DevOps, inspiré de AWS Card Clash. Objectif final : duels multijoueurs tour par tour sur un site web. Jalon actuel : collection de cartes (galerie, éditeur). Pour l'instant c'est un projet Rust local, sans déploiement ni prod.
+DevCardBattle (DCB) : jeu de cartes stratégique DevOps, inspiré de AWS Card Clash. Objectif final : duels multijoueurs tour par tour sur un site web. Jalon actuel : collection de cartes (galerie, éditeur). Développé en local, publié en démo sur dcb.mathod.fr.
 
 Design source : fichier Figma `DevCardBattle` (fileKey `pG6o4Zvee9YjNf3AzGKV81`), composant `card` (node `30:1386`), calques `cardTypeStroke/*` (`30:1488`), `skin/*` (`30:1652`). Finitions : section `foilLayer` (`107:1435`, composants `foilLayer/Basic|Gold|Stars|Glitter|Shards|Rainbow`, statiques ; l'ancien `rarityLayer` y a été fusionné). La section `Collection` (`36:1521`) contient les cartes maquettées ; le frame `Board` (`36:2621`) esquisse le plateau de jeu.
 
@@ -17,8 +17,9 @@ Design source : fichier Figma `DevCardBattle` (fileKey `pG6o4Zvee9YjNf3AzGKV81`)
 - Page `/regles` : texte dans `rules/regles.toml` (lu au démarrage et au rechargement, en cas d'erreur la dernière version valide reste affichée), mise en forme `***terme***` et montants `$…` via `rules::inline`. Exemples de cartes tirés au hasard par `db::random_card` (cartes remplies d'abord)
 - `/regles/concepts` : document « Carte DCB v2 » (pistes de design : contours, idées, skins, skins animées), rendu par l'app comme `/regles`. Texte dans `rules/concepts.toml` (rechargé avec les règles ; chaque section a une `key` qui choisit le rendu, clé inconnue signalée), cartes tirées au hasard à chaque affichage, module `concepts.rs`, gabarit `concept_card.html`, `static/concepts.css` et `concepts.js` (sommaire, fenêtre agrandie, ASCII calculé dans le navigateur sur un canvas)
 - Ordre d'écriture : fichier TOML (atomique : tmp + rename) puis cache, sous le verrou de `CardStore`
-- Comptes : seconde base SQLite persistante `data/app.db` (`migrations-app/`, module `auth`), jamais reconstruite. Argon2id, sessions en cookie `dcb_session` (SHA-256 du jeton en base). Accès par extracteurs : `MaybeUser`, `CurrentUser` (sinon redirection `/login?next=`), `AdminUser` (403), `EditorUser` (admin + `DCB_EDITOR`, sinon 404 si éditeur coupé). Middleware `same_origin_only` contre le CSRF. Pas d'inscription : comptes créés par l'admin (`/admin/users` ou `dcb-server user add`)
-- Prod : image `ghcr.io/mathod95/dcb` (Dockerfile, workflow `image.yml`), `DCB_EDITOR=0`, volume `/data`. Cartes en lecture seule en prod : création en local, push, nouvelle image
+- Comptes : seconde base SQLite persistante `data/app.db` (`migrations-app/`, module `auth`), jamais reconstruite. Argon2id, sessions en cookie `dcb_session` (SHA-256 du jeton en base). Accès par extracteurs : `MaybeUser`, `CurrentUser` (sinon redirection `/login?next=`), `AdminUser` (403), `EditorUser` (admin + `DCB_EDITOR`, sinon 404 si éditeur coupé ; tout compte connecté en mode démo). Middleware `same_origin_only` contre le CSRF. Pas d'inscription : comptes créés par l'admin (`/admin/users` ou `dcb-server user add`)
+- Prod : image `ghcr.io/mathod95/dcb` (Dockerfile, workflow `image.yml`), `DCB_EDITOR=0`, `DCB_SANDBOX=1`, volume `/data`. Hébergée sur le serveur Saltbox de l'utilisateur (Traefik), à dcb.mathod.fr. Les vraies cartes se créent en local, puis push et nouvelle image
+- Mode démo (`DCB_SANDBOX=1`) : tout joueur connecté crée des cartes (`Ctx.can_create`), mais ne modifie ou ne supprime que les siennes (`AppState::may_modify`, 403 sinon) ; l'admin modifie tout ; `/reload` reste admin. L'auteur de chaque carte est gardé en mémoire (`AppState.owners`) et les cartes sont écrites dans `cards/` du conteneur : tout disparaît au redéploiement. Bandeau `demo_banner.html`, pas de « Fichiers à commiter »
 - Requêtes SQL en `&'static str` (sqlx 0.9 refuse les chaînes construites à l'exécution) : composer avec `concat!` et la macro `columns!` dans `db.rs`
 
 ## Commandes
@@ -48,6 +49,6 @@ cargo fmt --all
 
 ## État
 
-Fait : contours sélectionnables (`shape`), connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
+Fait : mode démo de l'éditeur en prod (`DCB_SANDBOX`), hébergement sur Saltbox, contours sélectionnables (`shape`), connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
 
-À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket, hébergement (cible à choisir : VPS + Caddy, Fly.io ou Kubernetes/ArgoCD).
+À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket.

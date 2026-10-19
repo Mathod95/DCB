@@ -22,11 +22,14 @@ RUN apt-get update \
  && mkdir -p /data && chown dcb /data
 WORKDIR /app
 COPY --from=build /usr/local/bin/dcb-server /usr/local/bin/dcb-server
-COPY cards cards
+# Les cartes appartiennent à l'utilisateur de l'image : en mode démo, l'éditeur y écrit (dans
+# le conteneur, hors volume), et ces cartes disparaissent au déploiement suivant.
+COPY --chown=10001 cards cards
 COPY rules rules
 
 ENV DCB_BIND=0.0.0.0:3000 \
     DCB_EDITOR=0 \
+    DCB_SANDBOX=1 \
     DCB_SECURE_COOKIES=1 \
     DATABASE_URL=sqlite:///data/cache.db \
     DCB_APP_DATABASE_URL=sqlite:///data/app.db \

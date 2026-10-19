@@ -512,6 +512,12 @@ impl FromRequestParts<AppState> for EditorUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        // Mode démo : tout joueur connecté ouvre l'éditeur (les droits par carte sont vérifiés
+        // dans chaque route). Sinon l'éditeur est réservé à l'admin, et absent s'il est coupé.
+        if state.sandbox {
+            let CurrentUser(u) = CurrentUser::from_request_parts(parts, state).await?;
+            return Ok(EditorUser(u));
+        }
         let AdminUser(u) = AdminUser::from_request_parts(parts, state).await?;
         if state.editor_enabled {
             Ok(EditorUser(u))

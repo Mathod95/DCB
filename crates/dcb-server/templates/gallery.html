@@ -6,15 +6,18 @@
     <h1>Galerie</h1>
     <p class="muted">{{ cards.len() }} carte{% if cards.len() != 1 %}s{% endif %}{% if filtered %} correspondant aux filtres{% endif %}</p>
   </div>
-  {% if ctx.can_edit %}
+  {% if ctx.can_create %}
   <div class="page-actions">
+    {% if ctx.can_edit && !ctx.sandbox %}
     <form method="post" action="/reload">
       <button class="btn btn-sm" type="submit" title="Relire les fichiers cards/*.toml, par exemple après un git pull">Recharger les fichiers</button>
     </form>
+    {% endif %}
     <a class="btn btn-primary btn-sm" href="/cards/new">+ Nouvelle carte</a>
   </div>
   {% endif %}
 </div>
+{% include "demo_banner.html" %}
 
 {% if ctx.can_edit && !load_errors.is_empty() %}
 <div class="alert" role="alert">
@@ -45,8 +48,8 @@
 
 {% if cards.is_empty() %}
 <div class="empty">
-  <p>{% if filtered %}Aucune carte ne correspond à ces filtres.{% else %}Aucune carte pour l'instant.{% if ctx.can_edit %} Chaque carte créée est enregistrée dans <code>cards/</code>, prête à être commitée.{% endif %}{% endif %}</p>
-  {% if ctx.can_edit && !filtered %}<a class="btn btn-primary" href="/cards/new">Créer la première</a>{% endif %}
+  <p>{% if filtered %}Aucune carte ne correspond à ces filtres.{% else %}Aucune carte pour l'instant.{% if ctx.can_edit && !ctx.sandbox %} Chaque carte créée est enregistrée dans <code>cards/</code>, prête à être commitée.{% endif %}{% endif %}</p>
+  {% if ctx.can_create && !filtered %}<a class="btn btn-primary" href="/cards/new">Créer la première</a>{% endif %}
 </div>
 {% else %}
 <div class="grid">

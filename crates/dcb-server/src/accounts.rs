@@ -194,7 +194,8 @@ async fn users_page(
         users: users.iter().map(|u| UserRowView::new(u, me)).collect(),
         notice,
         new_username,
-        editor_enabled: s.editor_enabled,
+        editor_enabled: s.editor_open(),
+        sandbox: s.sandbox,
     };
     Ok((status, render(page)?).into_response())
 }
