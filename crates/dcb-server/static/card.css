@@ -224,6 +224,129 @@
   border-radius: 16px;
   pointer-events: none;
 }
+/*
+ * Styles de contour (champ `shape`). `solid` est le trait plein ci-dessus ; les autres
+ * réécrivent `.card-stroke` (et parfois le fond) via [data-shape].
+ */
+/* Néon : trait fin avec halo de la couleur du type */
+.card[data-shape="neon"] .card-stroke {
+  border-width: 2px;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--type) 60%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--type) 35%, transparent);
+}
+
+/* Dégradé et reflet qui tourne : trait dessiné par un fond découpé au masque */
+.card[data-shape="gradient"] .card-stroke,
+.card[data-shape="sweep"] .card-stroke {
+  border: 0;
+  padding: 3px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.card[data-shape="gradient"] .card-stroke {
+  background: linear-gradient(135deg,
+    var(--type) 0%,
+    color-mix(in srgb, var(--type) 35%, #fff) 45%,
+    var(--type) 75%,
+    color-mix(in srgb, var(--type) 70%, #000) 100%);
+}
+@property --sweep { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes dcb-sweep { to { --sweep: 360deg; } }
+.card[data-shape="sweep"] .card-stroke {
+  padding: 2.5px;
+  background:
+    conic-gradient(from var(--sweep),
+      transparent 0deg, var(--type) 40deg, color-mix(in srgb, var(--type) 30%, #fff) 60deg,
+      var(--type) 80deg, transparent 130deg, transparent 360deg),
+    color-mix(in srgb, var(--type) 35%, transparent);
+  animation: dcb-sweep 6s linear infinite;
+  /* dans la galerie, le reflet ne tourne qu'au survol */
+  animation-play-state: paused;
+}
+.card-frame:hover > .card[data-shape="sweep"] .card-stroke,
+.detail-card > .card[data-shape="sweep"] .card-stroke,
+#preview .card[data-shape="sweep"] .card-stroke { animation-play-state: running; }
+
+/* Double filet */
+.card[data-shape="double"] .card-stroke { border-width: 2px; }
+.card[data-shape="double"] .card-stroke::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--type) 45%, transparent);
+  border-radius: 11px;
+}
+
+/* Coins de viseur : seuls les coins du trait restent, reliés par un filet fin */
+.card[data-shape="corners"] .card-stroke {
+  -webkit-mask:
+    linear-gradient(#000 0 0) top left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) top right / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 56px 56px no-repeat;
+  mask:
+    linear-gradient(#000 0 0) top left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) top right / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 56px 56px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 56px 56px no-repeat;
+}
+.card[data-shape="corners"] .card-skin {
+  outline: 1px solid color-mix(in srgb, var(--type) 40%, transparent);
+  outline-offset: -9px;
+}
+
+/* Coins coupés : carte et trait biseautés (carte 374 × 574, trait 360 × 560) */
+.card[data-shape="chamfer"] {
+  border-radius: 0;
+  box-shadow: none;
+  clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 22px, 100% calc(100% - 22px),
+                     calc(100% - 22px) 100%, 22px 100%, 0 calc(100% - 22px), 0 22px);
+}
+.card-frame:has(> .card[data-shape="chamfer"]) { filter: drop-shadow(0 8px 18px rgb(2 6 23 / 0.45)); }
+.card[data-shape="chamfer"] .card-skin { border-radius: 0; }
+.card[data-shape="chamfer"] .card-stroke {
+  border: 0;
+  border-radius: 0;
+  background: var(--type);
+  clip-path: polygon(evenodd,
+    16px 0, 344px 0, 360px 16px, 360px 544px, 344px 560px, 16px 560px, 0 544px, 0 16px, 16px 0,
+    17.5px 3px, 3px 17.5px, 3px 542.5px, 17.5px 557px, 342.5px 557px, 357px 542.5px, 357px 17.5px, 342.5px 3px, 17.5px 3px);
+}
+
+/* Barre d'accent : filet fin et barre épaisse en haut */
+.card[data-shape="topbar"] .card-stroke {
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--type) 70%, transparent);
+}
+.card[data-shape="topbar"] .card-stroke::before {
+  content: "";
+  position: absolute;
+  top: -1.5px;
+  left: 60px;
+  right: 60px;
+  height: 5px;
+  border-radius: 0 0 5px 5px;
+  background: var(--type);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--type) 55%, transparent);
+}
+
+/* Fond teinté : le fond prend la couleur du type, le trait devient un filet */
+.card[data-shape="tinted"] .card-skin {
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--type) 22%, var(--skin-from)),
+    color-mix(in srgb, var(--type) 8%, var(--skin-to)));
+}
+.card[data-shape="tinted"] .card-stroke {
+  border-width: 1px;
+  border-color: color-mix(in srgb, var(--type) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-shape="sweep"] .card-stroke { animation: none; }
+}
+
 .card-type {
   position: absolute;
   top: 19px;

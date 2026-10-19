@@ -98,6 +98,30 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Style du contour aux couleurs du type (calque `cardTypeStroke/*` du Figma).
+    /// `Solid` est le trait plein d'origine ; les autres sont des variantes plus modernes.
+    Shape {
+        Solid    => "solid",    "Plein",
+        Neon     => "neon",     "Néon",
+        Gradient => "gradient", "Dégradé",
+        Sweep    => "sweep",    "Reflet qui tourne",
+        Double   => "double",   "Double filet",
+        Corners  => "corners",  "Coins de viseur",
+        Chamfer  => "chamfer",  "Coins coupés",
+        Topbar   => "topbar",   "Barre d'accent",
+        Tinted   => "tinted",   "Fond teinté",
+    }
+}
+
+// L'enum est généré par `text_enum!`, qui ne permet pas de marquer une variante `#[default]`.
+#[allow(clippy::derivable_impls)]
+impl Default for Shape {
+    fn default() -> Self {
+        Shape::Solid
+    }
+}
+
 impl Foil {
     /// Lit une valeur de finition en acceptant les anciens formats : `none` (avant que Basic
     /// soit une finition) et l'ancien champ `rarity` (`gold` donnait l'effet doré).
@@ -131,6 +155,9 @@ pub struct CardDraft {
     pub card_type: CardType,
     pub skin: Skin,
     pub foil: Foil,
+    /// Style du contour ; absent des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub shape: Shape,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -315,6 +342,7 @@ mod tests {
             card_type: CardType::App,
             skin: Skin::Light,
             foil: Foil::Basic,
+            shape: Shape::Solid,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -334,6 +362,15 @@ mod tests {
             assert_eq!(f.slug().parse::<Foil>().unwrap(), *f);
         }
         assert!("package".parse::<CardType>().is_err());
+    }
+
+    #[test]
+    fn shapes_round_trip() {
+        assert_eq!(Shape::default(), Shape::Solid);
+        for s in Shape::ALL {
+            assert_eq!(s.slug().parse::<Shape>().unwrap(), *s);
+        }
+        assert!("round".parse::<Shape>().is_err());
     }
 
     #[test]

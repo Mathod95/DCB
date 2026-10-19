@@ -36,7 +36,8 @@ cargo fmt --all
 - Pas de tiret cadratin dans les textes
 - Cible : navigateur sur ordinateur uniquement. Pas de vue mobile à concevoir ni à tester
 - La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit
-- Les enums (type, skin, foil) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
+- Contour : champ `shape` (`Shape` dans dcb-core), `solid` par défaut et non écrit dans le TOML. CSS via `.card[data-shape=…]` dans `card.css`. `sweep` ne tourne qu'au survol dans la galerie, en continu sur la fiche et dans l'aperçu
+- Les enums (type, skin, foil, shape) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
 - Bloc illustration : contour teinté par la couleur du type (25 %). Carte sans illustration : bloc `.card-art.is-empty` teinté par la couleur du type, motif de points et icône du type (dans `card.html`, une icône par type)
 - Les cotes de `card.css` viennent du Figma : ne pas les changer sans vérifier la maquette
 - Pas de cartes de démo ni de seed : le dépôt ne contient que les cartes créées par l'utilisateur
@@ -45,6 +46,6 @@ cargo fmt --all
 
 ## État
 
-Fait : connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
+Fait : contours sélectionnables (`shape`), connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
 
 À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket, hébergement (cible à choisir : VPS + Caddy, Fly.io ou Kubernetes/ArgoCD).

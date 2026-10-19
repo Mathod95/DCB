@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dcb_core::{Card, CardDraft, CardType, Foil, Skin, is_valid_slug, slugify};
+use dcb_core::{Card, CardDraft, CardType, Foil, Shape, Skin, is_valid_slug, slugify};
 use serde::{Deserialize, Serialize};
 
 /// Contenu d'un fichier `cards/<slug>.toml`. Le slug n'y figure pas : c'est le nom du fichier.
@@ -24,6 +24,9 @@ struct CardFile {
     /// Lu pour la compatibilité, jamais réécrit.
     #[serde(default, skip_serializing)]
     rarity: Option<String>,
+    /// Style du contour, absent du fichier quand c'est `solid`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    shape: Option<String>,
     #[serde(default)]
     deploy_cost: i64,
     #[serde(default)]
@@ -51,6 +54,7 @@ impl From<&CardDraft> for CardFile {
             skin: d.skin,
             foil: (d.foil != Foil::Basic).then(|| d.foil.slug().to_owned()),
             rarity: None,
+            shape: (d.shape != Shape::Solid).then(|| d.shape.slug().to_owned()),
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             description: d.description.clone(),
@@ -73,11 +77,23 @@ impl TryFrom<CardFile> for CardDraft {
                 valid.join(", ")
             )
         })?;
+        let shape = match f.shape.as_deref().map(str::trim) {
+            None | Some("") => Shape::Solid,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = Shape::ALL.iter().map(|s| s.slug()).collect();
+                format!(
+                    "shape {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         Ok(Self {
             name: f.name,
             card_type: f.card_type,
             skin: f.skin,
             foil,
+            shape,
             description: f.description,
             effect: f.effect,
             deploy_cost: f.deploy_cost,
@@ -286,6 +302,7 @@ mod tests {
             card_type: CardType::App,
             skin: Skin::Light,
             foil: Foil::Shards,
+            shape: Shape::Neon,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
             deploy_cost: 3,
@@ -314,6 +331,7 @@ mod tests {
         assert!(text.contains("type = \"app\""), "{text}");
         assert!(!text.contains("art"), "{text}");
         assert!(text.contains("foil = \"shards\""), "{text}");
+        assert!(text.contains("shape = \"neon\""), "{text}");
 
         let (cards, errors) = store.load_all().await.unwrap();
         assert!(errors.is_empty(), "{errors:?}");

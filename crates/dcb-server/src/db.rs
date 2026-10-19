@@ -6,7 +6,7 @@
 
 use std::str::FromStr;
 
-use dcb_core::{Card, CardDraft, CardType, Foil};
+use dcb_core::{Card, CardDraft, CardType, Foil, Shape};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{FromRow, Sqlite, SqlitePool};
 
@@ -27,6 +27,7 @@ struct CardRow {
     card_type: String,
     skin: String,
     foil: String,
+    shape: String,
     description: String,
     effect: String,
     deploy_cost: i64,
@@ -47,6 +48,7 @@ impl TryFrom<CardRow> for Card {
                 card_type: r.card_type.parse().map_err(decode)?,
                 skin: r.skin.parse().map_err(decode)?,
                 foil: r.foil.parse().map_err(decode)?,
+                shape: r.shape.parse().map_err(decode)?,
                 description: r.description,
                 effect: r.effect,
                 deploy_cost: r.deploy_cost,
@@ -61,7 +63,7 @@ impl TryFrom<CardRow> for Card {
 /// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "slug, name, card_type, skin, foil, description, effect, \
+        "slug, name, card_type, skin, foil, shape, description, effect, \
          deploy_cost, daily_cost, flavor_text, art"
     };
 }
@@ -70,6 +72,7 @@ macro_rules! columns {
 pub struct Filter {
     pub card_type: Option<CardType>,
     pub foil: Option<Foil>,
+    pub shape: Option<Shape>,
 }
 
 pub async fn list(pool: &SqlitePool, filter: Filter) -> sqlx::Result<Vec<Card>> {
@@ -78,11 +81,13 @@ pub async fn list(pool: &SqlitePool, filter: Filter) -> sqlx::Result<Vec<Card>> 
         columns!(),
         " FROM cards ",
         "WHERE (?1 IS NULL OR card_type = ?1) AND (?2 IS NULL OR foil = ?2) ",
+        "AND (?3 IS NULL OR shape = ?3) ",
         "ORDER BY card_type, name COLLATE NOCASE"
     );
     sqlx::query_as::<_, CardRow>(SQL)
         .bind(filter.card_type.map(|t| t.slug()))
         .bind(filter.foil.map(|f| f.slug()))
+        .bind(filter.shape.map(|s| s.slug()))
         .fetch_all(pool)
         .await?
         .into_iter()
@@ -112,12 +117,12 @@ where
 {
     let d = &c.draft;
     sqlx::query(
-        "INSERT INTO cards (slug, name, card_type, skin, foil, description, effect, \
+        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, description, effect, \
                             deploy_cost, daily_cost, flavor_text, art) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (slug) DO UPDATE SET \
             name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
-            foil = excluded.foil, \
+            foil = excluded.foil, shape = excluded.shape, \
             description = excluded.description, \
             effect = excluded.effect, deploy_cost = excluded.deploy_cost, \
             daily_cost = excluded.daily_cost, flavor_text = excluded.flavor_text, \
@@ -128,6 +133,7 @@ where
     .bind(d.card_type.slug())
     .bind(d.skin.slug())
     .bind(d.foil.slug())
+    .bind(d.shape.slug())
     .bind(&d.description)
     .bind(&d.effect)
     .bind(d.deploy_cost)

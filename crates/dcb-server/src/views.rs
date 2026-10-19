@@ -1,7 +1,7 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
-use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Skin, limits};
+use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Shape, Skin, limits};
 
 use crate::auth::{Role, User};
 use crate::rules::{self, Rules, TypeEntry, inline};
@@ -51,6 +51,7 @@ pub struct CardView {
     pub skin: &'static str,
     pub foil: &'static str,
     pub foil_label: &'static str,
+    pub shape: &'static str,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -85,6 +86,7 @@ impl CardView {
             skin: d.skin.slug(),
             foil: d.foil.slug(),
             foil_label: d.foil.label(),
+            shape: d.shape.slug(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost,
@@ -140,6 +142,17 @@ pub fn foil_choices() -> Vec<Choice> {
         .collect()
 }
 
+pub fn shape_choices() -> Vec<Choice> {
+    Shape::ALL
+        .iter()
+        .map(|s| Choice {
+            value: s.slug(),
+            label: s.label(),
+            color: None,
+        })
+        .collect()
+}
+
 #[derive(Template)]
 #[template(path = "menu.html")]
 pub struct MenuPage {
@@ -161,6 +174,7 @@ pub struct GalleryPage {
     pub cards: Vec<CardView>,
     pub type_links: Vec<FilterLink>,
     pub foil_links: Vec<FilterLink>,
+    pub shape_links: Vec<FilterLink>,
     pub filtered: bool,
     /// Fichiers `cards/*.toml` ignorés au dernier chargement.
     pub load_errors: Vec<String>,
@@ -183,6 +197,7 @@ pub struct FormValues {
     pub card_type: String,
     pub skin: String,
     pub foil: String,
+    pub shape: String,
     pub description: String,
     pub effect: String,
     pub deploy_cost: String,
@@ -198,6 +213,7 @@ impl FormValues {
             card_type: d.card_type.slug().into(),
             skin: d.skin.slug().into(),
             foil: d.foil.slug().into(),
+            shape: d.shape.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost.to_string(),
@@ -212,6 +228,7 @@ impl FormValues {
             card_type: CardType::App.slug().into(),
             skin: Skin::Light.slug().into(),
             foil: Foil::Basic.slug().into(),
+            shape: Shape::Solid.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
             ..Default::default()
@@ -232,6 +249,7 @@ pub struct FormPage {
     pub types: Vec<Choice>,
     pub skins: Vec<Choice>,
     pub foils: Vec<Choice>,
+    pub shapes: Vec<Choice>,
     pub lim_name: usize,
     pub lim_description: usize,
     pub lim_effect: usize,
@@ -259,6 +277,7 @@ impl FormPage {
             types: type_choices(),
             skins: skin_choices(),
             foils: foil_choices(),
+            shapes: shape_choices(),
             lim_name: limits::NAME,
             lim_description: limits::DESCRIPTION,
             lim_effect: limits::EFFECT,

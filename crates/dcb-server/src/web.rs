@@ -15,7 +15,7 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, is_valid_slug};
+use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Shape, is_valid_slug};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
@@ -320,6 +320,7 @@ struct GalleryQuery {
     #[serde(rename = "type")]
     card_type: Option<String>,
     foil: Option<String>,
+    shape: Option<String>,
 }
 
 async fn gallery(
@@ -331,16 +332,20 @@ async fn gallery(
     let filter = Filter {
         card_type: q.card_type.as_deref().and_then(|v| v.parse().ok()),
         foil: q.foil.as_deref().and_then(|v| v.parse().ok()),
+        shape: q.shape.as_deref().and_then(|v| v.parse().ok()),
     };
     let cards = db::list(&s.pool, filter).await?;
 
-    let href = |t: Option<CardType>, f: Option<Foil>| {
+    let href = |t: Option<CardType>, f: Option<Foil>, sh: Option<Shape>| {
         let mut parts = Vec::new();
         if let Some(t) = t {
             parts.push(format!("type={t}"));
         }
         if let Some(f) = f {
             parts.push(format!("foil={f}"));
+        }
+        if let Some(sh) = sh {
+            parts.push(format!("shape={sh}"));
         }
         if parts.is_empty() {
             "/gallery".to_owned()
@@ -351,27 +356,40 @@ async fn gallery(
 
     let mut type_links = vec![FilterLink {
         label: "Tous",
-        href: href(None, filter.foil),
+        href: href(None, filter.foil, filter.shape),
         active: filter.card_type.is_none(),
         color: None,
     }];
     type_links.extend(CardType::ALL.iter().map(|&t| FilterLink {
         label: t.label(),
-        href: href(Some(t), filter.foil),
+        href: href(Some(t), filter.foil, filter.shape),
         active: filter.card_type == Some(t),
         color: Some(t.color()),
     }));
 
     let mut foil_links = vec![FilterLink {
         label: "Toutes",
-        href: href(filter.card_type, None),
+        href: href(filter.card_type, None, filter.shape),
         active: filter.foil.is_none(),
         color: None,
     }];
     foil_links.extend(Foil::ALL.iter().map(|&f| FilterLink {
         label: f.label(),
-        href: href(filter.card_type, Some(f)),
+        href: href(filter.card_type, Some(f), filter.shape),
         active: filter.foil == Some(f),
+        color: None,
+    }));
+
+    let mut shape_links = vec![FilterLink {
+        label: "Tous les contours",
+        href: href(filter.card_type, filter.foil, None),
+        active: filter.shape.is_none(),
+        color: None,
+    }];
+    shape_links.extend(Shape::ALL.iter().map(|&sh| FilterLink {
+        label: sh.label(),
+        href: href(filter.card_type, filter.foil, Some(sh)),
+        active: filter.shape == Some(sh),
         color: None,
     }));
 
@@ -391,7 +409,8 @@ async fn gallery(
             .collect(),
         type_links,
         foil_links,
-        filtered: filter.card_type.is_some() || filter.foil.is_some(),
+        shape_links,
+        filtered: filter.card_type.is_some() || filter.foil.is_some() || filter.shape.is_some(),
         load_errors,
     })
 }
@@ -552,6 +571,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.foil, Foil::Basic, "foil", &mut errors)
         },
+        shape: if v.shape.is_empty() {
+            Shape::Solid
+        } else {
+            pick(&v.shape, Shape::Solid, "shape", &mut errors)
+        },
         description: v.description.clone(),
         effect: v.effect.clone(),
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
@@ -668,6 +692,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "card_type" => v.card_type = text,
             "skin" => v.skin = text,
             "foil" => v.foil = text,
+            "shape" => v.shape = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -810,6 +835,8 @@ struct PreviewForm {
     #[serde(default)]
     foil: String,
     #[serde(default)]
+    shape: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -835,6 +862,7 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         card_type: f.card_type,
         skin: f.skin,
         foil: f.foil,
+        shape: f.shape,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -870,6 +898,12 @@ async fn api_list(
             .map(str::parse)
             .transpose()
             .map_err(parse_err)?,
+        shape: q
+            .shape
+            .as_deref()
+            .map(str::parse)
+            .transpose()
+            .map_err(parse_err)?,
     };
     Ok(Json(db::list(&s.pool, filter).await?))
 }
@@ -890,6 +924,9 @@ async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
         "skins": dcb_core::Skin::ALL.iter().map(|s| s.slug()).collect::<Vec<_>>(),
         "foils": Foil::ALL.iter().map(|f| serde_json::json!({
             "slug": f.slug(), "label": f.label()
+        })).collect::<Vec<_>>(),
+        "shapes": Shape::ALL.iter().map(|s| serde_json::json!({
+            "slug": s.slug(), "label": s.label()
         })).collect::<Vec<_>>(),
         "limits": {
             "name": dcb_core::limits::NAME,

@@ -908,3 +908,69 @@ async fn cards_without_art_get_a_type_placeholder() {
     assert!(body.contains(r#"<img src="/art/crash-loop.png""#));
     assert!(!body.contains("is-empty"));
 }
+
+#[tokio::test]
+async fn shape_is_saved_rendered_and_filterable() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    // une carte existante sans `shape` garde le contour plein, et le fichier n'est pas réécrit
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-shape="solid""#));
+
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Neon Pod", &[("shape", b"neon")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    let toml = std::fs::read_to_string(t.cards().join("neon-pod.toml")).unwrap();
+    assert!(toml.contains("shape = \"neon\""), "{toml}");
+    let (_, _, body) = send(&t.app, get("/cards/neon-pod")).await;
+    assert!(body.contains(r#"data-shape="neon""#));
+
+    // `solid` n'est pas écrit dans le fichier
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Plain Pod", &[("shape", b"solid")])),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("plain-pod.toml")).unwrap();
+    assert!(!toml.contains("shape"), "{toml}");
+
+    // filtre de la galerie et de l'API
+    let (_, _, body) = send(&t.app, get("/gallery?shape=neon")).await;
+    assert!(body.contains("NEON POD") || body.contains("Neon Pod"));
+    assert!(!body.contains("DDOS"));
+    assert!(body.contains("Tous les contours"));
+    let (_, _, json) = send(&t.app, get("/api/cards?shape=neon")).await;
+    assert!(
+        json.contains("\"shape\":\"neon\"") && !json.contains("DDOS"),
+        "{json}"
+    );
+    let (status, _, _) = send(&t.app, get("/api/cards?shape=round")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"shapes\"") && meta.contains("chamfer"));
+
+    // valeur inconnue dans le formulaire
+    let (status, _, body) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Bad Pod", &[("shape", b"round")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(body.contains("valeur inconnue"));
+
+    // valeur inconnue dans un fichier : la carte est ignorée avec un message clair
+    std::fs::write(
+        t.cards().join("broken.toml"),
+        "name = \"BROKEN\"\ntype = \"app\"\nshape = \"round\"\n",
+    )
+    .unwrap();
+    send(&t.app, post("/reload")).await;
+    let (_, _, body) = send(&t.app, get("/gallery")).await;
+    // le message liste les valeurs valides (guillemets échappés en HTML)
+    assert!(
+        body.contains("broken.toml") && body.contains("inconnu") && body.contains("chamfer"),
+        "{body}"
+    );
+}

@@ -86,7 +86,7 @@ Le volume `/data` contient `app.db` (les comptes, à sauvegarder) et `cache.db` 
 - **Règles** (`/regles`) : contexte, début de partie, condition de victoire, types de cartes, phases d'une journée, cycle de vie des apps et finitions. Chaque type montre une carte de la collection tirée au hasard à chaque chargement (les cartes qui ont un texte d'abord), avec son nombre de cartes et un lien vers la galerie filtrée. Le texte vient de `rules/regles.toml`.
 - **Fiche carte** : affichage en grand, modification, suppression (le fichier TOML et l'illustration sont supprimés avec la carte), et rappel des fichiers à commiter.
 - **API JSON** pour les futurs clients du jeu :
-  - `GET /api/cards` (filtres `?type=incident&foil=gold`)
+  - `GET /api/cards` (filtres `?type=incident&foil=gold&shape=neon`)
   - `GET /api/cards/{slug}`
   - `GET /api/meta` : types, couleurs, skins, finitions et limites de saisie
 
@@ -98,6 +98,7 @@ Reproduite depuis le composant `card` du fichier Figma DevCardBattle (374×574),
 |---|---|
 | Type (bordure + badge) | Resource `#38bdf8`, Incident `#f83838`, Ressource humaine `#0800f6`, App `#f88838`, Event `#a538f8` |
 | Skin | Light, Dark |
+| Contour (`shape`) | Plein, Néon, Dégradé, Reflet qui tourne, Double filet, Coins de viseur, Coins coupés, Barre d'accent, Fond teinté |
 | Finition (`foil`, fait office de rareté) | Basic, Gold (overlay doré du Figma), Étoiles, Paillettes, Éclats, Irisé, avec un reflet qui suit la souris |
 
 Le rendu est en HTML/CSS (`crates/dcb-server/static/card.css`) : la carte est dessinée à ses cotes Figma puis mise à l'échelle, donc le même code sert à la galerie, à l'aperçu et à la fiche.
