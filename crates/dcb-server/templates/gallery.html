@@ -7,9 +7,12 @@
     <p class="muted">{{ cards.len() }} carte{% if cards.len() != 1 %}s{% endif %}{% if filtered %} correspondant aux filtres{% endif %}</p>
   </div>
   {% if ctx.can_edit %}
-  <form method="post" action="/reload">
-    <button class="btn btn-sm" type="submit" title="Relire les fichiers cards/*.toml, par exemple après un git pull">Recharger les fichiers</button>
-  </form>
+  <div class="page-actions">
+    <form method="post" action="/reload">
+      <button class="btn btn-sm" type="submit" title="Relire les fichiers cards/*.toml, par exemple après un git pull">Recharger les fichiers</button>
+    </form>
+    <a class="btn btn-primary btn-sm" href="/cards/new">+ Nouvelle carte</a>
+  </div>
   {% endif %}
 </div>
 

@@ -1053,3 +1053,34 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
     assert_eq!(status, StatusCode::OK);
     assert!(body.contains("neonn") && body.contains("dernière version valide"));
 }
+
+#[tokio::test]
+async fn simplified_menu_and_top_bar() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    let (_, _, menu) = send(&t.app, get("/")).await;
+    assert!(menu.contains("Documentation") && menu.contains("and more"));
+    assert!(menu.contains(r#"<span class="pill-admin">Admin</span>"#));
+    for gone in [
+        "Créer une carte",
+        "Deck builder",
+        "Duel en ligne",
+        "Règles du jeu",
+    ] {
+        assert!(!menu.contains(gone), "{gone}");
+    }
+    // barre du haut : logo et menu du compte seulement
+    let topnav = menu.split(r#"<nav class="topnav">"#).nth(1).unwrap();
+    let topnav = topnav.split("</nav>").next().unwrap();
+    assert!(!topnav.contains(r#"href="/gallery""#) && !topnav.contains("Nouvelle carte"));
+    assert!(topnav.contains("Mon compte"));
+    // la création passe par la galerie
+    let (_, _, gallery) = send(&t.app, get("/gallery")).await;
+    assert!(
+        gallery.contains(
+            r#"<a class="btn btn-primary btn-sm" href="/cards/new">+ Nouvelle carte</a>"#
+        )
+    );
+    // un joueur ne voit pas Comptes
+    let (_, _, menu) = send(&t.user, get("/")).await;
+    assert!(menu.contains("Documentation") && !menu.contains("/admin/users"));
+}

@@ -36,6 +36,7 @@ cargo fmt --all
 - Textes de l'interface en français ; termes techniques en anglais (deploy, cluster, pod, scaling...)
 - Pas de tiret cadratin dans les textes
 - Cible : navigateur sur ordinateur uniquement. Pas de vue mobile à concevoir ni à tester
+- Navigation : la barre du haut ne contient que le logo (retour au menu) et le menu du compte. Le menu d'accueil propose Galerie, Documentation (/regles) et Comptes (admin seulement). La création de carte se fait depuis le bouton « + Nouvelle carte » de la galerie
 - La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit
 - Contour : champ `shape` (`Shape` dans dcb-core), `solid` par défaut et non écrit dans le TOML. CSS via `.card[data-shape=…]` dans `card.css`. `sweep` ne tourne qu'au survol dans la galerie, en continu sur la fiche et dans l'aperçu
 - Les enums (type, skin, foil, shape) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration

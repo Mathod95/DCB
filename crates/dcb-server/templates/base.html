@@ -20,10 +20,6 @@
     </a>
     {% if let Some(name) = ctx.username %}
     <nav class="topnav">
-      <a href="/gallery">Galerie</a>
-      <a href="/regles">Règles</a>
-      {% if ctx.is_admin %}<a href="/admin/users">Comptes</a>{% endif %}
-      {% if ctx.can_edit %}<a class="btn btn-primary btn-sm" href="/cards/new">+ Nouvelle carte</a>{% endif %}
       <details class="usermenu">
         <summary><span class="avatar" aria-hidden="true">{{ ctx.initial() }}</span><span class="usermenu-name">{{ name }}</span></summary>
         <div class="usermenu-panel">

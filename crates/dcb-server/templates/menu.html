@@ -12,30 +12,16 @@
       <span class="menu-item-title">Galerie</span>
       <span class="menu-item-sub">{% if card_count == 0 %}Aucune carte pour l'instant{% else %}{{ card_count }} carte{% if card_count != 1 %}s{% endif %} dans la collection{% endif %}</span>
     </a>
-    {% if ctx.can_edit %}
-    <a class="menu-item" href="/cards/new">
-      <span class="menu-item-title">Créer une carte</span>
-      <span class="menu-item-sub">Éditeur avec aperçu en direct</span>
-    </a>
-    {% endif %}
     <a class="menu-item" href="/regles">
-      <span class="menu-item-title">Règles du jeu</span>
-      <span class="menu-item-sub">Le contexte, les cartes et le déroulé d'une journée</span>
+      <span class="menu-item-title">Documentation</span>
+      <span class="menu-item-sub">Overview, Core Concepts, Getting Started <span class="more">and more…</span></span>
     </a>
     {% if ctx.is_admin %}
     <a class="menu-item" href="/admin/users">
-      <span class="menu-item-title">Comptes</span>
+      <span class="menu-item-title">Comptes <span class="pill-admin">Admin</span></span>
       <span class="menu-item-sub">Inviter des joueurs, gérer les rôles</span>
     </a>
     {% endif %}
-    <div class="menu-item is-disabled" aria-disabled="true">
-      <span class="menu-item-title">Deck builder</span>
-      <span class="menu-item-sub">Bientôt</span>
-    </div>
-    <div class="menu-item is-disabled" aria-disabled="true">
-      <span class="menu-item-title">Duel en ligne</span>
-      <span class="menu-item-sub">Bientôt</span>
-    </div>
   </nav>
 </section>
 {% endblock %}
