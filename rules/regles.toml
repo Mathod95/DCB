@@ -129,3 +129,17 @@ kpis = [
 [rarity]
 title = "Six finitions"
 text = "La finition indique la rareté d'une carte. Survolez une carte pour voir le reflet bouger."
+
+# Partie « Concepts » : ce qui change l'allure d'une carte sans changer son effet en jeu.
+# La finition reprend le texte de [rarity] ci-dessus.
+[concepts]
+title = "Anatomie d'une carte"
+text = "Trois réglages changent l'allure d'une carte sans rien changer à son effet en jeu: la skin, la finition et le contour. Ils se combinent librement, une carte peut être Dark, Gold et Néon à la fois."
+
+[concepts.skin]
+title = "Deux skins"
+text = "La skin règle le fond de la carte et la couleur de ses blocs: Light pour un fond clair, Dark pour un fond sombre."
+
+[concepts.shape]
+title = "Neuf contours"
+text = "Le contour reprend toujours la couleur du type de la carte, seul son style change. Survolez le reflet qui tourne pour le voir faire le tour de la carte."

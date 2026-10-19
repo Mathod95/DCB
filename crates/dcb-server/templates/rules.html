@@ -126,21 +126,59 @@
     </div>
   </section>
 
-  {% if !c.foils.is_empty() %}
-  <section aria-labelledby="t-foils">
+  <section class="concepts" aria-labelledby="t-concepts">
     <div class="section-head">
-      <p class="eyebrow">Rareté</p>
-      <h2 id="t-foils">{{ c.rarity_title }}</h2>
-      <div class="prose"><p>{{ c.rarity_text|safe }}</p></div>
+      <p class="eyebrow">Concepts</p>
+      <h2 id="t-concepts">{{ c.concepts_title }}</h2>
+      <div class="prose"><p>{{ c.concepts_text|safe }}</p></div>
     </div>
-    <div class="foils">
-      {% for f in c.foils %}
-      {% let card = f.card %}
-      <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
-      {% endfor %}
+
+    {% if c.foils.is_empty() %}
+    <p class="muted">Les exemples apparaîtront dès qu'une carte sera dans la collection.</p>
+    {% else %}
+    <div class="concept" aria-labelledby="t-skins">
+      <div class="concept-head">
+        <p class="eyebrow">Skin</p>
+        <h3 id="t-skins">{{ c.skin_title }}</h3>
+        <p>{{ c.skin_text|safe }}</p>
+      </div>
+      <div class="foils is-skins">
+        {% for f in c.skins %}
+        {% let card = f.card %}
+        <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
+        {% endfor %}
+      </div>
     </div>
+
+    <div class="concept" aria-labelledby="t-foils">
+      <div class="concept-head">
+        <p class="eyebrow">Finition et rareté</p>
+        <h3 id="t-foils">{{ c.rarity_title }}</h3>
+        <p>{{ c.rarity_text|safe }}</p>
+      </div>
+      <div class="foils">
+        {% for f in c.foils %}
+        {% let card = f.card %}
+        <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="concept" aria-labelledby="t-shapes">
+      <div class="concept-head">
+        <p class="eyebrow">Contour</p>
+        <h3 id="t-shapes">{{ c.shape_title }}</h3>
+        <p>{{ c.shape_text|safe }}</p>
+      </div>
+      <div class="foils is-shapes">
+        {% for f in c.shapes %}
+        {% let card = f.card %}
+        <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </section>
-  {% endif %}
 
 </div>
 {% else %}

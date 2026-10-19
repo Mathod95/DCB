@@ -380,6 +380,15 @@ input[type="file"]::file-selector-button {
 .foil-item { display: grid; justify-items: center; gap: 10px; text-align: center; }
 .foil-item .card-frame { --s: 0.42; }
 .foil-item b { font-size: 14px; }
+.foils.is-skins { grid-template-columns: repeat(2, max-content); gap: 24px; }
+.foils.is-shapes { grid-template-columns: repeat(5, minmax(0, 1fr)); row-gap: 24px; }
+.concepts { display: grid; gap: 40px; }
+.concepts > .section-head { margin-bottom: 0; }
+.concept { display: grid; gap: 18px; padding-top: 28px; border-top: 1px solid var(--line); }
+.concept-head { display: grid; gap: 6px; max-width: 70ch; }
+.concept-head .eyebrow { margin: 0; }
+.concept-head h3 { margin: 0; font-size: 20px; }
+.concept-head p:not(.eyebrow) { margin: 0; color: var(--text-2); }
 
 .topnav > a[aria-current="page"] { color: var(--text); box-shadow: 0 2px 0 var(--accent); }
 

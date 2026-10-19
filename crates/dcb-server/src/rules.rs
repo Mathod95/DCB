@@ -24,6 +24,7 @@ pub struct Rules {
     pub day: Day,
     pub lifecycle: Lifecycle,
     pub rarity: Rarity,
+    pub concepts: Concepts,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -121,6 +122,23 @@ pub struct Lifecycle {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Rarity {
+    pub title: String,
+    pub text: String,
+}
+
+/// Partie « Concepts » : skin, finition (texte de `rarity`) et contour.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Concepts {
+    pub title: String,
+    pub text: String,
+    pub skin: ConceptPart,
+    pub shape: ConceptPart,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConceptPart {
     pub title: String,
     pub text: String,
 }

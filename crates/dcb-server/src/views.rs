@@ -466,6 +466,7 @@ impl RulesType {
     }
 }
 
+/// Une même carte déclinée dans chaque valeur d'un réglage (skin, finition, contour).
 pub struct FoilSample {
     pub label: &'static str,
     pub card: CardView,
@@ -515,6 +516,21 @@ pub struct RulesContent {
     pub rarity_title: String,
     pub rarity_text: String,
     pub foils: Vec<FoilSample>,
+    pub concepts_title: String,
+    pub concepts_text: String,
+    pub skin_title: String,
+    pub skin_text: String,
+    pub skins: Vec<FoilSample>,
+    pub shape_title: String,
+    pub shape_text: String,
+    pub shapes: Vec<FoilSample>,
+}
+
+/// Exemples de la partie « Concepts », une carte par réglage.
+pub struct ConceptSamples {
+    pub skins: Vec<FoilSample>,
+    pub foils: Vec<FoilSample>,
+    pub shapes: Vec<FoilSample>,
 }
 
 #[derive(Template)]
@@ -541,7 +557,7 @@ impl RulesPage {
         r: &Rules,
         error: Option<String>,
         types: Vec<RulesType>,
-        foils: Vec<FoilSample>,
+        samples: ConceptSamples,
     ) -> Self {
         let percent = r.start_percent();
         let content = RulesContent {
@@ -599,7 +615,15 @@ impl RulesPage {
             kpis: r.lifecycle.kpis.clone(),
             rarity_title: r.rarity.title.clone(),
             rarity_text: inline(&r.rarity.text),
-            foils,
+            foils: samples.foils,
+            concepts_title: r.concepts.title.clone(),
+            concepts_text: inline(&r.concepts.text),
+            skin_title: r.concepts.skin.title.clone(),
+            skin_text: inline(&r.concepts.skin.text),
+            skins: samples.skins,
+            shape_title: r.concepts.shape.title.clone(),
+            shape_text: inline(&r.concepts.shape.text),
+            shapes: samples.shapes,
         };
         Self {
             ctx,

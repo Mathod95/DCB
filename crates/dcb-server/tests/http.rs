@@ -472,11 +472,24 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     // mise en forme : montants et termes de statut
     assert!(body.contains(r#"<span class="money">$25.000,00</span>"#));
     assert!(body.contains("<strong><em>to-do</em></strong>"));
-    // six finitions sur la même carte
-    assert_eq!(body.matches(r#"<div class="foil-item">"#).count(), 6);
+    // partie Concepts : 2 skins, 6 finitions et 9 contours
+    assert!(body.contains("Anatomie d") && body.contains(r#"id="t-concepts""#));
+    assert_eq!(
+        body.matches(r#"<div class="foil-item">"#).count(),
+        2 + 6 + 9
+    );
     for foil in ["basic", "gold", "stars", "glitter", "shards", "rainbow"] {
         assert!(body.contains(&format!(r#"data-foil="{foil}""#)), "{foil}");
     }
+    for shape in [
+        "solid", "neon", "gradient", "sweep", "double", "corners", "chamfer", "topbar", "tinted",
+    ] {
+        assert!(
+            body.contains(&format!(r#"data-shape="{shape}""#)),
+            "{shape}"
+        );
+    }
+    assert!(body.contains(r#"data-skin="light""#) && body.contains(r#"data-skin="dark""#));
 }
 
 #[tokio::test]
@@ -486,6 +499,7 @@ async fn rules_page_handles_empty_collection() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body.matches("Aucune carte de ce type pour l").count(), 5);
     assert!(!body.contains("foil-item"));
+    assert!(body.contains("Les exemples appara"));
 }
 
 #[tokio::test]

@@ -436,23 +436,51 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
         types.push(RulesType::new(entry, count, card.as_ref()));
     }
 
-    // Une même carte pour les six finitions, pour que seule la finition change.
-    let foils = match db::random_card(&s.pool, None).await? {
-        Some(card) => Foil::ALL
+    // Partie « Concepts » : une carte tirée au hasard par réglage, déclinée dans chaque
+    // valeur, pour que seul ce réglage change d'un exemple à l'autre.
+    fn variants<T: Copy>(
+        card: Option<&Card>,
+        values: &[T],
+        label: fn(T) -> &'static str,
+        apply: fn(&mut CardDraft, T),
+    ) -> Vec<FoilSample> {
+        let Some(card) = card else {
+            return Vec::new();
+        };
+        values
             .iter()
-            .map(|&foil| {
+            .map(|&v| {
                 let mut draft = card.draft.clone();
-                draft.foil = foil;
+                apply(&mut draft, v);
                 FoilSample {
-                    label: foil.label(),
+                    label: label(v),
                     card: CardView::new(Some(&card.slug), &draft),
                 }
             })
-            .collect(),
-        None => Vec::new(),
+            .collect()
+    }
+    let samples = ConceptSamples {
+        skins: variants(
+            db::random_card(&s.pool, None).await?.as_ref(),
+            dcb_core::Skin::ALL,
+            dcb_core::Skin::label,
+            |d, v| d.skin = v,
+        ),
+        foils: variants(
+            db::random_card(&s.pool, None).await?.as_ref(),
+            Foil::ALL,
+            Foil::label,
+            |d, v| d.foil = v,
+        ),
+        shapes: variants(
+            db::random_card(&s.pool, None).await?.as_ref(),
+            Shape::ALL,
+            Shape::label,
+            |d, v| d.shape = v,
+        ),
     };
 
-    Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, foils))?.into_response())
+    Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, samples))?.into_response())
 }
 
 async fn reload(State(s): State<AppState>, _editor: EditorUser) -> AppResult<Redirect> {
