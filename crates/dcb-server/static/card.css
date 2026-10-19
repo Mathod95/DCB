@@ -99,7 +99,8 @@
 .card-art {
   top: 89px;
   height: 180px;
-  border: 2px solid var(--art-border);
+  /* contour teinté par la couleur du type, avec ou sans illustration */
+  border: 2px solid color-mix(in srgb, var(--type) 25%, var(--art-border));
   background: #fff;
   display: grid;
   place-items: center;
@@ -112,7 +113,6 @@
 }
 /* Carte sans illustration : fond teinté par le type, motif de points, grande icône du type */
 .card-art.is-empty {
-  border-color: color-mix(in srgb, var(--type) 25%, var(--art-border));
   background:
     radial-gradient(color-mix(in srgb, var(--type) 35%, transparent) 1.2px, transparent 1.6px) 0 0 / 14px 14px,
     linear-gradient(160deg, color-mix(in srgb, var(--type) 24%, #fff), color-mix(in srgb, var(--type) 8%, #fff));
