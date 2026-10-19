@@ -37,6 +37,7 @@ cargo fmt --all
 - Cible : navigateur sur ordinateur uniquement. Pas de vue mobile à concevoir ni à tester
 - La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit
 - Les enums (type, skin, foil) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
+- Carte sans illustration : bloc `.card-art.is-empty` teinté par la couleur du type, motif de points et icône du type (dans `card.html`, une icône par type)
 - Les cotes de `card.css` viennent du Figma : ne pas les changer sans vérifier la maquette
 - Pas de cartes de démo ni de seed : le dépôt ne contient que les cartes créées par l'utilisateur
 - Le slug (nom du fichier) ne change pas quand une carte est renommée

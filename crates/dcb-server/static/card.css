@@ -110,11 +110,26 @@
   object-fit: cover;
   display: block;
 }
-.card-art-empty {
-  width: 56px;
-  height: 56px;
-  color: #cbd5e1;
+/* Carte sans illustration : fond teinté par le type, motif de points, grande icône du type */
+.card-art.is-empty {
+  border-color: color-mix(in srgb, var(--type) 25%, var(--art-border));
+  background:
+    radial-gradient(color-mix(in srgb, var(--type) 35%, transparent) 1.2px, transparent 1.6px) 0 0 / 14px 14px,
+    linear-gradient(160deg, color-mix(in srgb, var(--type) 24%, #fff), color-mix(in srgb, var(--type) 8%, #fff));
 }
+.card[data-skin="dark"] .card-art.is-empty {
+  background:
+    radial-gradient(color-mix(in srgb, var(--type) 35%, transparent) 1.2px, transparent 1.6px) 0 0 / 14px 14px,
+    linear-gradient(160deg, color-mix(in srgb, var(--type) 30%, #0f172a), #0b1120);
+}
+.card-art-icon {
+  width: 76px;
+  height: 76px;
+  color: var(--type);
+  opacity: 0.9;
+}
+/* Ressource humaine (#0800f6) est trop sombre sur fond sombre */
+.card[data-skin="dark"][data-type="hr"] .card-art-icon { color: #6d68ff; }
 
 /* cardDescriptionBlock / cardEffectBlock */
 .card-description { top: 279px; height: 60px; }

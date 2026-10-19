@@ -886,3 +886,25 @@ async fn users_change_their_own_password() {
     .await;
     assert_eq!(status, StatusCode::SEE_OTHER);
 }
+
+#[tokio::test]
+async fn cards_without_art_get_a_type_placeholder() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(
+        body.contains(r#"class="card-block card-art is-empty""#),
+        "{body}"
+    );
+    assert!(body.contains("card-art-icon"));
+    // l'icône Incident (triangle) et pas l'ancienne icône d'image
+    assert!(body.contains(r#"<path d="M12 3 2 20h20L12 3z"/>"#));
+
+    let (_, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Crash Loop", &[("art", PNG)])),
+    )
+    .await;
+    let (_, _, body) = send(&t.app, get("/cards/crash-loop")).await;
+    assert!(body.contains(r#"<img src="/art/crash-loop.png""#));
+    assert!(!body.contains("is-empty"));
+}
