@@ -464,20 +464,54 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
             || body.contains("Aucune carte pour l'instant")
     );
     assert!(body.contains(r#"href="/gallery?type=incident""#));
-    // la carte remplie passe avant la carte vide
+    // la carte remplie passe avant la carte vide (la partie Concepts garde toute la collection
+    // en modèles pour la vue zoomée)
+    let types_part = body.split(r#"id="t-concepts""#).next().unwrap();
     assert!(
-        body.contains("DDOS") && !body.contains(">VIDE<"),
+        types_part.contains("DDOS") && !types_part.contains(">VIDE<"),
         "exemple d'incident"
     );
     // mise en forme : montants et termes de statut
     assert!(body.contains(r#"<span class="money">$25.000,00</span>"#));
     assert!(body.contains("<strong><em>to-do</em></strong>"));
-    // partie Concepts : 2 skins, 6 finitions et 9 contours
+    // partie Concepts : 10 skins classiques, 8 animées, 6 finitions et 9 contours, chacune en
+    // double dans sa bande qui défile
     assert!(body.contains("Anatomie d") && body.contains(r#"id="t-concepts""#));
     assert_eq!(
-        body.matches(r#"<div class="foil-item">"#).count(),
-        2 + 6 + 9
+        body.matches(r#"<div class="foil-item""#).count(),
+        (10 + 8 + 6 + 9) * 2
     );
+    assert_eq!(
+        body.matches(r#"<div class="foil-item" aria-hidden="true""#)
+            .count(),
+        10 + 8 + 6 + 9
+    );
+    assert_eq!(body.matches(r#"<div class="skin-rail""#).count(), 4);
+    for count in [10, 8, 6, 9] {
+        assert!(
+            body.contains(&format!(r#"<span class="rail-count">{count}</span>"#)),
+            "{count}"
+        );
+    }
+    assert!(
+        body.contains("Les skins")
+            && body.contains("Les finitions")
+            && body.contains("Les contours")
+    );
+    assert!(!body.contains("Deux skins"));
+    // skins de concepts.css, avec calque animé, ASCII et description pour la vue zoomée
+    assert!(
+        body.contains(r#"class="st sk sk-dracula""#) && body.contains(r#"class="st sk sk-crt""#)
+    );
+    assert!(body.contains(r#"class="st sk dyn dyn-matrix""#) && body.contains("fx-matrix"));
+    assert!(body.contains(r#"class="ascii-art""#) && body.contains(r#" data-text=""#));
+    assert!(body.contains("Plan d&#39;architecte") || body.contains("Plan d'architecte"));
+    // vue zoomée : choix de la catégorie et une carte modèle par carte de la collection
+    assert!(body.contains(r#"<dialog id="card-modal""#));
+    assert_eq!(body.matches(r#"class="modal-type""#).count(), 5);
+    assert_eq!(body.matches(r#"<template class="tpl-card""#).count(), 3);
+    assert!(body.contains(r#"data-type="incident" data-filled="0""#));
+    assert!(body.contains(r#"src="/static/concepts.js""#));
     for foil in ["basic", "gold", "stars", "glitter", "shards", "rainbow"] {
         assert!(body.contains(&format!(r#"data-foil="{foil}""#)), "{foil}");
     }
@@ -1012,9 +1046,10 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
     t.state.reload().await.unwrap();
     let (status, _, body) = send(&t.user, get("/regles/concepts")).await;
     assert_eq!(status, StatusCode::OK);
-    // sommaire avec les quatre parties et leurs sections
+    // sommaire avec les deux parties restantes (les skins sont passées sur la page des règles)
     assert!(body.contains(r#"<nav class="cdoc-toc""#));
-    assert!(body.contains(r##"href="#p1""##) && body.contains(r##"href="#p4-s7""##));
+    assert!(body.contains(r##"href="#p1""##) && body.contains(r##"href="#p2-s11""##));
+    assert!(!body.contains(r##"href="#p3""##) && !body.contains("sk-dracula"));
     // vraies cartes de la collection, au gabarit v2
     assert!(body.contains("ARGO CD") && body.contains("DDOS"));
     assert!(body.contains(r#"<span class="code-file">effect.yaml</span>"#));
@@ -1025,10 +1060,6 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
             "{shape}"
         );
     }
-    assert!(
-        body.contains("sk-dracula") && body.contains("dyn-matrix") && body.contains("fx-matrix")
-    );
-    assert!(body.contains(r#"class="ascii-art""#));
     // carte citée dans un effet
     assert!(body.contains(r#"<span class="y-ref" data-type="app">Application Set</span>"#));
     assert!(body.contains("DCB-"));

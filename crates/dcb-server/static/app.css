@@ -16,6 +16,7 @@
   --text-2: #c3cfe0;
   --money: #fbbf24;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: "Inter", system-ui, sans-serif;
   /* Couleurs des types pour l'interface (bordure et badge des cartes : card.css) */
   --t-resource: #38bdf8;
   --t-incident: #f83838;
@@ -404,12 +405,36 @@ input[type="file"]::file-selector-button {
 .versions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .versions .sep { color: var(--line-2); }
 
-.foils { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+/* Partie Concepts des règles : une bande par réglage, qui défile en boucle (contenu doublé,
+   translation de -50 %), en pause au survol. Les sens alternent d'une bande à l'autre. */
 .foil-item { display: grid; justify-items: center; gap: 10px; text-align: center; }
-.foil-item .card-frame { --s: 0.42; }
 .foil-item b { font-size: 14px; }
-.foils.is-skins { grid-template-columns: repeat(2, max-content); gap: 24px; }
-.foils.is-shapes { grid-template-columns: repeat(5, minmax(0, 1fr)); row-gap: 24px; }
+.foil-item .st { display: grid; }
+.rail-label { display: flex; align-items: center; gap: 8px; margin: 6px 0 -4px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.rail-count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px;
+  border: 1px solid var(--line-2); border-radius: 999px; background: var(--panel-2);
+  color: var(--text); font-size: 11px; letter-spacing: 0; font-variant-numeric: tabular-nums;
+}
+.skin-rail {
+  overflow: hidden;
+  padding-block: 6px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.skin-track { display: flex; gap: 32px; width: max-content; animation: skin-scroll 45s linear infinite; }
+.skin-track > .foil-item { flex: none; }
+.skin-rail[data-dir="right"] .skin-track { animation-direction: reverse; animation-duration: 38s; }
+.skin-rail:hover .skin-track { animation-play-state: paused; }
+@keyframes skin-scroll { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 16px)); } }
+.skin-rail .card-frame { --s: 0.61; cursor: zoom-in; border-radius: 12px; }
+.skin-rail .card-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+/* le reflet qui tourne tourne en continu dans les bandes, comme les autres effets */
+.skin-rail .card[data-shape="sweep"] .card-stroke { animation-play-state: running; }
+@media (prefers-reduced-motion: reduce) {
+  .skin-rail { overflow-x: auto; }
+  .skin-track { animation: none; }
+}
 .concepts { display: grid; gap: 40px; }
 .concepts-head { align-items: flex-end; }
 .concepts-head .muted { max-width: 70ch; margin: 6px 0 0; }
@@ -424,16 +449,13 @@ input[type="file"]::file-selector-button {
 }
 .concepts > .section-head { margin-bottom: 0; }
 .concept { display: grid; gap: 18px; padding-top: 28px; border-top: 1px solid var(--line); }
-.concept-head { display: grid; gap: 6px; max-width: 70ch; }
+.concept-head { display: grid; gap: 6px; }
 .concept-head .eyebrow { margin: 0; }
 .concept-head h3 { margin: 0; font-size: 20px; }
 .concept-head p:not(.eyebrow) { margin: 0; color: var(--text-2); }
 
 .topnav > a[aria-current="page"] { color: var(--text); box-shadow: 0 2px 0 var(--accent); }
 
-@media (max-width: 1000px) {
-  .foils { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 @media (max-width: 860px) {
   .rules-hero, .rules-split { grid-template-columns: 1fr; gap: 28px; }
   .day { grid-template-columns: 1fr; }

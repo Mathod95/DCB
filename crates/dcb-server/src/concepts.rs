@@ -76,6 +76,44 @@ const DYNAMIC: &[&str] = &[
     "aurora",
 ];
 
+/// Toutes les skins présentées sur la page des règles.
+pub const SKIN_KEYS: &[&str] = &[
+    "light",
+    "dark",
+    "terminal",
+    "dracula",
+    "solarized",
+    "nord",
+    "blueprint",
+    "synthwave",
+    "glass",
+    "kraft",
+    "crt",
+    "ascii",
+    "matrix",
+    "glitch",
+    "circuit",
+    "monitoring",
+    "drive",
+    "aurora",
+];
+
+/// Rendu d'une skin : skin de base de la carte, classes du conteneur (CSS de `concepts.css`) et
+/// calque animé éventuel (clé de `fx`). `None` pour une clé inconnue.
+pub fn skin_style(key: &str) -> Option<(dcb_core::Skin, String, Option<&'static str>)> {
+    match key {
+        "light" => Some((dcb_core::Skin::Light, String::new(), None)),
+        "dark" => Some((dcb_core::Skin::Dark, String::new(), None)),
+        k if k != "current" && SKINS.contains(&k) => {
+            Some((dcb_core::Skin::Light, format!("sk sk-{k}"), None))
+        }
+        k => DYNAMIC
+            .iter()
+            .find(|d| **d == k)
+            .map(|d| (dcb_core::Skin::Light, format!("sk dyn dyn-{d}"), Some(*d))),
+    }
+}
+
 impl ConceptsDoc {
     pub fn parse(text: &str) -> Result<Self, String> {
         let doc: Self = toml::from_str(text).map_err(|e| e.to_string())?;
@@ -385,7 +423,7 @@ pub fn citing_cards(all: &[Card]) -> Vec<&Card> {
         .collect()
 }
 
-fn ascii_word(t: CardType) -> &'static str {
+pub(crate) fn ascii_word(t: CardType) -> &'static str {
     match t {
         CardType::Resource => "RES",
         CardType::Incident => "INC",
@@ -584,7 +622,7 @@ impl Rng {
     }
 }
 
-fn fx(key: &str, slug: &str) -> String {
+pub(crate) fn fx(key: &str, slug: &str) -> String {
     let mut rng = Rng::new(&format!("{slug}{key}"));
     match key {
         "matrix" => matrix(&mut rng),
@@ -721,9 +759,20 @@ mod tests {
     #[test]
     fn real_file_parses_and_unknown_keys_fail() {
         let doc = ConceptsDoc::parse(include_str!("../../../rules/concepts.toml")).unwrap();
-        assert_eq!(doc.parts.len(), 4);
+        // les skins sont passées sur la page des règles
+        assert_eq!(doc.parts.len(), 2);
         let bad = "title = \"t\"\nintro = \"i\"\n[[parts]]\nkind = \"ideas\"\neyebrow = \"e\"\ntitle = \"t\"\nlead = \"l\"\n[[parts.sections]]\nkey = \"oups\"\ntitle = \"T\"\ntext = \"x\"\n";
         assert!(ConceptsDoc::parse(bad).unwrap_err().contains("oups"));
+    }
+
+    #[test]
+    fn every_rules_skin_has_a_style() {
+        for k in SKIN_KEYS {
+            assert!(skin_style(k).is_some(), "{k}");
+        }
+        assert_eq!(skin_style("crt").unwrap().1, "sk sk-crt");
+        assert_eq!(skin_style("matrix").unwrap().2, Some("matrix"));
+        assert!(skin_style("current").is_none() && skin_style("oups").is_none());
     }
 
     #[test]

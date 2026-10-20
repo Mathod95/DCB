@@ -74,6 +74,12 @@ pub struct CardView {
     pub flavor_placeholder: bool,
     /// URL publique de l'illustration (`/art/<fichier>`).
     pub art_url: Option<String>,
+    /// Calque animé posé dans le fond (skins animées), HTML.
+    pub fx: String,
+    /// Skin ASCII : sigle du type, l'illustration est convertie par le navigateur.
+    pub ascii_word: Option<&'static str>,
+    /// Nom en `data-text` (brouillage ASCII, décalage Glitch).
+    pub data_text: bool,
 }
 
 impl CardView {
@@ -109,6 +115,9 @@ impl CardView {
             flavor_text: d.flavor_text.clone(),
             flavor_placeholder: slug.is_none() && d.flavor_text.trim().is_empty(),
             art_url: d.art.as_ref().map(|f| format!("/art/{f}")),
+            fx: String::new(),
+            ascii_word: None,
+            data_text: false,
         }
     }
 
@@ -515,8 +524,20 @@ impl RulesType {
 
 /// Une même carte déclinée dans chaque valeur d'un réglage (skin, finition, contour).
 pub struct FoilSample {
-    pub label: &'static str,
+    pub label: String,
     pub card: CardView,
+    /// Classes du conteneur de la carte (skins de `concepts.css`).
+    pub wrap: String,
+    /// Description affichée dans la vue zoomée.
+    pub desc: String,
+}
+
+/// Carte de la collection gardée en `<template>` : la vue zoomée en tire une au hasard quand on
+/// change de catégorie.
+pub struct TemplateCard {
+    pub card: CardView,
+    /// Description et effet remplis : tirée en priorité.
+    pub filled: bool,
 }
 
 pub struct TileView {
@@ -567,7 +588,11 @@ pub struct RulesContent {
     pub concepts_text: String,
     pub skin_title: String,
     pub skin_text: String,
-    pub skins: Vec<FoilSample>,
+    pub skins_classic: Vec<FoilSample>,
+    pub skins_animated: Vec<FoilSample>,
+    pub templates: Vec<TemplateCard>,
+    /// Boutons de catégorie de la vue zoomée.
+    pub card_types: Vec<Choice>,
     pub shape_title: String,
     pub shape_text: String,
     pub shapes: Vec<FoilSample>,
@@ -575,9 +600,11 @@ pub struct RulesContent {
 
 /// Exemples de la partie « Concepts », une carte par réglage.
 pub struct ConceptSamples {
-    pub skins: Vec<FoilSample>,
+    pub skins_classic: Vec<FoilSample>,
+    pub skins_animated: Vec<FoilSample>,
     pub foils: Vec<FoilSample>,
     pub shapes: Vec<FoilSample>,
+    pub templates: Vec<TemplateCard>,
 }
 
 #[derive(Template)]
@@ -667,7 +694,10 @@ impl RulesPage {
             concepts_text: inline(&r.concepts.text),
             skin_title: r.concepts.skin.title.clone(),
             skin_text: inline(&r.concepts.skin.text),
-            skins: samples.skins,
+            skins_classic: samples.skins_classic,
+            skins_animated: samples.skins_animated,
+            templates: samples.templates,
+            card_types: type_choices(),
             shape_title: r.concepts.shape.title.clone(),
             shape_text: inline(&r.concepts.shape.text),
             shapes: samples.shapes,

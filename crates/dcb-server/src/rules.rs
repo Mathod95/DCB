@@ -132,8 +132,28 @@ pub struct Rarity {
 pub struct Concepts {
     pub title: String,
     pub text: String,
-    pub skin: ConceptPart,
+    pub skin: SkinPart,
     pub shape: ConceptPart,
+}
+
+/// Skins de la partie « Concepts » : deux bandes, classiques et animées.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SkinPart {
+    pub title: String,
+    pub text: String,
+    pub classic: Vec<SkinItem>,
+    pub animated: Vec<SkinItem>,
+}
+
+/// Une skin : sa clé (voir `concepts::skin_style`), son nom et sa description, affichée dans la
+/// vue zoomée.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SkinItem {
+    pub key: String,
+    pub title: String,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -145,7 +165,19 @@ pub struct ConceptPart {
 
 impl Rules {
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        let rules: Self = toml::from_str(text).map_err(|e| e.to_string())?;
+        let skin = &rules.concepts.skin;
+        for item in skin.classic.iter().chain(&skin.animated) {
+            if crate::concepts::skin_style(&item.key).is_none() {
+                return Err(format!(
+                    "skin « {} » : clé {:?} inconnue (valeurs : {})",
+                    item.title,
+                    item.key,
+                    crate::concepts::SKIN_KEYS.join(", ")
+                ));
+            }
+        }
+        Ok(rules)
     }
 
     pub async fn load(path: &Path) -> Result<Self, String> {

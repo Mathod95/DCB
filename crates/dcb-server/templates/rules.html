@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Règles · DevCardBattle{% endblock %}
+{#- Bande qui défile en boucle : les cartes sont doublées (copie masquée aux lecteurs d'écran) -#}
+{% macro rail(items, dir) %}
+<div class="skin-rail" data-dir="{{ dir }}"><div class="skin-track">
+  {% for pass in 0..2 %}{% for f in items.iter() %}{% let card = f.card %}
+  <div class="foil-item"{% if pass == 1 %} aria-hidden="true"{% endif %}{% if !f.desc.is_empty() %} data-desc="{{ f.desc }}"{% endif %}><div class="st {{ f.wrap }}"><div class="card-frame">{% include "card.html" %}</div></div><b>{{ f.label }}</b></div>
+  {% endfor %}{% endfor %}
+</div></div>
+{% endmacro %}
+
 {% block content %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap">
+<link rel="stylesheet" href="/static/concepts.css">
 {% if let Some(e) = error %}
 <div class="alert" role="alert">
   <strong>rules/regles.toml n'a pas pu être lu</strong>{% if content.is_some() %}, la page affiche la dernière version valide{% endif %}:
@@ -143,12 +154,10 @@
         <h3 id="t-skins">{{ c.skin_title }}</h3>
         <p>{{ c.skin_text|safe }}</p>
       </div>
-      <div class="foils is-skins">
-        {% for f in c.skins %}
-        {% let card = f.card %}
-        <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
-        {% endfor %}
-      </div>
+      <p class="rail-label">Classiques <span class="rail-count">{{ c.skins_classic.len() }}</span></p>
+      {% call rail(c.skins_classic, "left") %}{% endcall %}
+      <p class="rail-label">Animées <span class="rail-count">{{ c.skins_animated.len() }}</span></p>
+      {% call rail(c.skins_animated, "right") %}{% endcall %}
     </div>
 
     <div class="concept" aria-labelledby="t-foils">
@@ -157,12 +166,8 @@
         <h3 id="t-foils">{{ c.rarity_title }}</h3>
         <p>{{ c.rarity_text|safe }}</p>
       </div>
-      <div class="foils">
-        {% for f in c.foils %}
-        {% let card = f.card %}
-        <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
-        {% endfor %}
-      </div>
+      <p class="rail-label">Finitions <span class="rail-count">{{ c.foils.len() }}</span></p>
+      {% call rail(c.foils, "left") %}{% endcall %}
     </div>
 
     <div class="concept" aria-labelledby="t-shapes">
@@ -171,13 +176,26 @@
         <h3 id="t-shapes">{{ c.shape_title }}</h3>
         <p>{{ c.shape_text|safe }}</p>
       </div>
-      <div class="foils is-shapes">
-        {% for f in c.shapes %}
-        {% let card = f.card %}
-        <div class="foil-item"><div class="card-frame">{% include "card.html" %}</div><b>{{ f.label }}</b></div>
-        {% endfor %}
-      </div>
+      <p class="rail-label">Contours <span class="rail-count">{{ c.shapes.len() }}</span></p>
+      {% call rail(c.shapes, "right") %}{% endcall %}
     </div>
+
+    {#- Vue zoomée : clic sur une carte des bandes ; les flèches passent d'une carte à l'autre, les
+        boutons de catégorie tirent une carte du type choisi parmi les modèles ci-dessous. -#}
+    <dialog id="card-modal" aria-label="Carte agrandie" data-frames=".skin-rail .foil-item:not([aria-hidden]) .card-frame" data-click=".skin-rail .card-frame">
+      <button class="modal-btn modal-close" type="button" aria-label="Fermer">✕</button>
+      <button class="modal-btn modal-prev" type="button" aria-label="Carte précédente">‹</button>
+      <div class="modal-stage"></div>
+      <button class="modal-btn modal-next" type="button" aria-label="Carte suivante">›</button>
+      <div class="modal-info">
+        <div class="modal-types" role="group" aria-label="Catégorie de carte">
+          {% for t in c.card_types %}<button type="button" class="modal-type" data-type="{{ t.value }}" style="--c: var(--t-{{ t.value }})">{{ t.label }}</button>{% endfor %}
+        </div>
+        <p class="modal-line"><span class="modal-caption"></span><span class="modal-count"></span></p>
+        <p class="modal-desc" hidden></p>
+      </div>
+    </dialog>
+    {% for t in c.templates %}{% let card = t.card %}<template class="tpl-card" data-type="{{ card.type_slug }}" data-filled="{% if t.filled %}1{% else %}0{% endif %}">{% include "card.html" %}</template>{% endfor %}
     {% endif %}
   </section>
 
@@ -189,4 +207,5 @@
   <p class="muted">Ajoute le fichier <code>rules/regles.toml</code> puis recharge les fichiers depuis la galerie.</p>
 </div>
 {% endif %}
+<script src="/static/concepts.js" defer></script>
 {% endblock %}

@@ -127,7 +127,7 @@ kpis = [
 ]
 
 [rarity]
-title = "Six finitions"
+title = "Les finitions"
 text = "La finition indique la rareté d'une carte. Survolez une carte pour voir le reflet bouger."
 
 # Partie « Concepts » : ce qui change l'allure d'une carte sans changer son effet en jeu.
@@ -137,9 +137,103 @@ title = "Anatomie d'une carte"
 text = "Trois réglages changent l'allure d'une carte sans rien changer à son effet en jeu: la skin, la finition et le contour. Ils se combinent librement, une carte peut être Dark, Gold et Néon à la fois."
 
 [concepts.skin]
-title = "Deux skins"
-text = "La skin règle le fond de la carte et la couleur de ses blocs: Light pour un fond clair, Dark pour un fond sombre."
+title = "Les skins"
+text = "La skin règle le fond de la carte, la couleur de ses blocs et de ses textes. Les skins classiques sont fixes, les skins animées ajoutent un effet en mouvement."
+
+# Une bande par groupe. `key` choisit le rendu (light, dark, terminal, dracula, solarized, nord,
+# blueprint, synthwave, glass, kraft, crt, ascii, matrix, glitch, circuit, monitoring, drive,
+# aurora) ; `text` s'affiche sous la carte dans la vue zoomée.
+
+[[concepts.skin.classic]]
+key = "light"
+title = "Light"
+text = "La skin par défaut: fond clair, blocs blancs et texte ardoise."
+
+[[concepts.skin.classic]]
+key = "dark"
+title = "Dark"
+text = "Fond sombre, blocs bleu nuit et texte clair."
+
+[[concepts.skin.classic]]
+key = "terminal"
+title = "Terminal"
+text = "Noir profond et vert phosphore, avec de fines lignes de balayage comme un vieil écran."
+
+[[concepts.skin.classic]]
+key = "dracula"
+title = "Dracula"
+text = "Le thème d'éditeur bien connu: gris violacé, rose, violet et cyan."
+
+[[concepts.skin.classic]]
+key = "solarized"
+title = "Solarized Light"
+text = "Fond crème chaud et texte ardoise, avec un bloc de code en Solarized Dark."
+
+[[concepts.skin.classic]]
+key = "nord"
+title = "Nord"
+text = "Gris bleutés froids et accents givrés, calme et lisible."
+
+[[concepts.skin.classic]]
+key = "blueprint"
+title = "Blueprint"
+text = "Plan d'architecte: fond bleu quadrillé, blocs transparents à bords pointillés, texte blanc."
+
+[[concepts.skin.classic]]
+key = "synthwave"
+title = "Synthwave"
+text = "Dégradé violet nuit, rose et cyan néon, ambiance années 80."
+
+[[concepts.skin.classic]]
+key = "glass"
+title = "Verre"
+text = "Fond sombre teinté par la couleur du type, blocs en verre dépoli translucides."
+
+[[concepts.skin.classic]]
+key = "kraft"
+title = "Kraft"
+text = "Carton kraft et papier, avec un bloc de code sombre. Côté jeu de plateau."
+
+[[concepts.skin.animated]]
+key = "crt"
+title = "Terminal CRT"
+text = "Écran cathodique inspiré des terminaux de Fallout. Tout passe au vert phosphore, illustration comprise. Police pixel pour les titres, texte qui luit, lignes de balayage qui défilent, bande lumineuse qui descend, léger scintillement, coins assombris comme un écran bombé, et un curseur qui clignote après le texte d'ambiance. Seul le contour garde la couleur du type."
+
+[[concepts.skin.animated]]
+key = "ascii"
+title = "ASCII"
+text = "Toute la carte en caractères. L'illustration est convertie en art ASCII (les cartes sans image affichent le sigle du type), avec des cadres en tirets et des crochets autour des valeurs. Des caractères changent au hasard en continu, et le nom se brouille puis se recompose au survol."
+
+[[concepts.skin.animated]]
+key = "matrix"
+title = "Matrix"
+text = "Pluie de caractères verts qui tombe derrière des blocs sombres translucides, à une vitesse différente par colonne."
+
+[[concepts.skin.animated]]
+key = "glitch"
+title = "Glitch"
+text = "Fond noir, magenta et cyan. Le nom et l'illustration se décalent en couleurs séparées par à-coups, avec une bande de parasites qui traverse la carte."
+
+[[concepts.skin.animated]]
+key = "circuit"
+title = "Circuit"
+text = "Pistes de circuit imprimé dans la couleur du type, parcourues par des impulsions lumineuses."
+
+[[concepts.skin.animated]]
+key = "monitoring"
+title = "Monitoring"
+text = "Fond de dashboard façon Grafana, avec une grille, trois courbes qui défilent, et une LED d'état qui pulse dans le bloc du nom (rouge pour un Incident)."
+
+[[concepts.skin.animated]]
+key = "drive"
+title = "Synthwave Drive"
+text = "Soleil rayé et sol quadrillé en perspective qui défile vers l'avant, derrière des blocs translucides."
+
+[[concepts.skin.animated]]
+key = "aurora"
+title = "Aurore"
+text = "Trois nappes de couleur floues, dont une de la couleur du type, qui dérivent lentement derrière des blocs en verre."
 
 [concepts.shape]
-title = "Neuf contours"
-text = "Le contour reprend toujours la couleur du type de la carte, seul son style change. Survolez le reflet qui tourne pour le voir faire le tour de la carte."
+title = "Les contours"
+text = "Le contour reprend toujours la couleur du type de la carte, seul son style change."

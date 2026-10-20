@@ -1,9 +1,12 @@
 <div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}">
-  <div class="card-skin"></div>
+  <div class="card-skin">{{ card.fx|safe }}</div>
 
-  <div class="card-block card-name" data-size="{{ card.name_size }}"><span>{{ card.name }}</span></div>
+  <div class="card-block card-name" data-size="{{ card.name_size }}"><span{% if card.data_text %} data-text="{{ card.name }}"{% endif %}>{{ card.name }}</span></div>
 
-  {% if let Some(art) = card.art_url %}
+  {% if let Some(word) = card.ascii_word %}
+  {#- Skin ASCII : l'illustration (ou le sigle du type) est dessinée en caractères par concepts.js -#}
+  <div class="card-block card-art"><pre class="ascii-art" data-src="{% if let Some(art) = card.art_url %}{{ art }}{% endif %}" data-word="{{ word }}"></pre></div>
+  {% else if let Some(art) = card.art_url %}
   <div class="card-block card-art">
     <img src="{{ art }}" alt="" loading="lazy" draggable="false">
   </div>

@@ -537,8 +537,26 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
         types.push(RulesType::new(entry, count, card.as_ref()));
     }
 
-    // Partie « Concepts » : une carte tirée au hasard par réglage, déclinée dans chaque
-    // valeur, pour que seul ce réglage change d'un exemple à l'autre.
+    // Partie « Concepts » : une même carte de la collection, tirée au hasard (avec illustration
+    // et texte de préférence), déclinée dans chaque skin, finition et contour.
+    let all = db::list(&s.pool, Filter::default()).await?;
+    let filled =
+        |c: &Card| !c.draft.description.trim().is_empty() && !c.draft.effect.trim().is_empty();
+    let sample = {
+        let mut pool: Vec<&Card> = all
+            .iter()
+            .filter(|c| c.draft.art.is_some() && filled(c))
+            .collect();
+        if pool.is_empty() {
+            pool = all.iter().filter(|c| filled(c)).collect();
+        }
+        if pool.is_empty() {
+            pool = all.iter().collect();
+        }
+        let mut seed = [0u8; 8];
+        let _ = getrandom::fill(&mut seed);
+        (!pool.is_empty()).then(|| pool[(u64::from_le_bytes(seed) % pool.len() as u64) as usize])
+    };
     fn variants<T: Copy>(
         card: Option<&Card>,
         values: &[T],
@@ -554,31 +572,53 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
                 let mut draft = card.draft.clone();
                 apply(&mut draft, v);
                 FoilSample {
-                    label: label(v),
+                    label: label(v).to_owned(),
                     card: CardView::new(Some(&card.slug), &draft),
+                    wrap: String::new(),
+                    desc: String::new(),
                 }
             })
             .collect()
     }
+    let skins = |items: &[crate::rules::SkinItem]| -> Vec<FoilSample> {
+        let Some(card) = sample else {
+            return Vec::new();
+        };
+        items
+            .iter()
+            .filter_map(|item| {
+                let (skin, wrap, fx) = concepts::skin_style(&item.key)?;
+                let mut draft = card.draft.clone();
+                draft.skin = skin;
+                let mut view = CardView::new(Some(&card.slug), &draft);
+                if let Some(k) = fx {
+                    view.fx = concepts::fx(k, &card.slug);
+                    view.data_text = matches!(k, "ascii" | "glitch");
+                    if k == "ascii" {
+                        view.ascii_word = Some(concepts::ascii_word(draft.card_type));
+                    }
+                }
+                Some(FoilSample {
+                    label: item.title.clone(),
+                    card: view,
+                    wrap,
+                    desc: item.text.clone(),
+                })
+            })
+            .collect()
+    };
     let samples = ConceptSamples {
-        skins: variants(
-            db::random_card(&s.pool, None).await?.as_ref(),
-            dcb_core::Skin::ALL,
-            dcb_core::Skin::label,
-            |d, v| d.skin = v,
-        ),
-        foils: variants(
-            db::random_card(&s.pool, None).await?.as_ref(),
-            Foil::ALL,
-            Foil::label,
-            |d, v| d.foil = v,
-        ),
-        shapes: variants(
-            db::random_card(&s.pool, None).await?.as_ref(),
-            Shape::ALL,
-            Shape::label,
-            |d, v| d.shape = v,
-        ),
+        skins_classic: skins(&rules.concepts.skin.classic),
+        skins_animated: skins(&rules.concepts.skin.animated),
+        foils: variants(sample, Foil::ALL, Foil::label, |d, v| d.foil = v),
+        shapes: variants(sample, Shape::ALL, Shape::label, |d, v| d.shape = v),
+        templates: all
+            .iter()
+            .map(|c| TemplateCard {
+                card: CardView::new(Some(&c.slug), &c.draft),
+                filled: filled(c),
+            })
+            .collect(),
     };
 
     Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, samples))?.into_response())

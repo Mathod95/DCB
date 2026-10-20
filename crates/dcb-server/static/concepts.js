@@ -45,7 +45,7 @@
     return out;
   }
 
-  document.querySelectorAll(".ascii-art").forEach((pre) => {
+  const fillPre = (pre) => {
     const fill = (text) => { pre.textContent = text; pre.dataset.base = text; };
     const src = pre.dataset.src;
     if (!src) { fill(fromWord(pre.dataset.word || "?")); return; }
@@ -59,7 +59,10 @@
     };
     img.onerror = () => fill(fromWord(pre.dataset.word || "?"));
     img.src = src;
-  });
+  };
+  // aussi utilisé par la vue zoomée, quand elle change de carte
+  window.dcbAsciiFill = fillPre;
+  document.querySelectorAll(".ascii-art").forEach(fillPre);
 })();
 
 // Sommaire : met en évidence la section affichée.
@@ -130,17 +133,27 @@
 })();
 
 // Fenêtre agrandie : clic sur une carte pour la voir en grand, inclinée et éclairée comme dans l'app.
+// Sert à la page Concepts et à la partie Concepts des règles. Sur les règles, la fenêtre précise
+// quelles cartes ouvrir (data-frames, data-click), affiche la description de la skin et propose
+// de changer de catégorie : une carte du type choisi est tirée parmi les <template class="tpl-card">.
 (() => {
   const dialog = document.getElementById("card-modal");
+  if (!dialog) return;
   const stage = dialog.querySelector(".modal-stage");
   const caption = dialog.querySelector(".modal-caption");
   const counter = dialog.querySelector(".modal-count");
+  const desc = dialog.querySelector(".modal-desc");
+  const typeBtns = [...dialog.querySelectorAll(".modal-type")];
+  const FRAMES = dialog.dataset.frames || ".cdoc-body .card-frame";
+  const CLICK = dialog.dataset.click || FRAMES;
+  const WORD = { resource: "RES", incident: "INC", hr: "RH", app: "APP", event: "EVT" };
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   const MAX_TILT = 12;
   let frames = [];
   let index = 0;
+  let type = null;
 
-  const sourceFrames = () => [...document.querySelectorAll(".cdoc-body .card-frame")];
+  const sourceFrames = () => [...document.querySelectorAll(FRAMES)];
 
   sourceFrames().forEach((f) => {
     f.tabIndex = 0;
@@ -148,10 +161,55 @@
     f.setAttribute("aria-label", "Agrandir la carte " + (f.querySelector(".card-name")?.textContent.trim() || ""));
   });
 
+  // Bandes qui défilent : une carte de la copie renvoie à la carte d'origine.
+  function original(frame) {
+    const track = frame.closest(".skin-track");
+    if (!track) return frame;
+    const items = [...track.children];
+    const i = items.indexOf(frame.closest(".foil-item"));
+    return items[i % (items.length / 2)].querySelector(".card-frame");
+  }
+
   function scaleFor() {
-    const h = (window.innerHeight - 150) / 574;
+    const reserve = desc || typeBtns.length ? 270 : 150;
+    const h = (window.innerHeight - reserve) / 574;
     const w = (window.innerWidth - 140) / 374;
     return Math.max(0.5, Math.min(h, w, 1.7));
+  }
+
+  // Remplace la carte par une carte du type choisi, au hasard (les cartes remplies d'abord),
+  // en gardant la skin, la finition, le contour et le calque animé.
+  function swapType(clone, t) {
+    const card = clone.querySelector(".card");
+    const name = card.querySelector(".card-name")?.textContent.trim();
+    const of = (sel) => [...document.querySelectorAll(sel)].map((el) => el.content.querySelector(".card"));
+    const filled = of(`template.tpl-card[data-type="${t}"][data-filled="1"]`);
+    const all = filled.length ? filled : of(`template.tpl-card[data-type="${t}"]`);
+    const others = all.filter((c) => c.querySelector(".card-name")?.textContent.trim() !== name);
+    const list = others.length ? others : all;
+    if (!list.length) return;
+    const next = list[Math.floor(Math.random() * list.length)].cloneNode(true);
+    for (const a of ["data-skin", "data-foil", "data-shape", "data-size"]) next.setAttribute(a, card.getAttribute(a));
+    next.querySelector(".card-skin").innerHTML = card.querySelector(".card-skin").innerHTML;
+    if (card.querySelector(".ascii-art")) {
+      const img = next.querySelector(".card-art img");
+      const art = next.querySelector(".card-art");
+      art.className = "card-block card-art";
+      const pre = document.createElement("pre");
+      pre.className = "ascii-art";
+      pre.dataset.src = img ? img.getAttribute("src") : "";
+      pre.dataset.word = WORD[t] || "?";
+      art.replaceChildren(pre);
+      window.dcbAsciiFill?.(pre);
+    }
+    if (card.querySelector(".card-name span[data-text]")) {
+      const s = next.querySelector(".card-name span");
+      s.dataset.text = s.textContent;
+    }
+    next.querySelector(".card-foil")?.remove();
+    const foil = card.querySelector(".card-foil");
+    if (foil) next.append(foil.cloneNode(true));
+    card.replaceWith(next);
   }
 
   function show(i) {
@@ -165,18 +223,24 @@
     clone.removeAttribute("tabindex");
     clone.removeAttribute("role");
     clone.style.setProperty("--s", scaleFor().toFixed(3));
+    if (type) swapType(clone, type);
     const card = clone.querySelector(".card");
+    typeBtns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === card.dataset.type)));
     const glare = document.createElement("i");
     glare.className = "modal-glare";
     card.append(glare);
     holder.append(clone);
     stage.replaceChildren(holder);
 
-    const section = src.closest("section");
-    const title = section?.querySelector("h2")?.textContent || "";
+    const item = src.closest(".foil-item");
+    const title = item?.querySelector("b")?.textContent || src.closest("section")?.querySelector("h2")?.textContent || "";
     const name = card.querySelector(".card-name")?.textContent.trim() || "";
     caption.textContent = title ? `${title} · ${name}` : name;
     counter.textContent = `${index + 1} / ${frames.length}`;
+    if (desc) {
+      desc.textContent = item?.dataset.desc || "";
+      desc.hidden = !desc.textContent;
+    }
     track(clone, card);
     card.querySelectorAll(".card-name span[data-text]").forEach((s) => window.dcbScramble?.(s));
   }
@@ -207,13 +271,19 @@
   function open(frame) {
     // toutes les cartes de la page, pour pouvoir passer d'une section à l'autre avec les flèches
     frames = sourceFrames();
+    type = null;
     show(frames.indexOf(frame));
     dialog.showModal();
   }
 
+  typeBtns.forEach((b) => b.addEventListener("click", () => {
+    type = b.dataset.type;
+    show(index);
+  }));
   document.addEventListener("click", (e) => {
-    const frame = e.target.closest?.(".cdoc-body .card-frame");
-    if (frame) open(frame);
+    if (dialog.contains(e.target)) return;
+    const frame = e.target.closest?.(CLICK);
+    if (frame) open(original(frame));
   });
   document.addEventListener("keydown", (e) => {
     if (dialog.open) {
@@ -221,10 +291,10 @@
       if (e.key === "ArrowLeft") show(index - 1);
       return;
     }
-    const frame = e.target.closest?.(".cdoc-body .card-frame");
+    const frame = e.target.closest?.(CLICK);
     if (frame && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
-      open(frame);
+      open(original(frame));
     }
   });
   dialog.querySelector(".modal-prev").addEventListener("click", () => show(index - 1));

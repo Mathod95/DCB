@@ -781,7 +781,24 @@
 @keyframes modal-card-in { from { opacity: 0; transform: translateY(18px) scale(.94); } }
 .modal-stage { grid-column: 2; grid-row: 1; height: 100%; display: grid; place-items: center; }
 .modal-holder .card-frame { cursor: default; filter: drop-shadow(0 30px 60px rgb(0 0 0 / .55)); }
-.modal-info { grid-column: 1 / -1; grid-row: 2; display: flex; justify-content: center; gap: 16px; margin: 0; padding: 0 0 22px; font-size: 14px; color: var(--text-2); }
+.modal-info { grid-column: 1 / -1; grid-row: 2; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; padding: 0 0 22px; font-size: 14px; color: var(--text-2); }
+.modal-line { display: flex; gap: 16px; margin: 0; }
+/* description de la skin (page des règles) */
+.modal-desc { max-width: 72ch; margin: 0; padding: 0 24px; text-align: center; font-size: 15px; line-height: 1.5; color: var(--text); text-wrap: balance; }
+/* choix de la catégorie (page des règles) */
+.modal-types { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 4px; }
+.modal-type {
+  height: 30px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: var(--panel); color: var(--muted); font: 600 12px/1 var(--sans);
+  letter-spacing: .04em; cursor: pointer;
+}
+.modal-type::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--c); }
+.modal-type:hover { color: var(--text); border-color: #3b4f6e; }
+.modal-type[aria-pressed="true"] { color: var(--text); border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
+.modal-type:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modal-holder .card { clip-path: inset(0 round 20px); }
+.modal-holder .card-skin { overflow: hidden; }
+.modal-holder .card[data-shape="sweep"] .card-stroke { animation-play-state: running; }
 .modal-count { font-variant-numeric: tabular-nums; opacity: .7; }
 .modal-btn {
   width: 48px;
