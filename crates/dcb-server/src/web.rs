@@ -616,7 +616,16 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
             let card = draw()?;
             let mut draft = card.draft.clone();
             draft.shape = sh;
-            Some(plain(sh.label(), card, &draft))
+            let mut sample = plain(sh.label(), card, &draft);
+            sample.desc = rules
+                .concepts
+                .shape
+                .items
+                .iter()
+                .find(|i| i.key == sh.slug())
+                .map(|i| i.text.clone())
+                .unwrap_or_default();
+            Some(sample)
         })
         .collect();
 

@@ -518,6 +518,8 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     assert!(body.contains(r#"class="st sk dyn dyn-matrix""#) && body.contains("fx-matrix"));
     assert!(body.contains(r#"class="ascii-art""#) && body.contains(r#" data-text=""#));
     assert!(body.contains("Plan d&#39;architecte") || body.contains("Plan d'architecte"));
+    // description des contours dans la vue zoomée
+    assert!(body.contains("Trait fin de 2 px avec un halo lumineux"));
     // vue zoomée : choix de la catégorie et une carte modèle par carte de la collection
     assert!(body.contains(r#"<dialog id="card-modal""#));
     assert_eq!(body.matches(r#"class="modal-type""#).count(), 5);

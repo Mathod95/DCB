@@ -133,7 +133,25 @@ pub struct Concepts {
     pub title: String,
     pub text: String,
     pub skin: SkinPart,
-    pub shape: ConceptPart,
+    pub shape: ShapePart,
+}
+
+/// Contours de la partie « Concepts », avec la description de chacun pour la vue zoomée.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShapePart {
+    pub title: String,
+    pub text: String,
+    #[serde(default)]
+    pub items: Vec<ShapeItem>,
+}
+
+/// Description d'un contour : `key` est la valeur de `shape` (solid, neon…).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShapeItem {
+    pub key: String,
+    pub text: String,
 }
 
 /// Skins de la partie « Concepts » : deux bandes, classiques et animées.
@@ -174,6 +192,16 @@ impl Rules {
                     item.title,
                     item.key,
                     crate::concepts::SKIN_KEYS.join(", ")
+                ));
+            }
+        }
+        for item in &rules.concepts.shape.items {
+            if item.key.parse::<dcb_core::Shape>().is_err() {
+                let valid: Vec<_> = dcb_core::Shape::ALL.iter().map(|s| s.slug()).collect();
+                return Err(format!(
+                    "contour : clé {:?} inconnue (valeurs : {})",
+                    item.key,
+                    valid.join(", ")
                 ));
             }
         }

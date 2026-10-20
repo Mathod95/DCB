@@ -237,3 +237,41 @@ text = "Trois nappes de couleur floues, dont une de la couleur du type, qui dér
 [concepts.shape]
 title = "Les contours"
 text = "Le contour reprend toujours la couleur du type de la carte, seul son style change."
+
+# Description de chaque contour, affichée sous la carte dans la vue zoomée (`key` = valeur de `shape`).
+
+[[concepts.shape.items]]
+key = "solid"
+text = "Trait plein de 4 px, comme le calque cardTypeStroke du Figma. C'est le contour par défaut."
+
+[[concepts.shape.items]]
+key = "neon"
+text = "Trait fin de 2 px avec un halo lumineux de la couleur du type, à l'intérieur et à l'extérieur."
+
+[[concepts.shape.items]]
+key = "gradient"
+text = "Trait de 3 px qui passe de la couleur du type à une version éclaircie, en diagonale."
+
+[[concepts.shape.items]]
+key = "sweep"
+text = "Un trait fin, avec une lumière de la couleur du type qui fait le tour de la carte (6 s par tour)."
+
+[[concepts.shape.items]]
+key = "double"
+text = "Deux traits fins, un plein, un plus transparent juste à l'intérieur. Style carte premium."
+
+[[concepts.shape.items]]
+key = "corners"
+text = "Seuls les quatre coins sont marqués, reliés par un filet très fin. Style interface, HUD."
+
+[[concepts.shape.items]]
+key = "chamfer"
+text = "Carte et trait aux coins biseautés au lieu d'arrondis. Style tech, terminal."
+
+[[concepts.shape.items]]
+key = "topbar"
+text = "Filet fin tout autour, et une barre épaisse de la couleur du type en haut de la carte."
+
+[[concepts.shape.items]]
+key = "tinted"
+text = "Plus de trait épais, le fond de la carte prend une teinte du type, avec un filet fin."
