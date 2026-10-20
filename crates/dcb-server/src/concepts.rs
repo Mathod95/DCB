@@ -759,8 +759,8 @@ mod tests {
     #[test]
     fn real_file_parses_and_unknown_keys_fail() {
         let doc = ConceptsDoc::parse(include_str!("../../../rules/concepts.toml")).unwrap();
-        // les skins sont passées sur la page des règles
-        assert_eq!(doc.parts.len(), 2);
+        // les skins et les contours sont passés sur la page des règles
+        assert_eq!(doc.parts.len(), 1);
         let bad = "title = \"t\"\nintro = \"i\"\n[[parts]]\nkind = \"ideas\"\neyebrow = \"e\"\ntitle = \"t\"\nlead = \"l\"\n[[parts.sections]]\nkey = \"oups\"\ntitle = \"T\"\ntext = \"x\"\n";
         assert!(ConceptsDoc::parse(bad).unwrap_err().contains("oups"));
     }

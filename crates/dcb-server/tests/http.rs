@@ -1060,20 +1060,15 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
     t.state.reload().await.unwrap();
     let (status, _, body) = send(&t.user, get("/regles/concepts")).await;
     assert_eq!(status, StatusCode::OK);
-    // sommaire avec les deux parties restantes (les skins sont passées sur la page des règles)
+    // sommaire avec la partie restante (skins et contours sont passés sur la page des règles)
     assert!(body.contains(r#"<nav class="cdoc-toc""#));
-    assert!(body.contains(r##"href="#p1""##) && body.contains(r##"href="#p2-s11""##));
-    assert!(!body.contains(r##"href="#p3""##) && !body.contains("sk-dracula"));
+    assert!(body.contains(r##"href="#p1""##) && body.contains(r##"href="#p1-s11""##));
+    assert!(!body.contains(r##"href="#p2""##) && !body.contains("sk-dracula"));
+    assert!(!body.contains("Moderniser le contour"));
     // vraies cartes de la collection, au gabarit v2
     assert!(body.contains("ARGO CD") && body.contains("DDOS"));
     assert!(body.contains(r#"<span class="code-file">effect.yaml</span>"#));
     assert!(body.contains(r#"<span class="y-num">+1</span>"#));
-    for shape in ["neon", "chamfer", "tinted"] {
-        assert!(
-            body.contains(&format!(r#"data-shape="{shape}""#)),
-            "{shape}"
-        );
-    }
     // carte citée dans un effet
     assert!(body.contains(r#"<span class="y-ref" data-type="app">Application Set</span>"#));
     assert!(body.contains("DCB-"));
@@ -1090,13 +1085,13 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
     // une clé inconnue est signalée, la dernière version valide reste affichée
     std::fs::write(
         t.dir.join("concepts.toml"),
-        CONCEPTS.replacen("key = \"neon\"", "key = \"neonn\"", 1),
+        CONCEPTS.replacen("key = \"badge\"", "key = \"badgee\"", 1),
     )
     .unwrap();
     t.state.reload().await.unwrap();
     let (status, _, body) = send(&t.app, get("/regles/concepts")).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("neonn") && body.contains("dernière version valide"));
+    assert!(body.contains("badgee") && body.contains("dernière version valide"));
 }
 
 #[tokio::test]

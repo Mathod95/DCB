@@ -4,61 +4,7 @@
 # l'exemple affiché, une clé inconnue est signalée en haut de la page.
 
 title = "Carte DCB v2"
-intro = "Pistes de design pour la carte: styles de contour et idées de modernisation, dessinées avec des cartes de la collection tirées au hasard. Cliquez sur une carte pour la voir en grand."
-
-# ---------------------------------------------------------------------------------------------
-# Contours : clés = valeurs de `shape` (déjà sélectionnables dans l'éditeur)
-
-[[parts]]
-kind = "shapes"
-eyebrow = "Contour de type"
-title = "Moderniser le contour de la carte"
-lead = "Neuf styles pour le contour aux couleurs du type (cardTypeStroke), déjà sélectionnables dans l'éditeur. Les cartes portent la base envisagée pour la suite: case Rarity retirée, bloc effect.yaml arrondi à 6 px, titre en Inter 600 et code en mono."
-
-[[parts.sections]]
-key = "solid"
-title = "Plein"
-text = "Trait plein de 4 px, comme le calque cardTypeStroke du Figma. C'est le contour par défaut."
-
-[[parts.sections]]
-key = "neon"
-title = "Néon"
-text = "Trait fin de 2 px avec un halo lumineux de la couleur du type, à l'intérieur et à l'extérieur."
-
-[[parts.sections]]
-key = "gradient"
-title = "Dégradé"
-text = "Trait de 3 px qui passe de la couleur du type à une version éclaircie, en diagonale."
-
-[[parts.sections]]
-key = "sweep"
-title = "Reflet qui tourne"
-text = "Un trait fin, avec une lumière de la couleur du type qui fait le tour de la carte (6 s par tour). Survolez une carte pour le lancer."
-
-[[parts.sections]]
-key = "double"
-title = "Double filet"
-text = "Deux traits fins, un plein, un plus transparent juste à l'intérieur. Style carte premium."
-
-[[parts.sections]]
-key = "corners"
-title = "Coins de viseur"
-text = "Seuls les quatre coins sont marqués, reliés par un filet très fin. Style interface, HUD."
-
-[[parts.sections]]
-key = "chamfer"
-title = "Coins coupés"
-text = "Carte et trait aux coins biseautés au lieu d'arrondis. Style tech, terminal."
-
-[[parts.sections]]
-key = "topbar"
-title = "Barre d'accent"
-text = "Filet fin tout autour, et une barre épaisse de la couleur du type en haut de la carte."
-
-[[parts.sections]]
-key = "tinted"
-title = "Fond teinté"
-text = "Plus de trait épais, le fond de la carte prend une teinte du type, avec un filet fin."
+intro = "Pistes de design pour la carte: idées de modernisation, dessinées avec des cartes de la collection tirées au hasard. Cliquez sur une carte pour la voir en grand."
 
 # ---------------------------------------------------------------------------------------------
 # Idées : artfill, badge, chips, overlay, notitle, comment, serial, term, refs, relief, all
@@ -67,7 +13,7 @@ text = "Plus de trait épais, le fond de la carte prend une teinte du type, avec
 kind = "ideas"
 eyebrow = "Autres idées"
 title = "Moderniser le reste de la carte"
-lead = "Une section par idée, toutes avec le contour plein pour ne comparer qu'une chose à la fois. La dernière combine tout."
+lead = "Une section par idée, toutes avec le contour plein pour ne comparer qu'une chose à la fois. La dernière combine tout. Les cartes portent la base envisagée pour la suite: bloc effect.yaml arrondi à 6 px, titre en Inter 600 et code en mono."
 
 [[parts.sections]]
 key = "artfill"
