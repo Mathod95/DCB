@@ -222,6 +222,10 @@ pub fn router(state: AppState) -> Router {
             get(|| async { asset("text/javascript", include_str!("../static/concepts.js")) }),
         )
         .route(
+            "/static/anatomy.js",
+            get(|| async { asset("text/javascript", include_str!("../static/anatomy.js")) }),
+        )
+        .route(
             "/static/app.js",
             get(|| async { asset("text/javascript", include_str!("../static/app.js")) }),
         )
@@ -629,7 +633,22 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
         })
         .collect();
 
+    // Anatomie : une carte remplie et illustrée de préférence, tirée au hasard.
+    let anatomy = {
+        let mut pool: Vec<&Card> = all
+            .iter()
+            .filter(|c| c.draft.art.is_some() && filled(c))
+            .collect();
+        if pool.is_empty() {
+            pool = deck.clone();
+        }
+        let mut seed = [0u8; 8];
+        let _ = getrandom::fill(&mut seed);
+        (!pool.is_empty())
+            .then(|| pool[(u64::from_le_bytes(seed) % pool.len() as u64) as usize].clone())
+    };
     let samples = ConceptSamples {
+        anatomy,
         skins_classic,
         skins_animated,
         foils,

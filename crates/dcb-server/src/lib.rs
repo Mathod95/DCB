@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod anatomy;
 pub mod auth;
 pub mod concepts;
 pub mod db;

@@ -79,6 +79,10 @@
   <section aria-labelledby="t-types">
     <div class="section-head">
       <p class="eyebrow">Les cartes</p>
+    </div>
+    {% let a = c.anatomy %}
+    {% include "anatomy.html" %}
+    <div class="section-head anat-next">
       <h2 id="t-types">{{ c.types_title }}</h2>
     </div>
     <div class="types">
@@ -208,4 +212,5 @@
 </div>
 {% endif %}
 <script src="/static/concepts.js" defer></script>
+<script src="/static/anatomy.js" defer></script>
 {% endblock %}

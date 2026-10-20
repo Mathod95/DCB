@@ -1,0 +1,94 @@
+{#- Partie « Anatomie d'une carte » de la page des règles : variable `a` (AnatomyView). -#}
+<div class="anat" aria-labelledby="t-anatomy">
+  <div class="anat-head">
+    <h2 id="t-anatomy">{{ a.title }}</h2>
+    <p class="anat-lead">{{ a.text|safe }}</p>
+  </div>
+
+  {% if let Some(card) = a.card %}
+  <div class="anat-bar">
+    <p class="anat-card">{{ card.name }} <span class="anat-tag" style="--c: var(--t-{{ card.type_slug }})">{{ card.type_label }}</span></p>
+    <div class="anat-switch" role="group" aria-label="Vue">
+      <button type="button" data-view="card" aria-pressed="true">Carte</button>
+      <button type="button" data-view="skeleton" aria-pressed="false">Squelette</button>
+    </div>
+  </div>
+
+  <div class="anat-diagram">
+    <div class="anat-stage">
+      <svg class="anat-leaders" aria-hidden="true"></svg>
+
+      <div class="card-frame anat-real">{% include "card.html" %}</div>
+
+      {#- Même disposition que la carte, avec le nom des champs (cotes de card.css) -#}
+      <div class="anat-skeleton" style="--type: var(--t-{{ card.type_slug }})" hidden>
+        <div class="sk-z sk-stroke"><span>type → couleur du contour</span></div>
+        <div class="sk-z" style="left:19px;top:19px;width:244px;height:60px">name<small>Nom de la carte</small></div>
+        <div class="sk-z sk-type" style="left:270px;top:19px;width:85px;height:60px">type</div>
+        <div class="sk-z" style="left:19px;top:89px;width:336px;height:180px">art<small>cards/art/&lt;fichier&gt;, optionnel</small></div>
+        <div class="sk-z" style="left:19px;top:279px;width:336px;height:60px">description</div>
+        <div class="sk-z" style="left:19px;top:349px;width:336px;height:110px">effect<small>une ligne par effet</small></div>
+        <div class="sk-z" style="left:19px;top:469px;width:163px;height:65px">deploy_cost<small>points</small></div>
+        <div class="sk-z" style="left:192px;top:469px;width:163px;height:65px">daily_cost<small>dollars</small></div>
+        <div class="sk-z sk-flavor" style="left:40px;top:544px;width:294px;height:22px">flavor_text</div>
+      </div>
+
+      <div class="anat-zones">
+        {% for z in a.zones %}<div class="anat-zone{% if z.key == "stroke" %} is-stroke{% endif %}" data-zone="{{ z.key }}" style="left:{{ z.rect.0 }}px;top:{{ z.rect.1 }}px;width:{{ z.rect.2 }}px;height:{{ z.rect.3 }}px"></div>{% endfor %}
+      </div>
+
+      {% for z in a.zones %}
+      <button type="button" class="anat-pin{% if z.left %} is-left{% endif %}" data-zone="{{ z.key }}" data-ly="{{ z.label_y }}" data-tx="{{ z.target_x }}" data-ty="{{ z.target_y }}" style="top:{{ z.label_y }}px">
+        <span class="anat-pin-title"><span class="anat-num">{{ z.n }}</span><span>{{ z.title }}</span></span>
+        <span class="anat-field">{{ z.field }}</span>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="anat-sub">
+    <h3>{{ a.zones_title }}</h3>
+    <p>{{ a.zones_text|safe }}</p>
+  </div>
+  <ol class="anat-list">
+    {% for z in a.zones %}
+    <li class="anat-item" data-zone="{{ z.key }}" tabindex="0">
+      <span class="anat-num">{{ z.n }}</span>
+      <h4>{{ z.title }} <code>{{ z.field }}</code></h4>
+      <p>{{ z.text|safe }}{% if z.key == "type" %} {% for t in c.card_types %}<span class="anat-tag" style="--c: var(--t-{{ t.value }})">{{ t.label }}</span> {% endfor %}{% endif %}</p>
+      <p class="anat-rule"><b>{{ z.rule_label }}:</b> {{ z.rule|safe }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+
+  {% if a.card.is_some() %}
+  <div class="anat-sub">
+    <h3>{{ a.file_title }}</h3>
+    <p>{{ a.file_text|safe }}</p>
+  </div>
+  <div class="anat-file">
+    <figure class="anat-code">
+      <figcaption>cards/{{ a.slug }}.toml <span>TOML</span></figcaption>
+      <ol>
+        {% for l in a.lines %}<li{% if l.n > 0 %} data-zone="{{ l.zone }}"{% endif %}><span class="ln">{% if l.n > 0 %}<span class="anat-num">{{ l.n }}</span>{% endif %}</span><span>{{ l.html|safe }}</span></li>
+        {% endfor %}
+      </ol>
+    </figure>
+    <div class="anat-notes">
+      <p>Le nom du fichier devient le slug de la carte (<code>{{ a.slug }}</code>). Il ne change pas quand la carte est renommée.</p>
+      <ul>{% for n in a.file_notes %}<li>{{ n|safe }}</li>{% endfor %}</ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="anat-sub">
+    <h3>{{ a.looks_title }}</h3>
+    <p>{{ a.looks_text|safe }}</p>
+  </div>
+  <div class="anat-looks">
+    <a class="anat-look" href="#t-skins"><b>Skin</b> <code>skin</code><span>{{ c.skins_classic.len() + c.skins_animated.len() }} skins, classiques et animées</span></a>
+    <a class="anat-look" href="#t-foils"><b>Finition</b> <code>foil</code><span>{{ c.foils.len() }} finitions, qui indiquent la rareté</span></a>
+    <a class="anat-look" href="#t-shapes"><b>Contour</b> <code>shape</code><span>{{ c.shapes.len() }} styles de trait</span></a>
+  </div>
+</div>

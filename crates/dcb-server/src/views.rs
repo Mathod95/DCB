@@ -556,6 +556,100 @@ pub struct PhaseView {
     pub paragraphs: Vec<String>,
 }
 
+/// Une zone du schéma, avec son étiquette et son rectangle sur la carte.
+pub struct AnatomyZoneView {
+    pub n: usize,
+    pub key: &'static str,
+    pub title: String,
+    pub field: String,
+    pub text: String,
+    pub rule_label: String,
+    pub rule: String,
+    pub left: bool,
+    pub label_y: i32,
+    pub target_x: i32,
+    pub target_y: i32,
+    pub rect: (i32, i32, i32, i32),
+}
+
+pub struct AnatomyLine {
+    /// Numéro de la zone remplie par la ligne (0 : aucune).
+    pub n: usize,
+    pub zone: &'static str,
+    pub html: String,
+}
+
+/// Partie « Anatomie d'une carte » : une carte de la collection, annotée.
+pub struct AnatomyView {
+    pub title: String,
+    pub text: String,
+    pub zones_title: String,
+    pub zones_text: String,
+    pub file_title: String,
+    pub file_text: String,
+    pub file_notes: Vec<String>,
+    pub looks_title: String,
+    pub looks_text: String,
+    pub zones: Vec<AnatomyZoneView>,
+    pub card: Option<CardView>,
+    pub slug: String,
+    pub lines: Vec<AnatomyLine>,
+}
+
+impl AnatomyView {
+    pub fn new(a: &rules::Anatomy, card: Option<&Card>) -> Self {
+        let zones: Vec<AnatomyZoneView> = a
+            .zones
+            .iter()
+            .filter_map(|z| crate::anatomy::zone(&z.key).map(|g| (z, g)))
+            .enumerate()
+            .map(|(i, (z, g))| AnatomyZoneView {
+                n: i + 1,
+                key: g.key,
+                title: z.title.clone(),
+                field: z.field.clone(),
+                text: inline(&z.text),
+                rule_label: z.rule_label.clone(),
+                rule: inline(&z.rule),
+                left: g.left,
+                label_y: g.label_y,
+                target_x: g.target.0 + crate::anatomy::CARD_X,
+                target_y: g.target.1 + crate::anatomy::CARD_Y,
+                rect: g.rect,
+            })
+            .collect();
+        let lines = card
+            .map(|c| {
+                crate::anatomy::toml_lines(&c.draft)
+                    .into_iter()
+                    .map(|l| AnatomyLine {
+                        n: l.zone
+                            .and_then(|k| zones.iter().find(|z| z.key == k))
+                            .map_or(0, |z| z.n),
+                        zone: l.zone.unwrap_or(""),
+                        html: l.html,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        Self {
+            title: a.title.clone(),
+            text: inline(&a.text),
+            zones_title: a.zones_title.clone(),
+            zones_text: inline(&a.zones_text),
+            file_title: a.file_title.clone(),
+            file_text: inline(&a.file_text),
+            file_notes: a.file_notes.iter().map(|n| inline(n)).collect(),
+            looks_title: a.looks_title.clone(),
+            looks_text: inline(&a.looks_text),
+            zones,
+            card: card.map(|c| CardView::new(Some(&c.slug), &c.draft)),
+            slug: card.map(|c| c.slug.clone()).unwrap_or_default(),
+            lines,
+        }
+    }
+}
+
 /// Contenu prêt à afficher, construit depuis `rules/regles.toml`.
 pub struct RulesContent {
     pub draft_notice: String,
@@ -572,6 +666,7 @@ pub struct RulesContent {
     pub start_percent: String,
     pub types_title: String,
     pub types: Vec<RulesType>,
+    pub anatomy: AnatomyView,
     pub day_title: String,
     pub day_intro: String,
     pub phases: Vec<PhaseView>,
@@ -600,6 +695,8 @@ pub struct RulesContent {
 
 /// Exemples de la partie « Concepts », une carte par réglage.
 pub struct ConceptSamples {
+    /// Carte annotée de la partie « Anatomie d'une carte ».
+    pub anatomy: Option<Card>,
     pub skins_classic: Vec<FoilSample>,
     pub skins_animated: Vec<FoilSample>,
     pub foils: Vec<FoilSample>,
@@ -669,6 +766,7 @@ impl RulesPage {
             start_percent: format!("{percent:.2}"),
             types_title: r.types.title.clone(),
             types,
+            anatomy: AnatomyView::new(&r.anatomy, samples.anatomy.as_ref()),
             day_title: r.day.title.clone(),
             day_intro: inline(&r.day.intro),
             phases: r

@@ -37,6 +37,7 @@ cargo fmt --all
 
 - Textes de l'interface en français ; termes techniques en anglais (deploy, cluster, pod, scaling...)
 - Pas de tiret cadratin dans les textes
+- Méthode : pour la page des règles, on modifie d'abord la maquette (artifact « Règles DevCardBattle », copie de la page générée par l'app), l'utilisateur valide, puis on code dans l'app
 - Cible : navigateur sur ordinateur uniquement. Pas de vue mobile à concevoir ni à tester
 - Navigation : la barre du haut ne contient que le logo (retour au menu) et le menu du compte. Le menu d'accueil propose Galerie, Documentation (/regles) et Comptes (admin seulement). La création de carte se fait depuis le bouton « + Nouvelle carte » de la galerie
 - La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit

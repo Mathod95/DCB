@@ -77,6 +77,96 @@ type = "resource"
 name = "RESOURCES"
 text = "Encore une fois, voyez les RESOURCES comme votre armée: elle vous aide à garder le cap sur votre budget."
 
+# Partie « Anatomie d'une carte » (avant les types de cartes) : une carte de la collection tirée
+# au hasard, annotée zone par zone. `key` place la zone sur le schéma (name, type, stroke, art,
+# description, effect, deploy, daily, flavor) ; `field` est le champ du fichier de la carte.
+[anatomy]
+title = "Anatomie d'une carte"
+text = "Toutes les cartes partagent le même squelette: neuf zones, toujours à la même place. Survolez une étiquette pour repérer sa zone sur la carte, ou passez en vue squelette pour voir le champ du fichier qui la remplit."
+zones_title = "Les zones"
+zones_text = "Ce que chaque zone indique en partie, et la règle d'affichage qui va avec."
+file_title = "Le fichier de la carte"
+file_text = "Chaque carte est un fichier TOML dans cards/, versionné dans Git. Les numéros renvoient aux zones de la carte."
+file_notes = [
+  "Champs obligatoires: name et type.",
+  "Valeurs par défaut: skin = \"light\", foil = \"basic\", shape = \"solid\", size = \"normal\", coûts à 0.",
+  "Une valeur par défaut n'est pas écrite dans le fichier.",
+]
+looks_title = "Skin, finition et contour"
+looks_text = "Trois réglages changent l'allure de toute la carte, sans rien changer à son effet en jeu. Ils se combinent librement, et sont tous présentés dans la partie Concepts plus bas."
+
+[[anatomy.zones]]
+key = "name"
+title = "Nom"
+field = "name"
+text = "Le nom affiché en haut de la carte."
+rule_label = "Affichage"
+rule = "la police rétrécit pour les noms longs (trois tailles)."
+
+[[anatomy.zones]]
+key = "type"
+title = "Type"
+field = "type"
+text = "La famille de la carte. Elle décide quand et comment la carte se joue."
+rule_label = "Affichage"
+rule = "donne sa couleur au badge, au contour et au bloc illustration."
+
+[[anatomy.zones]]
+key = "stroke"
+title = "Contour"
+field = "type + shape"
+text = "Le trait autour de la carte, toujours de la couleur du type: on reconnaît la famille d'une carte d'un coup d'œil, même en miniature."
+rule_label = "Affichage"
+rule = "style réglé par shape, neuf contours."
+
+[[anatomy.zones]]
+key = "art"
+title = "Illustration"
+field = "art"
+text = "L'image de la carte, rangée dans cards/art/."
+rule_label = "Optionnelle"
+rule = "sans image, le bloc prend la couleur du type et affiche son icône."
+
+[[anatomy.zones]]
+key = "description"
+title = "Description"
+field = "description"
+text = "Ce que la carte représente dans le monde réel, en une ou deux phrases."
+rule_label = "En jeu"
+rule = "aucun effet, c'est du contexte."
+
+[[anatomy.zones]]
+key = "effect"
+title = "Effect"
+field = "effect"
+text = "Ce que fait la carte une fois jouée, une ligne par effet."
+rule_label = "Pour l'instant"
+rule = "texte libre, il sera structuré pour le moteur de duel."
+
+[[anatomy.zones]]
+key = "deploy"
+title = "Deploy Cost"
+field = "deploy_cost"
+text = "Les points de déploiement à dépenser pendant le Sprint pour poser la carte."
+rule_label = "Valeur"
+rule = "nombre entier, 0 par défaut."
+
+[[anatomy.zones]]
+key = "daily"
+title = "Daily Cost"
+field = "daily_cost"
+text = "Ce que la carte coûte en dollars chaque jour, tant qu'elle est en jeu."
+rule_label = "Valeur"
+rule = "nombre entier, en $, 0 par défaut."
+
+[[anatomy.zones]]
+key = "flavor"
+title = "Texte d'ambiance"
+field = "flavor_text"
+text = "Une phrase d'humour ou de contexte, en bas de la carte."
+rule_label = "Affichage"
+rule = "une seule ligne, coupée si elle est trop longue."
+
 [day]
 title = "Le tour par tour devient jour par jour"
 intro = "Dans ce jeu, la notion de tour par tour devient jour par jour (pour bien rester dans le RP). Vous démarrez la partie avec 10 cartes. Ensuite, chaque journée se découpe en 3 phases."

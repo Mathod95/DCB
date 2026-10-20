@@ -24,6 +24,7 @@ pub struct Rules {
     pub day: Day,
     pub lifecycle: Lifecycle,
     pub rarity: Rarity,
+    pub anatomy: Anatomy,
     pub concepts: Concepts,
 }
 
@@ -126,6 +127,36 @@ pub struct Rarity {
     pub text: String,
 }
 
+/// Partie « Anatomie d'une carte » : schéma annoté, fiche de chaque zone, fichier de la carte.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Anatomy {
+    pub title: String,
+    pub text: String,
+    pub zones_title: String,
+    pub zones_text: String,
+    pub file_title: String,
+    pub file_text: String,
+    pub file_notes: Vec<String>,
+    pub looks_title: String,
+    pub looks_text: String,
+    pub zones: Vec<AnatomyZone>,
+}
+
+/// Une zone de la carte : `key` choisit son emplacement sur le schéma (voir `anatomy::ZONES`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AnatomyZone {
+    pub key: String,
+    pub title: String,
+    /// Champ du fichier de la carte qui remplit la zone.
+    pub field: String,
+    pub text: String,
+    /// Règle d'affichage, précédée de son intitulé en gras.
+    pub rule_label: String,
+    pub rule: String,
+}
+
 /// Partie « Concepts » : skin, finition (texte de `rarity`) et contour.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -192,6 +223,16 @@ impl Rules {
                     item.title,
                     item.key,
                     crate::concepts::SKIN_KEYS.join(", ")
+                ));
+            }
+        }
+        for z in &rules.anatomy.zones {
+            if crate::anatomy::zone(&z.key).is_none() {
+                let valid: Vec<_> = crate::anatomy::ZONES.iter().map(|z| z.key).collect();
+                return Err(format!(
+                    "anatomie : zone {:?} inconnue (valeurs : {})",
+                    z.key,
+                    valid.join(", ")
                 ));
             }
         }

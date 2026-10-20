@@ -134,6 +134,11 @@ impl std::fmt::Display for LoadError {
 }
 
 /// Nom de fichier d'illustration acceptable : pas de dossier, pas de `..`.
+/// Contenu du fichier `cards/<slug>.toml` d'une carte, tel que l'éditeur l'écrit.
+pub fn card_toml(d: &CardDraft) -> String {
+    toml::to_string_pretty(&CardFile::from(d)).unwrap_or_default()
+}
+
 pub fn is_safe_file_name(f: &str) -> bool {
     !f.is_empty()
         && f.len() <= 80

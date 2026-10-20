@@ -464,9 +464,14 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
             || body.contains("Aucune carte pour l'instant")
     );
     assert!(body.contains(r#"href="/gallery?type=incident""#));
-    // la carte remplie passe avant la carte vide (la partie Concepts garde toute la collection
-    // en modèles pour la vue zoomée)
-    let types_part = body.split(r#"id="t-concepts""#).next().unwrap();
+    // la carte remplie passe avant la carte vide, dans la liste des types
+    let types_part = body
+        .split(r#"id="t-types""#)
+        .nth(1)
+        .unwrap()
+        .split(r#"id="t-day""#)
+        .next()
+        .unwrap();
     assert!(
         types_part.contains("DDOS") && !types_part.contains(">VIDE<"),
         "exemple d'incident"
@@ -518,6 +523,18 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     assert!(body.contains(r#"class="st sk dyn dyn-matrix""#) && body.contains("fx-matrix"));
     assert!(body.contains(r#"class="ascii-art""#) && body.contains(r#" data-text=""#));
     assert!(body.contains("Plan d&#39;architecte") || body.contains("Plan d'architecte"));
+    // anatomie d'une carte, entre « Les cartes » et les types de cartes
+    let anat = body.find(r#"id="t-anatomy""#).expect("anatomie");
+    assert!(anat < body.find(r#"id="t-types""#).unwrap());
+    assert_eq!(
+        body.matches(r#"<button type="button" class="anat-pin"#)
+            .count(),
+        9
+    );
+    assert_eq!(body.matches(r#"<li class="anat-item""#).count(), 9);
+    assert!(body.contains(r#"class="anat-skeleton""#) && body.contains("daily_cost<small>"));
+    assert!(body.contains(r#"<span class="t-key">name</span>"#));
+    assert!(body.contains(r#"src="/static/anatomy.js""#));
     // description des contours dans la vue zoomée
     assert!(body.contains("Trait fin de 2 px avec un halo lumineux"));
     // vue zoomée : choix de la catégorie et une carte modèle par carte de la collection
