@@ -20,9 +20,18 @@
 {% endif %}
 
 {% if let Some(c) = content %}
+{#- Documentation : navigation à gauche, contenu, sommaire de la page à droite (rules.js) -#}
+<div class="doc-layout" id="top">
+  <nav class="doc-nav" aria-label="Documentation">
+    <p class="doc-nav-title">Documentation</p>
+    <ul>
+      <li><a href="#top" aria-current="page">Overview</a></li>
+    </ul>
+  </nav>
+
 <div class="rules">
 
-  <section class="rules-hero" aria-labelledby="t-hero">
+  <section class="rules-hero" aria-labelledby="t-hero" data-toc="Règles du jeu">
     <div class="rules-hero-text">
       {% if !c.draft_notice.is_empty() %}<span class="draft">{{ c.draft_notice }}</span>{% endif %}
       <p class="eyebrow">Règles du jeu</p>
@@ -32,42 +41,46 @@
       </div>
     </div>
     {% if !c.facts.is_empty() %}
-    <dl class="ledger" aria-label="La partie en chiffres">
-      <p class="eyebrow ledger-title">La partie en chiffres</p>
+    <dl class="facts-tiles" aria-label="La partie en chiffres">
       {% for (label, value) in c.facts %}
-      <div><dt>{{ label|safe }}</dt><dd>{{ value|safe }}</dd></div>
+      <div class="fact-tile"><dt>{{ label|safe }}</dt><dd>{{ value|safe }}</dd></div>
       {% endfor %}
     </dl>
     {% endif %}
   </section>
 
-  <section class="rules-split" aria-labelledby="t-start">
+  <section class="rules-stack" aria-labelledby="t-start" data-toc="Début de partie">
     <div class="section-head">
       <p class="eyebrow">Début de partie</p>
       <h2 id="t-start">{{ c.start_title }}</h2>
-      <div class="prose"><p>{{ c.start_text|safe }}</p></div>
+      <p class="rules-lead">{{ c.start_text|safe }}{% if !c.start_note.is_empty() %}<span class="rules-note">{{ c.start_note }}</span>{% endif %}</p>
     </div>
     <div class="roster">
       {% for g in c.groups %}
       <div class="roster-group">
         <p class="eyebrow">{{ g.title }}</p>
         <div class="tiles">
-          {% for t in g.items %}<div class="tile" style="--c: {{ t.color }}">{{ t.label }}</div>{% endfor %}
+          {% for t in g.items %}<div class="tile" style="--c: {{ t.color }}">{% if t.avatar %}<span class="avatar-dot" aria-hidden="true">?</span>{% endif %}{% if t.typing.is_empty() %}{{ t.label }}{% else %}<span class="typed" data-names="{{ t.typing }}" aria-label="{{ t.label }}">{{ t.label }}</span>{% endif %}</div>{% endfor %}
         </div>
       </div>
       {% endfor %}
     </div>
   </section>
 
-  <section aria-labelledby="t-goal">
+  <section aria-labelledby="t-goal" data-toc="Condition de victoire">
     <div class="section-head">
       <p class="eyebrow">Condition de victoire</p>
       <h2 id="t-goal">{{ c.victory_title }}</h2>
+      <p class="rules-lead">{{ c.victory_text|safe }}{% if !c.victory_note.is_empty() %}<span class="rules-note">{{ c.victory_note }}</span>{% endif %}</p>
     </div>
+    {#- Partie simulée : des gains et des pertes font avancer la trésorerie jusqu'à l'objectif (rules.js) -#}
     <div class="goal">
-      <p class="rules-lead">{{ c.victory_text|safe }}</p>
-      <div class="track" role="img" aria-label="Le budget de départ représente {{ c.start_percent }} % de l'objectif">
-        <div class="track-fill" style="width: {{ c.start_percent }}%"></div>
+      <div class="race" data-start="{{ c.start_amount }}" data-goal="{{ c.goal_amount }}">
+        <div class="race-now">Trésorerie <b class="money race-amount">{{ c.start_label }}</b></div>
+        <div class="track race-track" role="img" aria-label="Le budget de départ représente {{ c.start_percent }} % de l'objectif">
+          <div class="track-fill race-fill" style="width: {{ c.start_percent }}%"></div>
+          <div class="race-pops" aria-hidden="true"></div>
+        </div>
       </div>
       <div class="track-legend">
         <span>Départ <span class="money">{{ c.start_label }}</span></span>
@@ -204,6 +217,13 @@
   </section>
 
 </div>
+
+  <aside class="doc-toc" aria-label="Sur cette page">
+    <p class="doc-nav-title">Sur cette page</p>
+    <ol></ol>
+  </aside>
+</div>
+
 {% else %}
 <div class="empty">
   <p class="eyebrow">Règles</p>
@@ -213,4 +233,5 @@
 {% endif %}
 <script src="/static/concepts.js" defer></script>
 <script src="/static/anatomy.js" defer></script>
+<script src="/static/rules.js" defer></script>
 {% endblock %}

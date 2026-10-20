@@ -5,45 +5,48 @@
 #   ***terme***      gras italique (termes de statut : to-do, pending, done…)
 #   $25.000,00       les montants en dollars sont mis en évidence automatiquement
 
-draft_notice = "Version de travail, les règles vont évoluer"
-title = "Atteignez le million avant l'équipe d'en face."
+title = "Atteignez le million."
 context = [
   "Vous êtes DevOps ! Avec une petite équipe de passionnés, vous avez créé une application qui peut rapporter des millions ! Vous finissez par vous faire repérer et intégrez un incubateur de startups qui croit en votre potentiel et investit $25.000,00. À vous d'en faire bon usage pour faire de votre startup une grande entreprise, et essayer de devenir riche !",
   "Ah ! J'oubliais: vous n'êtes pas les seuls à avoir obtenu ce premier investissement. En face de vous, une autre équipe va tout faire pour atteindre le million avant vous :)",
 ]
 
-# Encadré « La partie en chiffres »
+# Chiffres clés, en cartes sous le texte d'introduction
 facts = [
   { label = "Budget de départ", value = "$25.000,00" },
   { label = "Objectif", value = "$1.000.000,00" },
   { label = "Main de départ", value = "10 cartes" },
-  { label = "Un tour", value = "une journée" },
-  { label = "Joueurs", value = "2 équipes en duel" },
+  { label = "Cycle de jeu", value = "Weekly Sprint" },
+  { label = "Mode de jeu", value = "One to One" },
 ]
 
 [start]
 title = "Une startup, le strict minimum"
-text = "Vous démarrez la partie dans un incubateur de startups avec un budget de $25.000,00 et le strict minimum en ressources."
+text = "Vous démarrez la partie avec un strict minimum de ressources humaines et techniques !"
+# `note` : annotation affichée en commentaire sous le texte
+note = "Vous pourriez même dire que vous étiez là depuis le début et que vous avez vous-même nommé la première application de l'entreprise ;)"
 
 [[start.groups]]
 title = "L'équipe"
 items = [
-  { label = "Un DevOps", type = "hr" },
-  { label = "Un CEO", type = "hr" },
-  { label = "Un CSM", type = "hr" },
-  { label = "Un Marketing", type = "hr" },
+  { label = "DevOps", type = "hr" },
+  { label = "CEO", type = "hr" },
+  { label = "CSM", type = "hr" },
+  { label = "Marketing", type = "hr" },
 ]
 
 [[start.groups]]
 title = "L'infrastructure"
 items = [
   { label = "Un cluster Kubernetes", type = "resource" },
-  { label = "Une application", type = "app" },
+  # `typing` : noms tapés puis effacés l'un après l'autre
+  { label = "MaSuperApp", type = "app", typing = ["MaSuperApp", "xX_Application_Xx", "app-finale-v2-OK", "TodoList 3000", "Projet Phoenix", "prod-do-not-touch"] },
 ]
 
 [victory]
 title = "Une seule façon de gagner"
-text = "Il n'y a qu'une seule façon de gagner à D.C.B, et elle est très simple: vous devez être le premier à atteindre $1.000.000,00 (ou ne pas finir en banqueroute)."
+text = "C'est très simple: soyez le premier à atteindre $1.000.000,00."
+note = "Et si vous n'y arrivez pas, évitez au moins la banqueroute ;)"
 start_amount = 25000
 goal_amount = 1000000
 

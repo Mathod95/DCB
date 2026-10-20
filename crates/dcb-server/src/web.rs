@@ -222,6 +222,10 @@ pub fn router(state: AppState) -> Router {
             get(|| async { asset("text/javascript", include_str!("../static/concepts.js")) }),
         )
         .route(
+            "/static/rules.js",
+            get(|| async { asset("text/javascript", include_str!("../static/rules.js")) }),
+        )
+        .route(
             "/static/anatomy.js",
             get(|| async { asset("text/javascript", include_str!("../static/anatomy.js")) }),
         )

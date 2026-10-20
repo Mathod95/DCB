@@ -523,6 +523,17 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     assert!(body.contains(r#"class="st sk dyn dyn-matrix""#) && body.contains("fx-matrix"));
     assert!(body.contains(r#"class="ascii-art""#) && body.contains(r#" data-text=""#));
     assert!(body.contains("Plan d&#39;architecte") || body.contains("Plan d'architecte"));
+    // navigation, sommaire, chiffres clés, annotations, équipe et partie simulée
+    assert!(body.contains(r#"<nav class="doc-nav""#) && body.contains(r#"<aside class="doc-toc""#));
+    assert_eq!(body.matches("data-toc=").count(), 3);
+    assert_eq!(body.matches(r#"<div class="fact-tile">"#).count(), 5);
+    assert!(body.contains("Weekly Sprint") && body.contains("One to One"));
+    assert!(!body.contains("Version de travail") && !body.contains("La partie en chiffres</p>"));
+    assert_eq!(body.matches(r#"<span class="rules-note">"#).count(), 2);
+    assert_eq!(body.matches(r#"class="avatar-dot""#).count(), 4);
+    assert!(body.contains(r#"data-names="MaSuperApp|xX_Application_Xx"#));
+    assert!(body.contains(r#"<div class="race" data-start="25000" data-goal="1000000">"#));
+    assert!(body.contains(r#"src="/static/rules.js""#));
     // anatomie d'une carte, entre « Les cartes » et les types de cartes
     let anat = body.find(r#"id="t-anatomy""#).expect("anatomie");
     assert!(anat < body.find(r#"id="t-types""#).unwrap());

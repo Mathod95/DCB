@@ -40,6 +40,9 @@ pub struct Fact {
 pub struct Start {
     pub title: String,
     pub text: String,
+    /// Annotation, affichée en commentaire sous le texte.
+    #[serde(default)]
+    pub note: String,
     pub groups: Vec<TileGroup>,
 }
 
@@ -57,6 +60,9 @@ pub struct Tile {
     /// Type de carte dont la tuile prend la couleur.
     #[serde(rename = "type")]
     pub card_type: CardType,
+    /// Noms tapés puis effacés l'un après l'autre à la place du libellé.
+    #[serde(default)]
+    pub typing: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -64,6 +70,9 @@ pub struct Tile {
 pub struct Victory {
     pub title: String,
     pub text: String,
+    /// Annotation, affichée en commentaire sous le texte.
+    #[serde(default)]
+    pub note: String,
     /// Budget de départ et objectif, en dollars : servent à dessiner la piste à l'échelle.
     pub start_amount: u64,
     pub goal_amount: u64,

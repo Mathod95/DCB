@@ -543,6 +543,10 @@ pub struct TemplateCard {
 pub struct TileView {
     pub label: String,
     pub color: String,
+    /// Membre de l'équipe : avatar rond avec une initiale tirée au hasard.
+    pub avatar: bool,
+    /// Noms tapés puis effacés, séparés par `|` (vide : libellé fixe).
+    pub typing: String,
 }
 
 pub struct TileGroupView {
@@ -658,9 +662,13 @@ pub struct RulesContent {
     pub facts: Vec<(String, String)>,
     pub start_title: String,
     pub start_text: String,
+    pub start_note: String,
     pub groups: Vec<TileGroupView>,
     pub victory_title: String,
     pub victory_text: String,
+    pub victory_note: String,
+    pub start_amount: u64,
+    pub goal_amount: u64,
     pub start_label: String,
     pub goal_label: String,
     pub start_percent: String,
@@ -742,6 +750,7 @@ impl RulesPage {
                 .collect(),
             start_title: r.start.title.clone(),
             start_text: inline(&r.start.text),
+            start_note: r.start.note.clone(),
             groups: r
                 .start
                 .groups
@@ -754,12 +763,17 @@ impl RulesPage {
                         .map(|t| TileView {
                             label: t.label.clone(),
                             color: type_color(t.card_type),
+                            avatar: t.card_type == CardType::Hr,
+                            typing: t.typing.join("|"),
                         })
                         .collect(),
                 })
                 .collect(),
             victory_title: r.victory.title.clone(),
             victory_text: inline(&r.victory.text),
+            victory_note: r.victory.note.clone(),
+            start_amount: r.victory.start_amount,
+            goal_amount: r.victory.goal_amount,
             start_label: rules::money(r.victory.start_amount),
             goal_label: rules::money(r.victory.goal_amount),
             // Point décimal même en locale française : c'est une valeur CSS.
