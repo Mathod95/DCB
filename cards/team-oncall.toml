@@ -8,3 +8,4 @@ effect = """
 - Nécessite PagerDuty
 - Résout les incidents au détriment de votre budget"""
 flavor_text = "Le téléphone qui sonne pendant l'happy hour"
+art = "team-oncall.png"

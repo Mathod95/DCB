@@ -8,3 +8,4 @@ effect = """
 Bloque tout le trafic HTTPS pendant une journée tant qu'aucun déploiement n'aura été effectué !
 Bloque également le revenu journalier de vos applications métier !"""
 flavor_text = "Expires On Sunday, January 4, 2026"
+art = "certificate-expired.png"

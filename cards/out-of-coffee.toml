@@ -3,3 +3,4 @@ type = "event"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
+art = "out-of-coffee.png"

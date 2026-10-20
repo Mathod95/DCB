@@ -4,3 +4,4 @@ skin = "light"
 deploy_cost = 0
 daily_cost = 0
 flavor_text = "Je n'ai jamais vu quelqu'un avoir cette certification"
+art = "iso-27001.png"

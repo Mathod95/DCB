@@ -4,3 +4,4 @@ skin = "light"
 deploy_cost = 0
 daily_cost = 0
 flavor_text = "Largement supérieur à Terraform !"
+art = "crossplane.png"

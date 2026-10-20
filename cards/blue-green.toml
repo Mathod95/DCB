@@ -4,3 +4,4 @@ skin = "light"
 deploy_cost = 0
 daily_cost = 0
 description = "Déploiement sans downtime avec bascule instantanée."
+art = "blue-green.png"

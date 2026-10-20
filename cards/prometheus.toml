@@ -6,3 +6,4 @@ daily_cost = 0
 description = "Permet de monitorer vos ressources et de déployer des ressources Prometheus"
 effect = "- Débloque la carte Service Monitor"
 flavor_text = "Du monitoring principalement, pas de l'observabilité"
+art = "prometheus.png"

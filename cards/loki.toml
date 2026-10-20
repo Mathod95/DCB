@@ -8,3 +8,4 @@ effect = """
 - Débloque la carte RUNBOOK
 - Révèle le prochain incident que l'adversaire jouera contre vous"""
 flavor_text = "Comme Prometheus, mais pour les logs."
+art = "loki.png"

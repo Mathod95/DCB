@@ -6,3 +6,4 @@ daily_cost = 0
 description = "Votre fournisseur cloud vous offre des crédits de démarrage."
 effect = "- +$10.000,00"
 flavor_text = "Gratuit la première année…"
+art = "cloud-credits.png"

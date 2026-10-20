@@ -3,3 +3,4 @@ type = "resource"
 skin = "light"
 deploy_cost = 0
 daily_cost = 0
+art = "spot-instances.png"
