@@ -44,6 +44,11 @@
     <a class="chip{% if f.active %} is-active{% endif %}" href="{{ f.href }}">{{ f.label }}</a>
     {% endfor %}
   </div>
+  <div class="chips" role="group" aria-label="Filtrer par taille">
+    {% for f in size_links %}
+    <a class="chip{% if f.active %} is-active{% endif %}" href="{{ f.href }}">{{ f.label }}</a>
+    {% endfor %}
+  </div>
 </div>
 
 {% if cards.is_empty() %}

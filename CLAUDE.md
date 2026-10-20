@@ -40,7 +40,8 @@ cargo fmt --all
 - Navigation : la barre du haut ne contient que le logo (retour au menu) et le menu du compte. Le menu d'accueil propose Galerie, Documentation (/regles) et Comptes (admin seulement). La création de carte se fait depuis le bouton « + Nouvelle carte » de la galerie
 - La rareté n'existe plus en tant que champ : c'est la finition `foil` (basic, gold, stars, glitter, shards, rainbow) qui en tient lieu. L'ancien champ TOML `rarity` est lu pour compatibilité (`Foil::from_legacy`), jamais écrit
 - Contour : champ `shape` (`Shape` dans dcb-core), `solid` par défaut et non écrit dans le TOML. CSS via `.card[data-shape=…]` dans `card.css`. `sweep` ne tourne qu'au survol dans la galerie, en continu sur la fiche et dans l'aperçu
-- Les enums (type, skin, foil, shape) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
+- Taille : champ `size` (`Size` dans dcb-core), `normal` par défaut et non écrit dans le TOML. `normal` : deux cases de coût de 163 px ; `compact` : chips de 40 px avec icône et bloc Effect de 135 px au lieu de 110. CSS via `.card[data-size=…]` (le `data-size` de `.card-name` est la taille de police du nom, sans rapport). Plus de case Rarity sur les cartes : la finition se voit à son reflet et sur la fiche
+- Les enums (type, skin, foil, shape, size) sont stockés en texte via leur `slug()` ; ajouter une valeur = variante dans `dcb-core` + style CSS, sans migration
 - Bloc illustration : contour teinté par la couleur du type (25 %). Carte sans illustration : bloc `.card-art.is-empty` teinté par la couleur du type, motif de points et icône du type (dans `card.html`, une icône par type)
 - Les cotes de `card.css` viennent du Figma : ne pas les changer sans vérifier la maquette
 - Pas de cartes de démo ni de seed : le dépôt ne contient que les cartes créées par l'utilisateur
@@ -49,6 +50,6 @@ cargo fmt --all
 
 ## État
 
-Fait : mode démo de l'éditeur en prod (`DCB_SANDBOX`), hébergement sur Saltbox, contours sélectionnables (`shape`), connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
+Fait : taille normale ou compacte (`size`) et retrait de la case Rarity, mode démo de l'éditeur en prod (`DCB_SANDBOX`), hébergement sur Saltbox, contours sélectionnables (`shape`), connexion et rôles (admin, utilisateur), administration des comptes, image Docker sur GHCR, page des règles (/regles), finitions (`foil`, qui remplace la rareté, reflet suivant la souris), 86 cartes de l'utilisateur dans `cards/`, galerie filtrable, CRUD complet avec upload, cartes en TOML versionnées, rechargement des fichiers, aperçu htmx en direct, API JSON, tests HTTP de bout en bout, CI.
 
 À faire : effets structurés pour le moteur, deck builder, moteur de duel + WebSocket.

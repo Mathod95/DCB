@@ -158,11 +158,11 @@
   overflow: hidden;
 }
 
-/* Trois cases du bas : Deploy Cost, Daily Cost, Rarity */
+/* Deux cases du bas : Deploy Cost et Daily Cost (336 px = 163 + 10 + 163) */
 .card-stat {
   position: absolute;
   top: 469px;
-  width: 105px;
+  width: 163px;
   height: 65px;
   border: 1px solid;
   border-radius: 12px;
@@ -170,8 +170,7 @@
   text-align: center;
 }
 .card-stat-deploy { left: 19px;  background: #ecfeff; border-color: #67e8f9; color: #0369a1; }
-.card-stat-daily  { left: 135px; background: #fefce8; border-color: #fde047; color: #854d0e; }
-.card-stat-rarity { left: 250px; background: #f0fdf4; border-color: #86efac; color: #166534; }
+.card-stat-daily  { left: 192px; background: #fefce8; border-color: #fde047; color: #854d0e; }
 
 .card-stat-value {
   position: absolute;
@@ -184,9 +183,6 @@
   font-variant-numeric: tabular-nums;
 }
 .card-stat-value small { font-size: 15px; font-weight: 700; margin-left: 1px; }
-/* La case Rarity affiche le nom de la finition */
-.card-stat-rarity .card-stat-value { top: 10px; font-size: 15px; line-height: 30px; font-weight: 700; }
-.card[data-foil="gold"] .card-stat-rarity .card-stat-value { color: #d97706; }
 
 .card-stat-label {
   position: absolute;
@@ -196,6 +192,23 @@
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* Taille compacte (champ `size`) : les cases deviennent des chips de 40 px avec icône, et les
+   25 px gagnés vont au bloc Effect (110 → 135 px). */
+.card[data-size="compact"] .card-effect { height: 135px; }
+.card[data-size="compact"] .card-stat {
+  top: 494px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  text-align: left;
+}
+.card[data-size="compact"] .card-stat-value { position: static; font-size: 22px; line-height: 1; }
+.card[data-size="compact"] .card-stat-label { position: static; margin-left: auto; font-size: 11px; font-weight: 600; }
+.card-stat-icon { display: grid; place-items: center; width: 20px; height: 20px; flex: none; }
+.card-stat-icon svg { width: 18px; height: 18px; }
 
 /* Texte d'ambiance */
 .card-flavor {

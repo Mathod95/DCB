@@ -1171,3 +1171,69 @@ async fn sandbox_lets_players_create_and_edit_only_their_cards() {
     );
     assert!(!t.cards().join("autre.toml").exists());
 }
+
+#[tokio::test]
+async fn size_is_saved_rendered_and_filterable_without_rarity_box() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    // une carte existante sans `size` reste en taille normale, sans case Rarity
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-size="normal""#));
+    assert!(!body.contains("card-stat-rarity") && !body.contains(">Rarity<"));
+    assert!(!body.contains("card-stat-icon"));
+
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Small Pod", &[("size", b"compact")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    let toml = std::fs::read_to_string(t.cards().join("small-pod.toml")).unwrap();
+    assert!(toml.contains("size = \"compact\""), "{toml}");
+    let (_, _, body) = send(&t.app, get("/cards/small-pod")).await;
+    assert!(body.contains(r#"data-size="compact""#) && body.contains("card-stat-icon"));
+    assert!(body.contains("Compacte"));
+
+    // `normal` n'est pas écrit dans le fichier
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Big Pod", &[("size", b"normal")])),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("big-pod.toml")).unwrap();
+    assert!(!toml.contains("size"), "{toml}");
+
+    // éditeur, galerie et API
+    let (_, _, form_page) = send(&t.app, get("/cards/new")).await;
+    assert!(form_page.contains(r#"name="size" value="compact""#));
+    let (_, _, body) = send(&t.app, get("/gallery?size=compact")).await;
+    assert!(body.contains("Small Pod") && !body.contains("DDOS"));
+    assert!(body.contains("Toutes les tailles"));
+    let (_, _, json) = send(&t.app, get("/api/cards?size=compact")).await;
+    assert!(
+        json.contains("\"size\":\"compact\"") && !json.contains("DDOS"),
+        "{json}"
+    );
+    let (status, _, _) = send(&t.app, get("/api/cards?size=tiny")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"sizes\"") && meta.contains("compact"));
+
+    // valeur inconnue dans le formulaire puis dans un fichier
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Bad Pod", &[("size", b"tiny")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    std::fs::write(
+        t.cards().join("broken.toml"),
+        "name = \"BROKEN\"\ntype = \"app\"\nsize = \"tiny\"\n",
+    )
+    .unwrap();
+    send(&t.app, post("/reload")).await;
+    let (_, _, body) = send(&t.app, get("/gallery")).await;
+    assert!(
+        body.contains("broken.toml") && body.contains("compact"),
+        "{body}"
+    );
+}

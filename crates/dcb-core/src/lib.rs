@@ -114,11 +114,27 @@ text_enum! {
     }
 }
 
-// L'enum est généré par `text_enum!`, qui ne permet pas de marquer une variante `#[default]`.
+text_enum! {
+    /// Taille de la carte. `Normal` garde les deux grandes cases de coût ; `Compact` les
+    /// ramène à des chips avec icône et donne la place gagnée au bloc Effect.
+    Size {
+        Normal  => "normal",  "Normale",
+        Compact => "compact", "Compacte",
+    }
+}
+
+// Les enums sont générés par `text_enum!`, qui ne permet pas de marquer une variante `#[default]`.
 #[allow(clippy::derivable_impls)]
 impl Default for Shape {
     fn default() -> Self {
         Shape::Solid
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Size {
+    fn default() -> Self {
+        Size::Normal
     }
 }
 
@@ -158,6 +174,9 @@ pub struct CardDraft {
     /// Style du contour ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub shape: Shape,
+    /// Taille ; absente des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub size: Size,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -343,6 +362,7 @@ mod tests {
             skin: Skin::Light,
             foil: Foil::Basic,
             shape: Shape::Solid,
+            size: Size::Normal,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -371,6 +391,15 @@ mod tests {
             assert_eq!(s.slug().parse::<Shape>().unwrap(), *s);
         }
         assert!("round".parse::<Shape>().is_err());
+    }
+
+    #[test]
+    fn sizes_round_trip() {
+        assert_eq!(Size::default(), Size::Normal);
+        for s in Size::ALL {
+            assert_eq!(s.slug().parse::<Size>().unwrap(), *s);
+        }
+        assert!("tiny".parse::<Size>().is_err());
     }
 
     #[test]

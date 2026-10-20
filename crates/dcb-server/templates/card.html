@@ -1,4 +1,4 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}">
   <div class="card-skin"></div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span>{{ card.name }}</span></div>
@@ -26,17 +26,16 @@
     <p class="card-block-text">{{ card.effect }}</p>
   </div>
 
+  {#- Deux cases de coût ; en taille compacte, des chips avec icône (fusée, pièce) -#}
   <div class="card-stat card-stat-deploy">
+    {% if card.size == "compact" %}<i class="card-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2"/><path d="M9 15l-3-3c1-3 3-6 6.5-8.5C15 2 19 2 21 3c1 2 1 6-.5 8.5C18 15 15 17 12 18l-3-3z"/><circle cx="15" cy="9" r="1.5"/></svg></i>{% endif %}
     <div class="card-stat-value">{{ card.deploy_cost }}</div>
     <div class="card-stat-label">Deploy Cost</div>
   </div>
   <div class="card-stat card-stat-daily">
+    {% if card.size == "compact" %}<i class="card-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5v1.5M12 16v1.5"/></svg></i>{% endif %}
     <div class="card-stat-value">{{ card.daily_cost }}<small>$</small></div>
     <div class="card-stat-label">Daily Cost</div>
-  </div>
-  <div class="card-stat card-stat-rarity">
-    <div class="card-stat-value">{{ card.foil_label }}</div>
-    <div class="card-stat-label">Rarity</div>
   </div>
 
   <p class="card-flavor{% if card.flavor_placeholder %} is-placeholder{% endif %}">{% if card.flavor_placeholder %}Texte d'ambiance{% else %}{{ card.flavor_text }}{% endif %}</p>

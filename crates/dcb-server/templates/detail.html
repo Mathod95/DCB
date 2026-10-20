@@ -11,6 +11,7 @@
       <div><dt>Deploy Cost</dt><dd>{{ card.deploy_cost }}</dd></div>
       <div><dt>Daily Cost</dt><dd>{{ card.daily_cost }} $</dd></div>
       <div><dt>Skin</dt><dd>{{ card.skin }}</dd></div>
+      <div><dt>Taille</dt><dd>{{ card.size_label }}</dd></div>
     </dl>
     {% if let Some(slug) = card.slug %}
     {% if demo_card %}<p class="demo-note">Carte de démo, créée en ligne: elle disparaîtra à la prochaine mise à jour du site.</p>{% endif %}

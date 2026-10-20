@@ -16,7 +16,7 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Shape, is_valid_slug};
+use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Shape, Size, is_valid_slug};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
@@ -374,6 +374,7 @@ struct GalleryQuery {
     card_type: Option<String>,
     foil: Option<String>,
     shape: Option<String>,
+    size: Option<String>,
 }
 
 async fn gallery(
@@ -386,19 +387,25 @@ async fn gallery(
         card_type: q.card_type.as_deref().and_then(|v| v.parse().ok()),
         foil: q.foil.as_deref().and_then(|v| v.parse().ok()),
         shape: q.shape.as_deref().and_then(|v| v.parse().ok()),
+        size: q.size.as_deref().and_then(|v| v.parse().ok()),
     };
     let cards = db::list(&s.pool, filter).await?;
 
-    let href = |t: Option<CardType>, f: Option<Foil>, sh: Option<Shape>| {
+    // Lien de filtre : reprend les filtres actifs en remplaçant ceux donnés.
+    let href = |f: Filter| {
+        let (t, fo, sh, si) = (f.card_type, f.foil, f.shape, f.size);
         let mut parts = Vec::new();
         if let Some(t) = t {
             parts.push(format!("type={t}"));
         }
-        if let Some(f) = f {
+        if let Some(f) = fo {
             parts.push(format!("foil={f}"));
         }
         if let Some(sh) = sh {
             parts.push(format!("shape={sh}"));
+        }
+        if let Some(si) = si {
+            parts.push(format!("size={si}"));
         }
         if parts.is_empty() {
             "/gallery".to_owned()
@@ -409,40 +416,77 @@ async fn gallery(
 
     let mut type_links = vec![FilterLink {
         label: "Tous",
-        href: href(None, filter.foil, filter.shape),
+        href: href(Filter {
+            card_type: None,
+            ..filter
+        }),
         active: filter.card_type.is_none(),
         color: None,
     }];
     type_links.extend(CardType::ALL.iter().map(|&t| FilterLink {
         label: t.label(),
-        href: href(Some(t), filter.foil, filter.shape),
+        href: href(Filter {
+            card_type: Some(t),
+            ..filter
+        }),
         active: filter.card_type == Some(t),
         color: Some(t.color()),
     }));
 
     let mut foil_links = vec![FilterLink {
         label: "Toutes",
-        href: href(filter.card_type, None, filter.shape),
+        href: href(Filter {
+            foil: None,
+            ..filter
+        }),
         active: filter.foil.is_none(),
         color: None,
     }];
     foil_links.extend(Foil::ALL.iter().map(|&f| FilterLink {
         label: f.label(),
-        href: href(filter.card_type, Some(f), filter.shape),
+        href: href(Filter {
+            foil: Some(f),
+            ..filter
+        }),
         active: filter.foil == Some(f),
         color: None,
     }));
 
     let mut shape_links = vec![FilterLink {
         label: "Tous les contours",
-        href: href(filter.card_type, filter.foil, None),
+        href: href(Filter {
+            shape: None,
+            ..filter
+        }),
         active: filter.shape.is_none(),
         color: None,
     }];
     shape_links.extend(Shape::ALL.iter().map(|&sh| FilterLink {
         label: sh.label(),
-        href: href(filter.card_type, filter.foil, Some(sh)),
+        href: href(Filter {
+            shape: Some(sh),
+            ..filter
+        }),
         active: filter.shape == Some(sh),
+        color: None,
+    }));
+
+    let mut size_links = vec![FilterLink {
+        label: "Toutes les tailles",
+        href: href(Filter {
+            size: None,
+            ..filter
+        }),
+        active: filter.size.is_none(),
+        color: None,
+    }];
+    size_links.extend(Size::ALL.iter().map(|&si| FilterLink {
+        label: si.label(),
+        href: href(Filter {
+            size: Some(si),
+            ..filter
+        }),
+        active: filter.size == Some(si),
         color: None,
     }));
 
@@ -463,7 +507,11 @@ async fn gallery(
         type_links,
         foil_links,
         shape_links,
-        filtered: filter.card_type.is_some() || filter.foil.is_some() || filter.shape.is_some(),
+        size_links,
+        filtered: filter.card_type.is_some()
+            || filter.foil.is_some()
+            || filter.shape.is_some()
+            || filter.size.is_some(),
         load_errors,
     })
 }
@@ -735,6 +783,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.shape, Shape::Solid, "shape", &mut errors)
         },
+        size: if v.size.is_empty() {
+            Size::Normal
+        } else {
+            pick(&v.size, Size::Normal, "size", &mut errors)
+        },
         description: v.description.clone(),
         effect: v.effect.clone(),
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
@@ -852,6 +905,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "skin" => v.skin = text,
             "foil" => v.foil = text,
             "shape" => v.shape = text,
+            "size" => v.size = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -1009,6 +1063,8 @@ struct PreviewForm {
     #[serde(default)]
     shape: String,
     #[serde(default)]
+    size: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -1035,6 +1091,7 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         skin: f.skin,
         foil: f.foil,
         shape: f.shape,
+        size: f.size,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -1076,6 +1133,12 @@ async fn api_list(
             .map(str::parse)
             .transpose()
             .map_err(parse_err)?,
+        size: q
+            .size
+            .as_deref()
+            .map(str::parse)
+            .transpose()
+            .map_err(parse_err)?,
     };
     Ok(Json(db::list(&s.pool, filter).await?))
 }
@@ -1098,6 +1161,9 @@ async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
             "slug": f.slug(), "label": f.label()
         })).collect::<Vec<_>>(),
         "shapes": Shape::ALL.iter().map(|s| serde_json::json!({
+            "slug": s.slug(), "label": s.label()
+        })).collect::<Vec<_>>(),
+        "sizes": Size::ALL.iter().map(|s| serde_json::json!({
             "slug": s.slug(), "label": s.label()
         })).collect::<Vec<_>>(),
         "limits": {
