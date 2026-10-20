@@ -537,57 +537,49 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
         types.push(RulesType::new(entry, count, card.as_ref()));
     }
 
-    // Partie « Concepts » : une même carte de la collection, tirée au hasard (avec illustration
-    // et texte de préférence), déclinée dans chaque skin, finition et contour.
+    // Partie « Concepts » : chaque exemple des bandes est une carte différente de la collection,
+    // tirée au hasard (cartes remplies d'abord, puis les autres ; on recommence la pioche quand
+    // la collection est plus petite que le nombre d'exemples).
     let all = db::list(&s.pool, Filter::default()).await?;
     let filled =
         |c: &Card| !c.draft.description.trim().is_empty() && !c.draft.effect.trim().is_empty();
-    let sample = {
-        let mut pool: Vec<&Card> = all
-            .iter()
-            .filter(|c| c.draft.art.is_some() && filled(c))
-            .collect();
-        if pool.is_empty() {
-            pool = all.iter().filter(|c| filled(c)).collect();
-        }
-        if pool.is_empty() {
-            pool = all.iter().collect();
+    let deck: Vec<&Card> = {
+        fn shuffle<'a>(mut v: Vec<&'a Card>, n: &mut u64) -> Vec<&'a Card> {
+            for k in (1..v.len()).rev() {
+                *n ^= *n << 13;
+                *n ^= *n >> 7;
+                *n ^= *n << 17;
+                v.swap(k, (*n % (k as u64 + 1)) as usize);
+            }
+            v
         }
         let mut seed = [0u8; 8];
         let _ = getrandom::fill(&mut seed);
-        (!pool.is_empty()).then(|| pool[(u64::from_le_bytes(seed) % pool.len() as u64) as usize])
+        let mut n = u64::from_le_bytes(seed) | 1;
+        let mut deck = shuffle(all.iter().filter(|c| filled(c)).collect(), &mut n);
+        deck.extend(shuffle(all.iter().filter(|c| !filled(c)).collect(), &mut n));
+        deck
     };
-    fn variants<T: Copy>(
-        card: Option<&Card>,
-        values: &[T],
-        label: fn(T) -> &'static str,
-        apply: fn(&mut CardDraft, T),
-    ) -> Vec<FoilSample> {
-        let Some(card) = card else {
-            return Vec::new();
-        };
-        values
-            .iter()
-            .map(|&v| {
-                let mut draft = card.draft.clone();
-                apply(&mut draft, v);
-                FoilSample {
-                    label: label(v).to_owned(),
-                    card: CardView::new(Some(&card.slug), &draft),
-                    wrap: String::new(),
-                    desc: String::new(),
-                }
-            })
-            .collect()
-    }
+    let next = std::cell::Cell::new(0usize);
+    let draw = || {
+        (!deck.is_empty()).then(|| {
+            let i = next.get();
+            next.set(i + 1);
+            deck[i % deck.len()]
+        })
+    };
+    let plain = |label: &str, card: &Card, draft: &CardDraft| FoilSample {
+        label: label.to_owned(),
+        card: CardView::new(Some(&card.slug), draft),
+        wrap: String::new(),
+        desc: String::new(),
+    };
     let skins = |items: &[crate::rules::SkinItem]| -> Vec<FoilSample> {
-        let Some(card) = sample else {
-            return Vec::new();
-        };
         items
             .iter()
             .filter_map(|item| {
                 let (skin, wrap, fx) = concepts::skin_style(&item.key)?;
+                let card = draw()?;
                 let mut draft = card.draft.clone();
                 draft.skin = skin;
                 let mut view = CardView::new(Some(&card.slug), &draft);
@@ -607,11 +599,32 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
             })
             .collect()
     };
+    let skins_classic = skins(&rules.concepts.skin.classic);
+    let skins_animated = skins(&rules.concepts.skin.animated);
+    let foils: Vec<FoilSample> = Foil::ALL
+        .iter()
+        .filter_map(|&f| {
+            let card = draw()?;
+            let mut draft = card.draft.clone();
+            draft.foil = f;
+            Some(plain(f.label(), card, &draft))
+        })
+        .collect();
+    let shapes: Vec<FoilSample> = Shape::ALL
+        .iter()
+        .filter_map(|&sh| {
+            let card = draw()?;
+            let mut draft = card.draft.clone();
+            draft.shape = sh;
+            Some(plain(sh.label(), card, &draft))
+        })
+        .collect();
+
     let samples = ConceptSamples {
-        skins_classic: skins(&rules.concepts.skin.classic),
-        skins_animated: skins(&rules.concepts.skin.animated),
-        foils: variants(sample, Foil::ALL, Foil::label, |d, v| d.foil = v),
-        shapes: variants(sample, Shape::ALL, Shape::label, |d, v| d.shape = v),
+        skins_classic,
+        skins_animated,
+        foils,
+        shapes,
         templates: all
             .iter()
             .map(|c| TemplateCard {

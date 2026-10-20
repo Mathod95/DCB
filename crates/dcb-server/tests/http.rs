@@ -498,6 +498,18 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
             && body.contains("Les finitions")
             && body.contains("Les contours")
     );
+    // chaque exemple des bandes est une carte différente de la collection (ici 3 cartes pour
+    // 33 exemples : les trois apparaissent)
+    let rails = body
+        .split(r#"id="t-concepts""#)
+        .nth(1)
+        .unwrap()
+        .split("<dialog")
+        .next()
+        .unwrap();
+    for name in ["DDOS", "VIDE", "ARGO CD"] {
+        assert!(rails.contains(&format!("<span>{name}</span>")), "{name}");
+    }
     assert!(!body.contains("Deux skins"));
     // skins de concepts.css, avec calque animé, ASCII et description pour la vue zoomée
     assert!(
