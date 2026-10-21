@@ -15,7 +15,7 @@ use serde::Deserialize;
 
 use crate::auth::{self, AdminUser, CurrentUser, MaybeUser, Role, User};
 use crate::views::*;
-use crate::web::{AppResult, AppState, render};
+use crate::web::{AppResult, AppState, menu_page, render};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -37,6 +37,8 @@ struct NextQuery {
     next: Option<String>,
 }
 
+/// Plus de page de connexion : `/login` affiche l'accueil avec le panneau de connexion ouvert
+/// dans la barre du haut, et ramène ensuite à `next`.
 async fn login_page(
     State(s): State<AppState>,
     MaybeUser(user): MaybeUser,
@@ -46,15 +48,15 @@ async fn login_page(
     if user.is_some() {
         return Ok(Redirect::to(&next).into_response());
     }
-    let no_users = auth::count_users(&s.app_db).await? == 0;
-    Ok(render(LoginPage {
-        ctx: Ctx::anonymous(),
+    let mut ctx = s.ctx_for(None);
+    ctx.login = LoginBox {
+        open: true,
         next,
         username: String::new(),
         error: None,
-        no_users,
-    })?
-    .into_response())
+        no_users: auth::count_users(&s.app_db).await? == 0,
+    };
+    Ok(menu_page(&s, ctx).await?.into_response())
 }
 
 #[derive(Deserialize)]
@@ -84,14 +86,15 @@ async fn login(State(s): State<AppState>, Form(f): Form<LoginForm>) -> AppResult
             // Ralentit les essais en série ; le hachage Argon2 coûte déjà plusieurs dizaines de ms.
             tokio::time::sleep(Duration::from_millis(400)).await;
             tracing::warn!("échec de connexion pour {:?}", f.username.trim());
-            let page = LoginPage {
-                ctx: Ctx::anonymous(),
+            let mut ctx = s.ctx_for(None);
+            ctx.login = LoginBox {
+                open: true,
                 next,
                 username: f.username.trim().to_owned(),
                 error: Some("Identifiant ou mot de passe incorrect.".into()),
                 no_users: false,
             };
-            Ok((StatusCode::UNAUTHORIZED, render(page)?).into_response())
+            Ok((StatusCode::UNAUTHORIZED, menu_page(&s, ctx).await?).into_response())
         }
     }
 }
@@ -101,7 +104,8 @@ async fn logout(State(s): State<AppState>, req: axum::extract::Request) -> AppRe
     if let Some(token) = auth::session_token(&parts) {
         auth::delete_session(&s.app_db, &token).await?;
     }
-    let mut res = Redirect::to("/login").into_response();
+    // le jeu reste consultable sans compte : retour à l'accueil
+    let mut res = Redirect::to("/").into_response();
     res.headers_mut()
         .insert(header::SET_COOKIE, auth::clear_cookie(s.secure_cookies));
     Ok(res)
@@ -321,7 +325,7 @@ async fn admin_role(
         )
         .await;
     };
-    if role == Role::User && would_remove_last_admin(&s, &u).await? {
+    if role != Role::Admin && would_remove_last_admin(&s, &u).await? {
         return users_page(
             &s,
             &me,

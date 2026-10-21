@@ -16,11 +16,20 @@
       <span class="menu-item-title">Documentation</span>
       <span class="menu-item-sub">Overview, Core Concepts, Getting Started <span class="more">and more…</span></span>
     </a>
+    {% if ctx.can_create %}
+    <a class="menu-item" href="/cards/new">
+      <span class="menu-item-title">Nouvelle carte</span>
+      <span class="menu-item-sub">Créer une carte avec l'aperçu en direct</span>
+    </a>
+    {% endif %}
     {% if ctx.is_admin %}
     <a class="menu-item" href="/admin/users">
       <span class="menu-item-title">Comptes <span class="pill-admin">Admin</span></span>
-      <span class="menu-item-sub">Inviter des joueurs, gérer les rôles</span>
+      <span class="menu-item-sub">Créer des comptes, donner des droits</span>
     </a>
+    {% endif %}
+    {% if ctx.username.is_none() %}
+    <p class="guest-hint">Vous avez un compte&nbsp;? <a href="/login" data-open-login>Connectez-vous</a> pour créer des cartes.</p>
     {% endif %}
   </nav>
 </section>

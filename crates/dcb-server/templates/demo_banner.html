@@ -1,4 +1,4 @@
-{% if ctx.sandbox %}
+{% if ctx.sandbox && ctx.can_create %}
 <div class="demo-banner" role="note">
   <strong>Mode démo</strong>
   <span>Crée des cartes pour essayer l'éditeur: elles sont visibles par tous, tu peux modifier ou supprimer les tiennes, et elles disparaîtront à la prochaine mise à jour du site.</span>

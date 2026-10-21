@@ -34,6 +34,7 @@
       <p class="gal-side-title">Filtres</p>
       {% if filtered %}<a class="gal-reset" href="/gallery">Réinitialiser</a>{% endif %}
     </div>
+    {% if mine %}<input type="hidden" name="mine" value="1">{% endif %}
     {% for g in groups %}
     <details class="gal-group"{% if g.open %} open{% endif %}>
       <summary><span class="gal-group-title">{{ g.title }}</span><span class="gal-current{% if g.is_set %} is-set{% endif %}">{{ g.summary }}</span></summary>
@@ -54,15 +55,16 @@
   </form>
 
   <div class="gal-main">
-    {% if !active.is_empty() %}
+    {% if !active.is_empty() || mine %}
     <div class="gal-active">
+      {% if mine %}<a class="gal-pill" href="{{ mine_off_href }}" aria-label="Voir toutes les cartes"><b>Compte</b> Mes cartes<span aria-hidden="true">✕</span></a>{% endif %}
       {% for a in active %}<a class="gal-pill" href="{{ a.href }}" aria-label="Retirer le filtre {{ a.label }}"><b>{{ a.title }}</b> {{ a.label }}<span aria-hidden="true">✕</span></a>{% endfor %}
     </div>
     {% endif %}
 
 {% if cards.is_empty() %}
     <div class="empty">
-      <p>{% if filtered %}Aucune carte ne correspond à ces filtres.{% else %}Aucune carte pour l'instant.{% if ctx.can_edit && !ctx.sandbox %} Chaque carte créée est enregistrée dans <code>cards/</code>, prête à être commitée.{% endif %}{% endif %}</p>
+      <p>{% if mine && active.is_empty() %}Aucune carte créée en ligne avec ce compte pour l'instant.{% else if filtered %}Aucune carte ne correspond à ces filtres.{% else %}Aucune carte pour l'instant.{% if ctx.can_edit && !ctx.sandbox %} Chaque carte créée est enregistrée dans <code>cards/</code>, prête à être commitée.{% endif %}{% endif %}</p>
       {% if ctx.can_create && !filtered %}<a class="btn btn-primary" href="/cards/new">Créer la première</a>{% endif %}
     </div>
     {% else %}

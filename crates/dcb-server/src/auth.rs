@@ -45,14 +45,28 @@ pub async fn connect(url: &str) -> anyhow::Result<SqlitePool> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Role {
+    /// Tous les droits, y compris les comptes.
     Admin,
+    /// Crée des cartes et modifie les siennes.
+    Creator,
+    /// Joueur : galerie et documentation, comme un visiteur, avec un compte pour la suite
+    /// (decks, duels). Slug `user`, celui des comptes existants.
     User,
 }
 
 impl Role {
+    /// Du moins au plus de droits, dans l'ordre des menus.
+    pub const ALL: [Role; 3] = [Role::User, Role::Creator, Role::Admin];
+
+    /// Peut créer des cartes (quand l'éditeur est ouvert).
+    pub fn can_create(self) -> bool {
+        matches!(self, Role::Admin | Role::Creator)
+    }
+
     pub fn slug(self) -> &'static str {
         match self {
             Role::Admin => "admin",
+            Role::Creator => "creator",
             Role::User => "user",
         }
     }
@@ -60,13 +74,15 @@ impl Role {
     pub fn label(self) -> &'static str {
         match self {
             Role::Admin => "Admin",
-            Role::User => "Utilisateur",
+            Role::Creator => "Créateur",
+            Role::User => "Joueur",
         }
     }
 
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "admin" => Some(Role::Admin),
+            "creator" => Some(Role::Creator),
             "user" => Some(Role::User),
             _ => None,
         }
@@ -104,7 +120,7 @@ impl From<UserRow> for User {
         Self {
             id: r.id,
             username: r.username,
-            // la contrainte CHECK garantit l'une des deux valeurs
+            // la contrainte CHECK garantit l'une des trois valeurs
             role: Role::parse(&r.role).unwrap_or(Role::User),
             active: r.active,
             created_at: r.created_at,
@@ -444,7 +460,7 @@ fn login_redirect(parts: &Parts) -> Response {
     res
 }
 
-/// Visiteur, connecté ou non (pour les pages publiques comme /login).
+/// Visiteur, connecté ou non : accueil, galerie, fiches, documentation sont publics.
 pub struct MaybeUser(pub Option<User>);
 
 impl FromRequestParts<AppState> for MaybeUser {
@@ -462,7 +478,8 @@ impl FromRequestParts<AppState> for MaybeUser {
     }
 }
 
-/// Utilisateur connecté ; sinon redirection vers /login.
+/// Utilisateur connecté ; sinon redirection vers /login (l'accueil avec le panneau de connexion
+/// ouvert), qui ramène ensuite à la page demandée.
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<AppState> for CurrentUser {
@@ -501,8 +518,9 @@ impl FromRequestParts<AppState> for AdminUser {
     }
 }
 
-/// Admin connecté, éditeur de cartes activé (`DCB_EDITOR`). En production l'éditeur est coupé :
-/// ces pages répondent 404, les cartes arrivent avec l'image.
+/// Compte qui peut créer des cartes (admin ou créateur), éditeur ouvert. L'éditeur est ouvert en
+/// local (`DCB_EDITOR`) et en mode démo (`DCB_SANDBOX`) ; sinon ces pages répondent 404. Un
+/// joueur reçoit une page 403 ; les droits sur chaque carte sont vérifiés dans les routes.
 pub struct EditorUser(pub User);
 
 impl FromRequestParts<AppState> for EditorUser {
@@ -512,17 +530,14 @@ impl FromRequestParts<AppState> for EditorUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        // Mode démo : tout joueur connecté ouvre l'éditeur (les droits par carte sont vérifiés
-        // dans chaque route). Sinon l'éditeur est réservé à l'admin, et absent s'il est coupé.
-        if state.sandbox {
-            let CurrentUser(u) = CurrentUser::from_request_parts(parts, state).await?;
-            return Ok(EditorUser(u));
+        let CurrentUser(u) = CurrentUser::from_request_parts(parts, state).await?;
+        if !state.editor_open() {
+            return Err(crate::web::not_found_for(Some(&u), state));
         }
-        let AdminUser(u) = AdminUser::from_request_parts(parts, state).await?;
-        if state.editor_enabled {
+        if u.role.can_create() {
             Ok(EditorUser(u))
         } else {
-            Err(crate::web::not_found_for(Some(&u), state))
+            Err(crate::web::forbidden_response(Some(&u), state))
         }
     }
 }

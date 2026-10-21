@@ -7,7 +7,7 @@ use tracing_subscriber::EnvFilter;
 const USAGE: &str = "\
 Usage :
   dcb-server                         démarre le serveur
-  dcb-server user add <nom> [--admin] crée un compte (mot de passe demandé, ou DCB_PASSWORD)
+  dcb-server user add <nom> [--admin|--creator] crée un compte (joueur par défaut ; mot de passe demandé, ou DCB_PASSWORD)
   dcb-server user passwd <nom>       change le mot de passe d'un compte
   dcb-server user list               liste les comptes";
 
@@ -61,6 +61,8 @@ async fn user_command(args: &[String]) -> anyhow::Result<()> {
         [cmd, name, rest @ ..] if cmd == "add" => {
             let role = if rest.iter().any(|a| a == "--admin") {
                 Role::Admin
+            } else if rest.iter().any(|a| a == "--creator") {
+                Role::Creator
             } else {
                 Role::User
             };

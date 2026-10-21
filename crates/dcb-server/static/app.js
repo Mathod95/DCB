@@ -53,6 +53,27 @@
   });
 
   document.addEventListener("htmx:load", (e) => initCounters(e.detail.elt));
+
+  // Connexion depuis la barre du haut : revenir sur la page où l'on était.
+  document.addEventListener("submit", (e) => {
+    const next = e.target.querySelector?.("[data-login-next]");
+    if (next && !next.value) next.value = location.pathname + location.search;
+  });
+
+  // « Connectez-vous » sur l'accueil : ouvre le panneau au lieu de recharger la page.
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest?.("[data-open-login]");
+    const pop = document.querySelector(".login-pop");
+    if (!link || !pop) return;
+    e.preventDefault();
+    pop.open = true;
+    pop.querySelector("input[name=username]")?.focus();
+  });
+
+  // Rôle d'un compte (administration) : enregistré dès qu'on le change.
+  document.addEventListener("change", (e) => {
+    if (e.target.matches?.("select[data-autosubmit]")) e.target.form.requestSubmit();
+  });
   // Bouton « Copier » (mot de passe généré dans l'administration des comptes).
   document.addEventListener("click", async (e) => {
     const btn = e.target.closest?.("[data-copy]");

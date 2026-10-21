@@ -13,7 +13,7 @@ cargo run -p dcb-server
 
 Puis ouvrir <http://127.0.0.1:3000>. Lance le serveur depuis la racine du repo : les cartes sont lues dans `./cards`.
 
-Toute l'app est derrière une connexion. Crée d'abord ton compte admin :
+Accueil, galerie, fiches et documentation sont publics ; on se connecte depuis le bouton en haut à droite. Crée d'abord ton compte admin :
 
 ```bash
 cargo run -p dcb-server -- user add mathod --admin   # mot de passe demandé au clavier
@@ -27,7 +27,7 @@ cargo run -p dcb-server -- user add mathod --admin   # mot de passe demandé au 
 | `DCB_APP_DATABASE_URL` | `sqlite://data/app.db` | Comptes et sessions (**à sauvegarder**, jamais reconstruite) |
 | `DCB_BIND` | `127.0.0.1:3000` | Adresse d'écoute |
 | `DCB_EDITOR` | `1` | `0` coupe l'éditeur : les cartes sont en lecture seule, même pour l'admin |
-| `DCB_SANDBOX` | `0` | `1` active le mode démo : tout joueur connecté crée des cartes et ne modifie ou ne supprime que les siennes, l'admin modifie tout. Les cartes créées en ligne ne sont pas conservées au déploiement suivant |
+| `DCB_SANDBOX` | `0` | `1` active le mode démo : les créateurs créent des cartes en ligne et ne modifient ou ne suppriment que les leurs, l'admin modifie tout. Les cartes créées en ligne ne sont pas conservées au déploiement suivant |
 | `DCB_SECURE_COOKIES` | `0` | `1` derrière HTTPS (cookie de session `Secure`) |
 | `DCB_ADMIN_USERNAME`, `DCB_ADMIN_PASSWORD` | | Créent le premier admin au démarrage si aucun compte n'existe |
 | `RUST_LOG` | `dcb_server=info,tower_http=info` | Niveau de logs |
@@ -49,14 +49,16 @@ La base SQLite n'est qu'un cache : elle est vidée et reconstruite depuis `cards
 
 ## Comptes
 
-Pas d'inscription libre : l'admin crée les comptes (accès sur invitation).
+Le jeu se consulte sans compte. Pas d'inscription libre : l'admin crée les comptes, avec le rôle qui donne leurs droits. Une page qui demande un compte renvoie vers le panneau de connexion de la barre du haut, puis ramène à la page demandée.
 
 | Rôle | Droits |
 |---|---|
-| Utilisateur | Galerie, règles, fiches cartes, API, son compte (changer son mot de passe) |
-| Admin | Tout ça, plus la page **Comptes** (`/admin/users`) et l'éditeur de cartes quand `DCB_EDITOR=1` ou `DCB_SANDBOX=1` |
+| Visiteur (sans compte) | Accueil, galerie, fiches cartes, documentation, API en lecture |
+| Joueur | La même chose, avec un compte (son mot de passe ; decks et duels plus tard) |
+| Créateur | Crée des cartes et modifie ou supprime les siennes (« Mes cartes »), quand l'éditeur est ouvert (`DCB_EDITOR=1` ou `DCB_SANDBOX=1`) |
+| Admin | Tout : toutes les cartes, rechargement des fichiers, page **Comptes** (`/admin/users`) |
 
-Depuis la page Comptes : inviter un joueur (laisser le mot de passe vide pour en générer un, affiché une seule fois), passer un compte Admin ou Utilisateur, générer un nouveau mot de passe, désactiver ou supprimer. Le dernier admin actif ne peut pas être retiré.
+Depuis la page Comptes : créer un compte (laisser le mot de passe vide pour en générer un, affiché une seule fois), changer son rôle (Joueur, Créateur, Admin), générer un nouveau mot de passe, désactiver ou supprimer. Le dernier admin actif ne peut pas être retiré.
 
 En ligne de commande (mot de passe demandé au clavier, ou lu dans `DCB_PASSWORD`) :
 
@@ -70,7 +72,7 @@ Sécurité : mots de passe hachés en Argon2id, sessions de 30 jours dont seul l
 
 ## Déploiement
 
-Chaque push sur `main` publie l'image `ghcr.io/mathod95/dcb:latest` (et `sha-<commit>`). Elle contient le binaire, `cards/` et `rules/`, avec l'éditeur de fichiers coupé (`DCB_EDITOR=0`), le mode démo actif (`DCB_SANDBOX=1`) et les cookies `Secure`. En prod, les joueurs connectés peuvent essayer l'éditeur : leurs cartes sont écrites dans le conteneur, hors du volume `/data`, et disparaissent à la mise à jour suivante. Les cartes du dépôt n'y sont modifiables que par l'admin, et ces modifications sont perdues aussi. Pour ajouter ou modifier une carte pour de bon, on passe par l'éditeur en local, on commite, on push, et on redéploie la nouvelle image.
+Chaque push sur `main` publie l'image `ghcr.io/mathod95/dcb:latest` (et `sha-<commit>`). Elle contient le binaire, `cards/` et `rules/`, avec l'éditeur de fichiers coupé (`DCB_EDITOR=0`), le mode démo actif (`DCB_SANDBOX=1`) et les cookies `Secure`. En prod, les créateurs peuvent essayer l'éditeur : leurs cartes sont écrites dans le conteneur, hors du volume `/data`, et disparaissent à la mise à jour suivante. Les cartes du dépôt n'y sont modifiables que par l'admin, et ces modifications sont perdues aussi. Pour ajouter ou modifier une carte pour de bon, on passe par l'éditeur en local, on commite, on push, et on redéploie la nouvelle image.
 
 ```bash
 docker run -d -p 3000:3000 -v dcb-data:/data \

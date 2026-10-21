@@ -18,18 +18,42 @@
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
       <span>DevCard<b>Battle</b></span>
     </a>
-    {% if let Some(name) = ctx.username %}
     <nav class="topnav">
+      {% if let Some(name) = ctx.username %}
       <details class="usermenu">
-        <summary><span class="avatar" aria-hidden="true">{{ ctx.initial() }}</span><span class="usermenu-name">{{ name }}</span></summary>
+        <summary><span class="avatar" aria-hidden="true">{{ ctx.initial() }}</span><span class="usermenu-name">{{ name }}</span><span class="role-pill{% if ctx.is_admin %} is-admin{% endif %}">{{ ctx.role_label }}</span></summary>
         <div class="usermenu-panel">
-          <p class="muted small">{% if ctx.is_admin %}Admin{% else %}Utilisateur{% endif %}</p>
+          {% if ctx.can_create %}<a href="/gallery?mine=1">Mes cartes</a>{% endif %}
+          {% if ctx.is_admin %}<a href="/admin/users">Comptes</a>{% endif %}
           <a href="/account">Mon compte</a>
           <form method="post" action="/logout" hx-boost="false"><button type="submit">Se déconnecter</button></form>
         </div>
       </details>
+      {% else %}
+      {#- Visiteur : connexion dans un panneau sous le bouton, retour à la page courante -#}
+      <details class="login-pop"{% if ctx.login.open %} open{% endif %}>
+        <summary class="btn btn-sm btn-primary">Se connecter</summary>
+        <form class="login-panel" method="post" action="/login" hx-boost="false">
+          <p class="login-title">Connexion</p>
+          {% if let Some(e) = ctx.login.error %}<div class="alert" role="alert">{{ e }}</div>{% endif %}
+          {% if ctx.login.no_users %}
+          <div class="alert alert-info" role="status">Aucun compte n'existe encore. Crée le premier admin depuis un terminal: <code>cargo run -p dcb-server -- user add ton-identifiant --admin</code></div>
+          {% endif %}
+          <input type="hidden" name="next" value="{{ ctx.login.next }}" data-login-next>
+          <div class="field">
+            <label for="l-username">Identifiant</label>
+            <input id="l-username" name="username" value="{{ ctx.login.username }}" autocomplete="username" autocapitalize="none" spellcheck="false" required{% if ctx.login.open && ctx.login.username.is_empty() %} autofocus{% endif %}>
+          </div>
+          <div class="field">
+            <label for="l-password">Mot de passe</label>
+            <input id="l-password" name="password" type="password" autocomplete="current-password" required{% if ctx.login.open && !ctx.login.username.is_empty() %} autofocus{% endif %}>
+          </div>
+          <button class="btn btn-primary" type="submit">Se connecter</button>
+          <p class="muted small">Pas d'inscription libre: les comptes sont créés par l'admin.</p>
+        </form>
+      </details>
+      {% endif %}
     </nav>
-    {% endif %}
   </header>
   <main class="page">
     {% block content %}{% endblock %}

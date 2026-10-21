@@ -8,7 +8,7 @@ use dcb_core::{
     Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Skin, Title, limits,
 };
 
-use crate::auth::{Role, User};
+use crate::auth::User;
 use crate::rules::{self, Rules, TypeEntry, inline};
 
 /// Ce que la barre du haut et les pages doivent savoir du visiteur.
@@ -16,13 +16,31 @@ use crate::rules::{self, Rules, TypeEntry, inline};
 pub struct Ctx {
     pub username: Option<String>,
     pub is_admin: bool,
+    /// Libellé du rôle, affiché dans le menu du compte (vide pour un visiteur).
+    pub role_label: &'static str,
+    pub role: &'static str,
     /// Admin avec l'éditeur activé : rechargement, fichiers à commiter, erreurs de chargement.
     pub can_edit: bool,
-    /// Peut créer des cartes : l'admin quand l'éditeur est activé, tout joueur en mode démo.
+    /// Peut créer des cartes : admin ou créateur, éditeur ouvert.
     pub can_create: bool,
     /// Mode démo (`DCB_SANDBOX`) : les cartes créées en ligne disparaissent au prochain
     /// déploiement.
     pub sandbox: bool,
+    /// Panneau de connexion de la barre du haut (visiteur).
+    pub login: LoginBox,
+}
+
+/// État du panneau de connexion : ouvert par `/login` (page demandée sans être connecté, ou
+/// mauvais identifiants), avec la page où revenir.
+#[derive(Clone, Default)]
+pub struct LoginBox {
+    pub open: bool,
+    /// Page où revenir après la connexion ; vide : la page courante (rempli par app.js).
+    pub next: String,
+    pub username: String,
+    pub error: Option<String>,
+    /// Aucun compte n'existe encore : comment créer le premier admin.
+    pub no_users: bool,
 }
 
 impl Ctx {
@@ -41,15 +59,21 @@ impl Ctx {
 
     pub fn for_user(user: Option<&User>, editor_enabled: bool, sandbox: bool) -> Self {
         match user {
-            None => Self::default(),
+            None => Self {
+                sandbox,
+                ..Self::default()
+            },
             Some(u) => {
                 let editor = editor_enabled || sandbox;
                 Self {
                     username: Some(u.username.clone()),
                     is_admin: u.is_admin(),
+                    role_label: u.role.label(),
+                    role: u.role.slug(),
                     can_edit: u.is_admin() && editor,
-                    can_create: editor && (u.is_admin() || sandbox),
+                    can_create: editor && u.role.can_create(),
                     sandbox,
+                    login: LoginBox::default(),
                 }
             }
         }
@@ -409,6 +433,10 @@ pub struct GalleryPage {
     pub groups: Vec<FilterGroup>,
     pub active: Vec<ActiveFilter>,
     pub filtered: bool,
+    /// « Mes cartes » : la galerie ne montre que les cartes créées en ligne par ce compte.
+    pub mine: bool,
+    /// La même galerie sans « Mes cartes ».
+    pub mine_off_href: String,
     /// Fichiers `cards/*.toml` ignorés au dernier chargement.
     pub load_errors: Vec<String>,
 }
@@ -593,17 +621,6 @@ pub struct ForbiddenPage {
 }
 
 #[derive(Template)]
-#[template(path = "login.html")]
-pub struct LoginPage {
-    pub ctx: Ctx,
-    pub next: String,
-    pub username: String,
-    pub error: Option<String>,
-    /// Aucun compte n'existe encore : on explique comment créer le premier admin.
-    pub no_users: bool,
-}
-
-#[derive(Template)]
 #[template(path = "account.html")]
 pub struct AccountPage {
     pub ctx: Ctx,
@@ -615,9 +632,8 @@ pub struct AccountPage {
 pub struct UserRowView {
     pub id: i64,
     pub username: String,
+    pub role: &'static str,
     pub role_label: &'static str,
-    pub other_role: &'static str,
-    pub other_role_label: &'static str,
     pub active: bool,
     pub is_self: bool,
     pub created: String,
@@ -661,17 +677,11 @@ pub fn date(ts: i64) -> String {
 
 impl UserRowView {
     pub fn new(u: &User, me: &User) -> Self {
-        let other = if u.role == Role::Admin {
-            Role::User
-        } else {
-            Role::Admin
-        };
         Self {
             id: u.id,
             username: u.username.clone(),
+            role: u.role.slug(),
             role_label: u.role.label(),
-            other_role: other.slug(),
-            other_role_label: other.label(),
             active: u.active,
             is_self: u.id == me.id,
             created: date(u.created_at),

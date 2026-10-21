@@ -618,17 +618,38 @@ async fn send_full(
 }
 
 #[tokio::test]
-async fn anonymous_visitors_are_sent_to_login() {
+async fn anonymous_visitors_browse_the_game_and_log_in_from_the_top_bar() {
     let t = app(&[("ddos.toml", DDOS)]).await;
+    // accueil, galerie, fiches, documentation et API en lecture : publics
     for uri in [
         "/",
         "/gallery",
+        "/gallery?type=incident",
         "/regles",
         "/cards/ddos",
         "/api/cards",
-        "/admin/users",
-        "/art/x.png",
+        "/api/cards/ddos",
+        "/api/meta",
     ] {
+        let (status, _, _) = send(&t.anon, get(uri)).await;
+        // sans fichier de règles dans ce test, /regles répond 503 : seulement pas de redirection
+        assert!(
+            status == StatusCode::OK || uri == "/regles",
+            "{uri}: {status}"
+        );
+        assert_ne!(status, StatusCode::SEE_OTHER, "{uri}");
+    }
+    let (_, _, home) = send(&t.anon, get("/")).await;
+    assert!(home.contains(r#"<details class="login-pop">"#) && home.contains("Se connecter"));
+    assert!(home.contains("Connectez-vous") && !home.contains("usermenu"));
+    assert!(!home.contains("/cards/new") && !home.contains("/admin/users"));
+    let (_, _, gallery) = send(&t.anon, get("/gallery")).await;
+    assert!(!gallery.contains("Nouvelle carte") && !gallery.contains("Mode démo"));
+    let (_, _, detail) = send(&t.anon, get("/cards/ddos")).await;
+    assert!(!detail.contains("/cards/ddos/edit"));
+
+    // ce qui demande un compte renvoie vers le panneau de connexion, avec la page où revenir
+    for uri in ["/cards/new", "/account", "/admin/users", "/cards/ddos/edit"] {
         let (status, location, _) = send(&t.anon, get(uri)).await;
         assert_eq!(status, StatusCode::SEE_OTHER, "{uri}");
         assert!(
@@ -636,19 +657,16 @@ async fn anonymous_visitors_are_sent_to_login() {
             "{uri}"
         );
     }
-    let (_, location, _) = send(&t.anon, get("/gallery?type=app")).await;
-    assert_eq!(
-        location.as_deref(),
-        Some("/login?next=/gallery%3Ftype%3Dapp")
-    );
-    // la page de connexion et ses styles restent accessibles
-    let (status, _, body) = send(&t.anon, get("/login")).await;
+    let (_, location, _) = send(&t.anon, get("/cards/new?x=1")).await;
+    assert_eq!(location.as_deref(), Some("/login?next=/cards/new%3Fx%3D1"));
+    // plus de page de connexion : l'accueil, panneau ouvert, retour prévu
+    let (status, _, body) = send(&t.anon, get("/login?next=/cards/new")).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("Connexion") && !body.contains("topnav"));
-    let (status, _, _) = send(&t.anon, get("/static/app.css")).await;
-    assert_eq!(status, StatusCode::OK);
-    // un cookie invalide ne passe pas
-    let req = Request::get("/")
+    assert!(body.contains(r#"<details class="login-pop" open>"#));
+    assert!(body.contains(r#"name="next" value="/cards/new""#));
+    assert!(body.contains("Faites tomber celle"));
+    // un cookie invalide reste un visiteur
+    let req = Request::get("/account")
         .header(header::COOKIE, "dcb_session=abc")
         .body(Body::empty())
         .unwrap();
@@ -715,7 +733,7 @@ async fn login_sets_a_safe_session_cookie() {
     let (status, headers, _) = send_full(&t.anon, req).await;
     assert_eq!(status, StatusCode::SEE_OTHER);
     assert!(set_cookie(&headers).unwrap().contains("Max-Age=0"));
-    let req = Request::get("/")
+    let req = Request::get("/account")
         .header(header::COOKIE, &token)
         .body(Body::empty())
         .unwrap();
@@ -723,7 +741,7 @@ async fn login_sets_a_safe_session_cookie() {
 }
 
 #[tokio::test]
-async fn users_can_browse_but_not_edit() {
+async fn players_can_browse_but_not_edit() {
     let t = app(&[("ddos.toml", DDOS)]).await;
     for uri in [
         "/",
@@ -871,7 +889,10 @@ async fn admin_invites_and_manages_accounts() {
     // désactivation : ses sessions sont fermées
     let (_, _, body) = send(&t.app, post(&format!("/admin/users/{}/active", joueur.id))).await;
     assert!(body.contains("désactivé"));
-    assert_eq!(send(&t.user, get("/")).await.0, StatusCode::SEE_OTHER);
+    assert_eq!(
+        send(&t.user, get("/account")).await.0,
+        StatusCode::SEE_OTHER
+    );
     let (status, _, _) = send(
         &t.anon,
         form(
@@ -968,7 +989,10 @@ async fn users_change_their_own_password() {
         "nouvelle session pour cet appareil"
     );
     // l'ancienne session est fermée, le nouveau mot de passe fonctionne
-    assert_eq!(send(&t.user, get("/")).await.0, StatusCode::SEE_OTHER);
+    assert_eq!(
+        send(&t.user, get("/account")).await.0,
+        StatusCode::SEE_OTHER
+    );
     let (status, _, _) = send(
         &t.anon,
         form("/login", "username=joueur&password=nouveau-mdp-123"),
@@ -1102,10 +1126,10 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
     assert!(body.contains("DCB-"));
     let (status, _, _) = send(&t.app, get("/static/concepts.css")).await;
     assert_eq!(status, StatusCode::OK);
-    // réservé aux joueurs connectés, lien depuis les règles
+    // ouvert aux visiteurs, lien depuis les règles
     assert_eq!(
         send(&t.anon, get("/regles/concepts")).await.0,
-        StatusCode::SEE_OTHER
+        StatusCode::OK
     );
     let (_, _, rules) = send(&t.app, get("/regles")).await;
     assert!(rules.contains(r#"href="/regles/concepts""#));
@@ -1128,12 +1152,7 @@ async fn simplified_menu_and_top_bar() {
     let (_, _, menu) = send(&t.app, get("/")).await;
     assert!(menu.contains("Documentation") && menu.contains("and more"));
     assert!(menu.contains(r#"<span class="pill-admin">Admin</span>"#));
-    for gone in [
-        "Créer une carte",
-        "Deck builder",
-        "Duel en ligne",
-        "Règles du jeu",
-    ] {
+    for gone in ["Deck builder", "Duel en ligne", "Règles du jeu"] {
         assert!(!menu.contains(gone), "{gone}");
     }
     // barre du haut : logo et menu du compte seulement
@@ -1148,25 +1167,45 @@ async fn simplified_menu_and_top_bar() {
             r#"<a class="btn btn-primary btn-sm" href="/cards/new">+ Nouvelle carte</a>"#
         )
     );
-    // un joueur ne voit pas Comptes
+    // l'admin voit Nouvelle carte et Comptes, son rôle dans le menu du compte
+    assert!(menu.contains(r#"<a class="menu-item" href="/cards/new">"#));
+    assert!(topnav.contains(r#"<span class="role-pill is-admin">Admin</span>"#));
+    assert!(topnav.contains(r#"href="/admin/users""#) && topnav.contains("Mes cartes"));
+    // un joueur ne voit ni Comptes ni Nouvelle carte
     let (_, _, menu) = send(&t.user, get("/")).await;
     assert!(menu.contains("Documentation") && !menu.contains("/admin/users"));
+    assert!(!menu.contains("/cards/new") && menu.contains(">Joueur</span>"));
+    assert!(!menu.contains("Mes cartes"));
 }
 
 #[tokio::test]
-async fn sandbox_lets_players_create_and_edit_only_their_cards() {
+async fn sandbox_lets_creators_create_and_edit_only_their_cards() {
     let mut t = app(&[("ddos.toml", DDOS)]).await;
     t.state = t.state.clone().with_editor(false).with_sandbox(true);
     t.rebuild();
-    // un second joueur
-    let other = auth::create_user(&t.state.app_db, "voisin", USER_PASSWORD, Role::User)
+    // un joueur simple ne crée pas de cartes, même en mode démo
+    let (_, _, gallery) = send(&t.user, get("/gallery")).await;
+    assert!(!gallery.contains("Nouvelle carte") && !gallery.contains("Mode démo"));
+    assert_eq!(
+        send(&t.user, get("/cards/new")).await.0,
+        StatusCode::FORBIDDEN
+    );
+    // l'admin lui donne le rôle Créateur ; un second créateur
+    let joueur = auth::find_user_by_name(&t.state.app_db, "joueur")
+        .await
+        .unwrap()
+        .unwrap();
+    auth::set_role(&t.state.app_db, joueur.id, Role::Creator)
+        .await
+        .unwrap();
+    let other = auth::create_user(&t.state.app_db, "voisin", USER_PASSWORD, Role::Creator)
         .await
         .unwrap()
         .unwrap();
     let other_token = auth::create_session(&t.state.app_db, other).await.unwrap();
     let voisin = with_session(router(t.state.clone()), &other_token);
 
-    // bandeau et bouton de création pour un joueur, sans rechargement ni fichiers à commiter
+    // bandeau et bouton de création pour un créateur, sans rechargement ni fichiers à commiter
     let (_, _, gallery) = send(&t.user, get("/gallery")).await;
     assert!(gallery.contains("Mode démo") && gallery.contains("Nouvelle carte"));
     assert!(!gallery.contains("Recharger"));

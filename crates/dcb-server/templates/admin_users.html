@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Administration</p>
     <h1>Comptes</h1>
-    <p class="muted">{{ users.len() }} compte{% if users.len() != 1 %}s{% endif %}. Pas d'inscription libre: chaque joueur reçoit un compte créé ici.{% if sandbox %} Mode démo: tous les joueurs peuvent créer des cartes, non conservées au déploiement suivant.{% else if !editor_enabled %} Éditeur de cartes désactivé sur ce serveur.{% endif %}</p>
+    <p class="muted">{{ users.len() }} compte{% if users.len() != 1 %}s{% endif %}. Pas d'inscription libre: chaque compte est créé ici, avec le rôle qui donne ses droits.{% if sandbox %} Mode démo: les cartes créées en ligne ne sont pas conservées au déploiement suivant.{% else if !editor_enabled %} Éditeur de cartes désactivé sur ce serveur.{% endif %}</p>
   </div>
 </div>
 
@@ -24,7 +24,7 @@
 
 <div class="admin">
   <form class="admin-new" method="post" action="/admin/users" hx-boost="false">
-    <h2 class="auth-subtitle">Inviter un joueur</h2>
+    <h2 class="auth-subtitle">Créer un compte</h2>
     <div class="field">
       <label for="u-name">Identifiant</label>
       <input id="u-name" name="username" value="{{ new_username }}" autocapitalize="none" spellcheck="false" required placeholder="jean.dupont">
@@ -38,9 +38,11 @@
     <div class="field">
       <span class="label">Rôle</span>
       <div class="segmented">
-        <label class="seg"><input type="radio" name="role" value="user" checked><span>Utilisateur</span></label>
+        <label class="seg"><input type="radio" name="role" value="user" checked><span>Joueur</span></label>
+        <label class="seg"><input type="radio" name="role" value="creator"><span>Créateur</span></label>
         <label class="seg"><input type="radio" name="role" value="admin"><span>Admin</span></label>
       </div>
+      <p class="field-hint">Joueur: galerie et documentation, comme un visiteur, avec un compte pour la suite (decks, duels). Créateur: crée des cartes et modifie les siennes. Admin: tout, y compris les comptes.</p>
     </div>
     <button class="btn btn-primary" type="submit">Créer le compte</button>
   </form>
@@ -54,7 +56,18 @@
         {% for u in users %}
         <tr{% if !u.active %} class="is-off"{% endif %}>
           <td><strong>{{ u.username }}</strong>{% if u.is_self %} <span class="pill">toi</span>{% endif %}</td>
-          <td>{{ u.role_label }}</td>
+          <td>
+            {% if u.is_self %}{{ u.role_label }}{% else %}
+            <form class="role-form" method="post" action="/admin/users/{{ u.id }}/role" hx-boost="false">
+              <select name="role" aria-label="Rôle de {{ u.username }}" data-autosubmit>
+                <option value="user"{% if u.role == "user" %} selected{% endif %}>Joueur</option>
+                <option value="creator"{% if u.role == "creator" %} selected{% endif %}>Créateur</option>
+                <option value="admin"{% if u.role == "admin" %} selected{% endif %}>Admin</option>
+              </select>
+              <noscript><button class="btn btn-sm" type="submit">Changer</button></noscript>
+            </form>
+            {% endif %}
+          </td>
           <td>{% if u.active %}<span class="state state-on">Actif</span>{% else %}<span class="state state-off">Désactivé</span>{% endif %}</td>
           <td class="num">{{ u.created }}</td>
           <td class="num">{{ u.last_login }}</td>
@@ -62,7 +75,6 @@
             {% if u.is_self %}
             <a class="btn btn-sm" href="/account">Mon compte</a>
             {% else %}
-            <form method="post" action="/admin/users/{{ u.id }}/role" hx-boost="false"><input type="hidden" name="role" value="{{ u.other_role }}"><button class="btn btn-sm" type="submit">Passer {{ u.other_role_label }}</button></form>
             <form method="post" action="/admin/users/{{ u.id }}/password" hx-boost="false"><button class="btn btn-sm" type="submit">Nouveau mot de passe</button></form>
             <form method="post" action="/admin/users/{{ u.id }}/active" hx-boost="false"><button class="btn btn-sm" type="submit">{% if u.active %}Désactiver{% else %}Réactiver{% endif %}</button></form>
             <form method="post" action="/admin/users/{{ u.id }}/delete" hx-boost="false" data-confirm="Supprimer définitivement le compte « {{ u.username }} » ?"><button class="btn btn-sm btn-danger" type="submit">Supprimer</button></form>

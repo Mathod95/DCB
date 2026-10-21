@@ -28,7 +28,7 @@ use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
-use crate::auth::{CurrentUser, EditorUser, MaybeUser, User};
+use crate::auth::{EditorUser, MaybeUser, User};
 use crate::concepts::{self, ConceptsDoc};
 use crate::db::{self, Filter};
 use crate::rules::Rules;
@@ -111,15 +111,26 @@ impl AppState {
         self.editor_enabled || self.sandbox
     }
 
-    /// Le compte peut modifier ou supprimer cette carte : l'admin toujours, un joueur en mode
-    /// démo seulement pour les cartes qu'il a créées.
+    /// Le compte peut modifier ou supprimer cette carte : l'admin toujours, un créateur
+    /// seulement les cartes qu'il a créées en ligne.
     pub fn may_modify(&self, user: &User, slug: &str) -> bool {
         if !self.editor_open() {
             return false;
         }
         user.is_admin()
-            || (self.sandbox
+            || (user.role.can_create()
                 && self.owners.read().expect("verrou empoisonné").get(slug) == Some(&user.id))
+    }
+
+    /// Cartes créées en ligne par ce compte (« Mes cartes »).
+    pub fn owned_by(&self, user_id: i64) -> Vec<String> {
+        self.owners
+            .read()
+            .expect("verrou empoisonné")
+            .iter()
+            .filter(|(_, id)| **id == user_id)
+            .map(|(slug, _)| slug.clone())
+            .collect()
     }
 
     pub fn with_secure_cookies(mut self, secure: bool) -> Self {
@@ -129,6 +140,11 @@ impl AppState {
 
     pub fn ctx(&self, user: &User) -> Ctx {
         Ctx::for_user(Some(user), self.editor_enabled, self.sandbox)
+    }
+
+    /// Contexte d'une page publique : visiteur ou compte connecté.
+    pub fn ctx_for(&self, user: Option<&User>) -> Ctx {
+        Ctx::for_user(user, self.editor_enabled, self.sandbox)
     }
 
     /// Relit `cards/*.toml` et reconstruit le cache. Renvoie le nombre de cartes chargées.
@@ -180,9 +196,7 @@ pub fn router(state: AppState) -> Router {
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-cache"),
-        ))
-        // les illustrations ne sont visibles qu'une fois connecté, comme le reste du jeu
-        .layer(middleware::from_fn_with_state(state.clone(), require_login));
+        ));
 
     Router::new()
         .route("/", get(menu))
@@ -309,11 +323,6 @@ async fn not_found(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> Respon
     not_found_for(u.as_ref(), &s)
 }
 
-/// Middleware : refuse l'accès aux visiteurs non connectés (redirection vers /login).
-async fn require_login(_user: CurrentUser, req: Request, next: Next) -> Response {
-    next.run(req).await
-}
-
 /// Middleware : refuse les envois de formulaire venant d'un autre site (protection CSRF, en
 /// plus du cookie `SameSite=Lax`). Les navigateurs envoient `Origin` sur les POST ; il doit
 /// correspondre à l'hôte de la requête.
@@ -374,31 +383,44 @@ async fn foil_texture(Path(name): Path<String>) -> Response {
 // ---------------------------------------------------------------------------------------------
 // Pages
 
-async fn menu(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> AppResult<Html<String>> {
+async fn menu(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Html<String>> {
+    menu_page(&s, s.ctx_for(u.as_ref())).await
+}
+
+/// Accueil, aussi rendu par `/login` avec le panneau de connexion ouvert.
+pub(crate) async fn menu_page(s: &AppState, ctx: Ctx) -> AppResult<Html<String>> {
     render(MenuPage {
-        ctx: s.ctx(&u),
+        ctx,
         card_count: db::count(&s.pool).await?,
     })
 }
 
 /// URL de la galerie pour un filtre.
-fn gallery_href(f: &Filter) -> String {
-    let pairs = f.pairs();
-    if pairs.is_empty() {
+fn gallery_href(f: &Filter, mine: bool) -> String {
+    let mut q: Vec<String> = f.pairs().iter().map(|(k, v)| format!("{k}={v}")).collect();
+    if mine {
+        q.push("mine=1".to_owned());
+    }
+    if q.is_empty() {
         return "/gallery".to_owned();
     }
-    let q: Vec<String> = pairs.iter().map(|(k, v)| format!("{k}={v}")).collect();
     format!("/gallery?{}", q.join("&"))
 }
 
 async fn gallery(
     State(s): State<AppState>,
-    CurrentUser(u): CurrentUser,
+    MaybeUser(u): MaybeUser,
     Query(q): Query<Vec<(String, String)>>,
 ) -> AppResult<Html<String>> {
     // Une valeur inconnue dans l'URL est ignorée plutôt que de renvoyer une erreur.
     let filter = Filter::from_pairs(&q, false).unwrap_or_default();
-    let all = db::list(&s.pool, Filter::default()).await?;
+    // « Mes cartes » (menu du compte) : seulement les cartes créées en ligne par ce compte.
+    let mine = u.is_some() && q.iter().any(|(k, v)| k == "mine" && v == "1");
+    let mut all = db::list(&s.pool, Filter::default()).await?;
+    if let (true, Some(user)) = (mine, &u) {
+        let owned = s.owned_by(user.id);
+        all.retain(|c| owned.contains(&c.slug));
+    }
     let cards: Vec<&Card> = all.iter().filter(|c| filter.matches(&c.draft)).collect();
 
     // Un menu par réglage : valeurs cochables et nombre de cartes qu'on obtiendrait en cochant
@@ -493,6 +515,7 @@ async fn gallery(
                             label,
                             href: gallery_href(
                                 &Filter::from_pairs(&pairs, false).unwrap_or_default(),
+                                mine,
                             ),
                         });
                     }
@@ -540,7 +563,7 @@ async fn gallery(
         .collect();
 
     render(GalleryPage {
-        ctx: s.ctx(&u),
+        ctx: s.ctx_for(u.as_ref()),
         cards: {
             let idx = RefIndex::new(&all);
             cards
@@ -550,18 +573,20 @@ async fn gallery(
         },
         groups,
         active,
-        filtered: !filter.is_empty(),
+        filtered: !filter.is_empty() || mine,
+        mine,
+        mine_off_href: gallery_href(&filter, false),
         load_errors,
     })
 }
 
-async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> AppResult<Response> {
+async fn rules_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Response> {
     let (rules, error) = {
         let state = s.rules.read().expect("verrou empoisonné");
         (state.rules.clone(), state.error.clone())
     };
     let Some(rules) = rules else {
-        let page = RulesPage::missing(s.ctx(&u), error);
+        let page = RulesPage::missing(s.ctx_for(u.as_ref()), error);
         return Ok((StatusCode::SERVICE_UNAVAILABLE, render(page)?).into_response());
     };
 
@@ -697,22 +722,26 @@ async fn rules_page(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> A
             .collect(),
     };
 
-    Ok(render(RulesPage::new(s.ctx(&u), &rules, error, types, samples))?.into_response())
+    Ok(render(RulesPage::new(
+        s.ctx_for(u.as_ref()),
+        &rules,
+        error,
+        types,
+        samples,
+    ))?
+    .into_response())
 }
 
 /// Document « Carte DCB v2 » (pistes de design) : texte de `rules/concepts.toml`, cartes de
 /// la collection tirées au hasard à chaque affichage, comme la page des règles.
-async fn concepts_page(
-    State(s): State<AppState>,
-    CurrentUser(u): CurrentUser,
-) -> AppResult<Response> {
+async fn concepts_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Response> {
     let (doc, error) = {
         let state = s.rules.read().expect("verrou empoisonné");
         (state.concepts.clone(), state.concepts_error.clone())
     };
     let Some(doc) = doc else {
         let page = ConceptsPage {
-            ctx: s.ctx(&u),
+            ctx: s.ctx_for(u.as_ref()),
             doc: None,
             parts: Vec::new(),
             error,
@@ -756,7 +785,7 @@ async fn concepts_page(
     };
     let parts = concepts::build(&doc, &picks);
     let page = ConceptsPage {
-        ctx: s.ctx(&u),
+        ctx: s.ctx_for(u.as_ref()),
         doc: Some(doc),
         parts,
         error,
@@ -789,7 +818,7 @@ fn card_file(s: &AppState, slug: &str) -> String {
 
 async fn detail(
     State(s): State<AppState>,
-    CurrentUser(u): CurrentUser,
+    MaybeUser(u): MaybeUser,
     Path(slug): Path<String>,
 ) -> AppResult<Html<String>> {
     let card = load(&s.pool, &slug).await?;
@@ -800,8 +829,8 @@ async fn detail(
             .expect("verrou empoisonné")
             .contains_key(&card.slug);
     render(DetailPage {
-        ctx: s.ctx(&u),
-        can_modify: s.may_modify(&u, &card.slug),
+        ctx: s.ctx_for(u.as_ref()),
+        can_modify: u.as_ref().is_some_and(|u| s.may_modify(u, &card.slug)),
         demo_card,
         file: card_file(&s, &card.slug),
         art_file: card
@@ -1280,7 +1309,6 @@ async fn preview(
 
 async fn api_list(
     State(s): State<AppState>,
-    _user: CurrentUser,
     Query(q): Query<Vec<(String, String)>>,
 ) -> AppResult<Json<Vec<Card>>> {
     // Clés répétables : ?type=resource&type=incident&foil=gold. Valeur inconnue : 400.
@@ -1288,15 +1316,11 @@ async fn api_list(
     Ok(Json(db::list(&s.pool, filter).await?))
 }
 
-async fn api_get(
-    State(s): State<AppState>,
-    _user: CurrentUser,
-    Path(slug): Path<String>,
-) -> AppResult<Json<Card>> {
+async fn api_get(State(s): State<AppState>, Path(slug): Path<String>) -> AppResult<Json<Card>> {
     Ok(Json(load(&s.pool, &slug).await?))
 }
 
-async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
+async fn api_meta() -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "card_types": CardType::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label(), "color": t.color()
