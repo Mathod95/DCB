@@ -16,7 +16,7 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use dcb_core::{Card, CardDraft, CardType, FieldError, Foil, Shape, Size, is_valid_slug};
+use dcb_core::{Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, is_valid_slug};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
@@ -873,6 +873,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.size, Size::Normal, "size", &mut errors)
         },
+        badge: if v.badge.is_empty() {
+            Badge::Text
+        } else {
+            pick(&v.badge, Badge::Text, "badge", &mut errors)
+        },
         description: v.description.clone(),
         effect: v.effect.clone(),
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
@@ -991,6 +996,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "foil" => v.foil = text,
             "shape" => v.shape = text,
             "size" => v.size = text,
+            "badge" => v.badge = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -1150,6 +1156,8 @@ struct PreviewForm {
     #[serde(default)]
     size: String,
     #[serde(default)]
+    badge: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -1177,6 +1185,7 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         foil: f.foil,
         shape: f.shape,
         size: f.size,
+        badge: f.badge,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -1250,6 +1259,9 @@ async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
         })).collect::<Vec<_>>(),
         "sizes": Size::ALL.iter().map(|s| serde_json::json!({
             "slug": s.slug(), "label": s.label()
+        })).collect::<Vec<_>>(),
+        "badges": Badge::ALL.iter().map(|b| serde_json::json!({
+            "slug": b.slug(), "label": b.label()
         })).collect::<Vec<_>>(),
         "limits": {
             "name": dcb_core::limits::NAME,

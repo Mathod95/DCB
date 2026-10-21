@@ -102,6 +102,7 @@ Reproduite depuis le composant `card` du fichier Figma DevCardBattle (374×574),
 | Skin | Light, Dark |
 | Contour (`shape`) | Plein, Néon, Dégradé, Reflet qui tourne, Double filet, Coins de viseur, Coins coupés, Barre d'accent, Fond teinté |
 | Taille (`size`) | Normale (deux cases de coût, par défaut), Compacte (coûts en chips, bloc Effect agrandi) |
+| Badge de type (`badge`) | Dans le nom (par défaut), Sur l'illustration (pastille avec l'icône du type) |
 | Finition (`foil`, fait office de rareté) | Basic, Gold (overlay doré du Figma), Étoiles, Paillettes, Éclats, Irisé, avec un reflet qui suit la souris |
 
 Le rendu est en HTML/CSS (`crates/dcb-server/static/card.css`) : la carte est dessinée à ses cotes Figma puis mise à l'échelle, donc le même code sert à la galerie, à l'aperçu et à la fiche.

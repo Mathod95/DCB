@@ -1305,3 +1305,57 @@ async fn size_is_saved_rendered_and_filterable_without_rarity_box() {
         "{body}"
     );
 }
+
+#[tokio::test]
+async fn badge_is_saved_and_moves_the_type_onto_the_art() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    // une carte existante sans `badge` garde le type dans le bloc du nom
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-badge="text""#) && body.contains(r#"<div class="card-type">"#));
+    assert!(!body.contains(r#"class="card-badge""#));
+
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Pill Pod", &[("badge", b"image")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    let toml = std::fs::read_to_string(t.cards().join("pill-pod.toml")).unwrap();
+    assert!(toml.contains("badge = \"image\""), "{toml}");
+    let (_, _, body) = send(&t.app, get("/cards/pill-pod")).await;
+    assert!(body.contains(r#"data-badge="image""#) && body.contains(r#"<div class="card-badge">"#));
+    assert!(!body.contains(r#"<div class="card-type">"#));
+    assert!(body.contains("Sur l&#39;illustration") || body.contains("Sur l'illustration"));
+
+    // `text` n'est pas écrit dans le fichier
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Text Pod", &[("badge", b"text")])),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("text-pod.toml")).unwrap();
+    assert!(!toml.contains("badge"), "{toml}");
+
+    // éditeur, API et valeurs inconnues
+    let (_, _, form_page) = send(&t.app, get("/cards/new")).await;
+    assert!(form_page.contains(r#"name="badge" value="image""#));
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"badges\""));
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Bad Pod", &[("badge", b"top")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    std::fs::write(
+        t.cards().join("broken.toml"),
+        "name = \"BROKEN\"\ntype = \"app\"\nbadge = \"top\"\n",
+    )
+    .unwrap();
+    send(&t.app, post("/reload")).await;
+    let (_, _, body) = send(&t.app, get("/gallery")).await;
+    assert!(
+        body.contains("broken.toml") && body.contains("image"),
+        "{body}"
+    );
+}

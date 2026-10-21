@@ -29,6 +29,7 @@ struct CardRow {
     foil: String,
     shape: String,
     size: String,
+    badge: String,
     description: String,
     effect: String,
     deploy_cost: i64,
@@ -51,6 +52,7 @@ impl TryFrom<CardRow> for Card {
                 foil: r.foil.parse().map_err(decode)?,
                 shape: r.shape.parse().map_err(decode)?,
                 size: r.size.parse().map_err(decode)?,
+                badge: r.badge.parse().map_err(decode)?,
                 description: r.description,
                 effect: r.effect,
                 deploy_cost: r.deploy_cost,
@@ -65,7 +67,7 @@ impl TryFrom<CardRow> for Card {
 /// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "slug, name, card_type, skin, foil, shape, size, description, effect, \
+        "slug, name, card_type, skin, foil, shape, size, badge, description, effect, \
          deploy_cost, daily_cost, flavor_text, art"
     };
 }
@@ -121,12 +123,13 @@ where
 {
     let d = &c.draft;
     sqlx::query(
-        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, description, \
-                            effect, deploy_cost, daily_cost, flavor_text, art) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, \
+                            description, effect, deploy_cost, daily_cost, flavor_text, art) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (slug) DO UPDATE SET \
             name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
             foil = excluded.foil, shape = excluded.shape, size = excluded.size, \
+            badge = excluded.badge, \
             description = excluded.description, \
             effect = excluded.effect, deploy_cost = excluded.deploy_cost, \
             daily_cost = excluded.daily_cost, flavor_text = excluded.flavor_text, \
@@ -139,6 +142,7 @@ where
     .bind(d.foil.slug())
     .bind(d.shape.slug())
     .bind(d.size.slug())
+    .bind(d.badge.slug())
     .bind(&d.description)
     .bind(&d.effect)
     .bind(d.deploy_cost)

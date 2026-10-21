@@ -1,4 +1,4 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}">
   <div class="card-skin">{{ card.fx|safe }}</div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span{% if card.data_text %} data-text="{{ card.name }}"{% endif %}>{{ card.name }}</span></div>
@@ -44,6 +44,11 @@
   <p class="card-flavor{% if card.flavor_placeholder %} is-placeholder{% endif %}">{% if card.flavor_placeholder %}Texte d'ambiance{% else %}{{ card.flavor_text }}{% endif %}</p>
 
   <div class="card-stroke"></div>
+  {% if card.badge == "image" -%}
+  {#- Pastille du type posée sur l'illustration, avec l'icône du type -#}
+  <div class="card-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{% include "card_icon.html" %}</svg><span>{{ card.type_label }}</span></div>
+  {%- else -%}
   <div class="card-type">{% for line in card.type_label_lines() %}<span>{{ line }}</span>{% endfor %}</div>
+  {%- endif %}
   {% if card.foil != "basic" %}<div class="card-foil" aria-hidden="true"><i class="card-foil-glare"></i></div>{% endif %}
 </div>

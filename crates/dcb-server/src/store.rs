@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dcb_core::{Card, CardDraft, CardType, Foil, Shape, Size, Skin, is_valid_slug, slugify};
+use dcb_core::{Badge, Card, CardDraft, CardType, Foil, Shape, Size, Skin, is_valid_slug, slugify};
 use serde::{Deserialize, Serialize};
 
 /// Contenu d'un fichier `cards/<slug>.toml`. Le slug n'y figure pas : c'est le nom du fichier.
@@ -30,6 +30,9 @@ struct CardFile {
     /// Taille de la carte, absente du fichier quand c'est `normal`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     size: Option<String>,
+    /// Emplacement du type, absent du fichier quand c'est `text`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    badge: Option<String>,
     #[serde(default)]
     deploy_cost: i64,
     #[serde(default)]
@@ -59,6 +62,7 @@ impl From<&CardDraft> for CardFile {
             rarity: None,
             shape: (d.shape != Shape::Solid).then(|| d.shape.slug().to_owned()),
             size: (d.size != Size::Normal).then(|| d.size.slug().to_owned()),
+            badge: (d.badge != Badge::Text).then(|| d.badge.slug().to_owned()),
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             description: d.description.clone(),
@@ -103,6 +107,17 @@ impl TryFrom<CardFile> for CardDraft {
                 )
             })?,
         };
+        let badge = match f.badge.as_deref().map(str::trim) {
+            None | Some("") => Badge::Text,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = Badge::ALL.iter().map(|b| b.slug()).collect();
+                format!(
+                    "badge {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         Ok(Self {
             name: f.name,
             card_type: f.card_type,
@@ -110,6 +125,7 @@ impl TryFrom<CardFile> for CardDraft {
             foil,
             shape,
             size,
+            badge,
             description: f.description,
             effect: f.effect,
             deploy_cost: f.deploy_cost,
@@ -325,6 +341,7 @@ mod tests {
             foil: Foil::Shards,
             shape: Shape::Neon,
             size: Size::Compact,
+            badge: Badge::Image,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
             deploy_cost: 3,
@@ -355,6 +372,7 @@ mod tests {
         assert!(text.contains("foil = \"shards\""), "{text}");
         assert!(text.contains("shape = \"neon\""), "{text}");
         assert!(text.contains("size = \"compact\""), "{text}");
+        assert!(text.contains("badge = \"image\""), "{text}");
 
         let (cards, errors) = store.load_all().await.unwrap();
         assert!(errors.is_empty(), "{errors:?}");

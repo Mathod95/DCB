@@ -88,6 +88,20 @@
       </div>
 
       <div class="field">
+        <span class="label">Badge de type</span>
+        <div class="segmented">
+          {% for c in badges %}
+          <label class="seg">
+            <input type="radio" name="badge" value="{{ c.value }}"{% if values.badge.as_str() == c.value %} checked{% endif %}>
+            <span>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-hint">Sur l'illustration: une pastille avec l'icône du type, et le nom prend toute la largeur.</p>
+        <p class="field-error">{{ self.error("badge") }}</p>
+      </div>
+
+      <div class="field">
         <label for="f-description">Description</label>
         <textarea id="f-description" name="description" rows="2" maxlength="{{ lim_description }}" data-count placeholder="Ce que représente la carte">{{ values.description }}</textarea>
         <p class="field-error">{{ self.error("description") }}</p>

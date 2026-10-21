@@ -210,6 +210,33 @@
 .card-stat-icon { display: grid; place-items: center; width: 20px; height: 20px; flex: none; }
 .card-stat-icon svg { width: 18px; height: 18px; }
 
+/* Badge de type sur l'illustration (champ `badge` = image) : pastille de la couleur du type avec
+   son icône, en haut à gauche de l'illustration ; le nom prend alors toute la largeur. */
+.card[data-badge="image"] .card-name { padding-right: 12px; }
+.card-badge {
+  position: absolute;
+  top: 101px;
+  left: 31px;
+  z-index: 3;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  background: var(--type);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(2 6 23 / .3);
+  pointer-events: none;
+}
+.card-badge svg { width: 14px; height: 14px; flex: none; }
+.card[data-type="resource"] .card-badge { color: #082f49; }
+
 /* Texte d'ambiance */
 .card-flavor {
   position: absolute;

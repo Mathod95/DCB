@@ -131,6 +131,23 @@ impl Default for Shape {
     }
 }
 
+text_enum! {
+    /// Emplacement du type sur la carte. `Text` : le nom du type à droite du bloc du nom (Figma) ;
+    /// `Image` : une pastille de la couleur du type, avec son icône, posée sur l'illustration, et
+    /// le nom prend toute la largeur de son bloc.
+    Badge {
+        Text  => "text",  "Dans le nom",
+        Image => "image", "Sur l'illustration",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Badge {
+    fn default() -> Self {
+        Badge::Text
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for Size {
     fn default() -> Self {
@@ -177,6 +194,9 @@ pub struct CardDraft {
     /// Taille ; absente des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub size: Size,
+    /// Emplacement du type ; absent des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub badge: Badge,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -363,6 +383,7 @@ mod tests {
             foil: Foil::Basic,
             shape: Shape::Solid,
             size: Size::Normal,
+            badge: Badge::Text,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -400,6 +421,15 @@ mod tests {
             assert_eq!(s.slug().parse::<Size>().unwrap(), *s);
         }
         assert!("tiny".parse::<Size>().is_err());
+    }
+
+    #[test]
+    fn badges_round_trip() {
+        assert_eq!(Badge::default(), Badge::Text);
+        for b in Badge::ALL {
+            assert_eq!(b.slug().parse::<Badge>().unwrap(), *b);
+        }
+        assert!("top".parse::<Badge>().is_err());
     }
 
     #[test]
