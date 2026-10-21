@@ -6,7 +6,7 @@
 
 use std::str::FromStr;
 
-use dcb_core::{Card, CardDraft, CardType, Foil, Shape, Size};
+use dcb_core::{Badge, Card, CardDraft, CardType, Foil, Shape, Size};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{FromRow, Sqlite, SqlitePool};
 
@@ -72,33 +72,132 @@ macro_rules! columns {
     };
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+/// Réglages filtrables, dans l'ordre de la galerie : clé d'URL et valeur de la carte.
+pub const FILTER_KEYS: &[&str] = &["type", "foil", "shape", "size", "badge"];
+
+/// Filtre de la galerie et de l'API : dans un même réglage, les valeurs choisies s'additionnent
+/// (RESOURCE ou INCIDENT) ; d'un réglage à l'autre, elles se cumulent. Une liste vide ne filtre
+/// pas.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Filter {
-    pub card_type: Option<CardType>,
-    pub foil: Option<Foil>,
-    pub shape: Option<Shape>,
-    pub size: Option<Size>,
+    pub card_types: Vec<CardType>,
+    pub foils: Vec<Foil>,
+    pub shapes: Vec<Shape>,
+    pub sizes: Vec<Size>,
+    pub badges: Vec<Badge>,
+}
+
+/// Valeur d'un réglage sur une carte, sous la forme de son slug.
+pub fn field(d: &CardDraft, key: &str) -> &'static str {
+    match key {
+        "type" => d.card_type.slug(),
+        "foil" => d.foil.slug(),
+        "shape" => d.shape.slug(),
+        "size" => d.size.slug(),
+        "badge" => d.badge.slug(),
+        _ => "",
+    }
+}
+
+impl Filter {
+    /// Lit les paires `clé=valeur` d'une URL (clés répétées). `strict` : une valeur inconnue est
+    /// une erreur (API) ; sinon elle est ignorée (galerie).
+    pub fn from_pairs(
+        pairs: &[(String, String)],
+        strict: bool,
+    ) -> Result<Self, dcb_core::UnknownVariant> {
+        let mut f = Self::default();
+        fn push<T: std::str::FromStr<Err = dcb_core::UnknownVariant> + PartialEq>(
+            list: &mut Vec<T>,
+            v: &str,
+            strict: bool,
+        ) -> Result<(), dcb_core::UnknownVariant> {
+            match v.parse() {
+                Ok(x) => {
+                    if !list.contains(&x) {
+                        list.push(x);
+                    }
+                    Ok(())
+                }
+                Err(e) if strict => Err(e),
+                Err(_) => Ok(()),
+            }
+        }
+        for (k, v) in pairs {
+            let v = v.trim();
+            if v.is_empty() {
+                continue;
+            }
+            match k.as_str() {
+                "type" => push(&mut f.card_types, v, strict)?,
+                "foil" => push(&mut f.foils, v, strict)?,
+                "shape" => push(&mut f.shapes, v, strict)?,
+                "size" => push(&mut f.sizes, v, strict)?,
+                "badge" => push(&mut f.badges, v, strict)?,
+                _ => {}
+            }
+        }
+        Ok(f)
+    }
+
+    /// Valeurs choisies pour un réglage, en slugs.
+    pub fn values(&self, key: &str) -> Vec<&'static str> {
+        match key {
+            "type" => self.card_types.iter().map(|v| v.slug()).collect(),
+            "foil" => self.foils.iter().map(|v| v.slug()).collect(),
+            "shape" => self.shapes.iter().map(|v| v.slug()).collect(),
+            "size" => self.sizes.iter().map(|v| v.slug()).collect(),
+            "badge" => self.badges.iter().map(|v| v.slug()).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        FILTER_KEYS.iter().all(|k| self.values(k).is_empty())
+    }
+
+    /// La carte passe le filtre, en ignorant éventuellement un réglage (compteurs de la galerie).
+    pub fn matches_except(&self, d: &CardDraft, skip: Option<&str>) -> bool {
+        FILTER_KEYS.iter().all(|&k| {
+            if skip == Some(k) {
+                return true;
+            }
+            let vals = self.values(k);
+            vals.is_empty() || vals.contains(&field(d, k))
+        })
+    }
+
+    pub fn matches(&self, d: &CardDraft) -> bool {
+        self.matches_except(d, None)
+    }
+
+    /// Paires `clé=valeur` du filtre, dans l'ordre des réglages.
+    pub fn pairs(&self) -> Vec<(&'static str, &'static str)> {
+        FILTER_KEYS
+            .iter()
+            .flat_map(|&k| self.values(k).into_iter().map(move |v| (k, v)))
+            .collect()
+    }
 }
 
 pub async fn list(pool: &SqlitePool, filter: Filter) -> sqlx::Result<Vec<Card>> {
+    // La collection est petite : on lit tout et on filtre ici (sqlx 0.9 n'accepte que des
+    // requêtes `&'static str`, impossible d'y composer un IN de longueur variable).
     const SQL: &str = concat!(
         "SELECT ",
         columns!(),
-        " FROM cards ",
-        "WHERE (?1 IS NULL OR card_type = ?1) AND (?2 IS NULL OR foil = ?2) ",
-        "AND (?3 IS NULL OR shape = ?3) AND (?4 IS NULL OR size = ?4) ",
-        "ORDER BY card_type, name COLLATE NOCASE"
+        " FROM cards ORDER BY card_type, name COLLATE NOCASE"
     );
-    sqlx::query_as::<_, CardRow>(SQL)
-        .bind(filter.card_type.map(|t| t.slug()))
-        .bind(filter.foil.map(|f| f.slug()))
-        .bind(filter.shape.map(|s| s.slug()))
-        .bind(filter.size.map(|s| s.slug()))
+    let cards = sqlx::query_as::<_, CardRow>(SQL)
         .fetch_all(pool)
         .await?
         .into_iter()
         .map(Card::try_from)
-        .collect()
+        .collect::<sqlx::Result<Vec<Card>>>()?;
+    Ok(cards
+        .into_iter()
+        .filter(|c| filter.matches(&c.draft))
+        .collect())
 }
 
 pub async fn get(pool: &SqlitePool, slug: &str) -> sqlx::Result<Option<Card>> {

@@ -1030,7 +1030,7 @@ async fn shape_is_saved_rendered_and_filterable() {
     let (_, _, body) = send(&t.app, get("/gallery?shape=neon")).await;
     assert!(body.contains("NEON POD") || body.contains("Neon Pod"));
     assert!(!body.contains("DDOS"));
-    assert!(body.contains("Tous les contours"));
+    assert!(body.contains(r#"name="shape" value="neon" checked"#));
     let (_, _, json) = send(&t.app, get("/api/cards?shape=neon")).await;
     assert!(
         json.contains("\"shape\":\"neon\"") && !json.contains("DDOS"),
@@ -1275,7 +1275,7 @@ async fn size_is_saved_rendered_and_filterable_without_rarity_box() {
     assert!(form_page.contains(r#"name="size" value="compact""#));
     let (_, _, body) = send(&t.app, get("/gallery?size=compact")).await;
     assert!(body.contains("Small Pod") && !body.contains("DDOS"));
-    assert!(body.contains("Toutes les tailles"));
+    assert!(body.contains(r#"name="size" value="compact" checked"#));
     let (_, _, json) = send(&t.app, get("/api/cards?size=compact")).await;
     assert!(
         json.contains("\"size\":\"compact\"") && !json.contains("DDOS"),
@@ -1358,4 +1358,57 @@ async fn badge_is_saved_and_moves_the_type_onto_the_art() {
         body.contains("broken.toml") && body.contains("image"),
         "{body}"
     );
+}
+
+#[tokio::test]
+async fn gallery_filters_combine_several_values() {
+    let t = app(&[
+        ("ddos.toml", DDOS),
+        ("argo-cd.toml", ARGO),
+        (
+            "cpu.toml",
+            "name = \"CPU BOOST\"\ntype = \"resource\"\nfoil = \"gold\"\nshape = \"neon\"\n",
+        ),
+        (
+            "outage.toml",
+            "name = \"OUTAGE\"\ntype = \"incident\"\nfoil = \"gold\"\nbadge = \"image\"\n",
+        ),
+    ])
+    .await;
+
+    // dans un même réglage, les valeurs s'additionnent ; d'un réglage à l'autre, elles se cumulent
+    let (_, _, body) = send(
+        &t.app,
+        get("/gallery?type=resource&type=incident&foil=gold"),
+    )
+    .await;
+    assert!(
+        body.contains("CPU BOOST") && body.contains("OUTAGE"),
+        "{body}"
+    );
+    assert!(!body.contains("aria-label=\"DDOS\"") && !body.contains("aria-label=\"ARGO CD\""));
+    assert!(body.contains("2 cartes correspondant aux filtres"));
+    assert!(body.contains("2 choisis"));
+    // pastille qui retire une valeur en gardant les autres
+    assert!(
+        body.contains(r#"href="/gallery?type=incident&#38;foil=gold""#),
+        "{body}"
+    );
+    // compteurs : cartes obtenues en cochant la valeur, les autres réglages restant choisis
+    assert!(body.contains(r#"value="app""#));
+    let app_opt = body.split(r#"value="app""#).nth(1).unwrap();
+    let count = app_opt.split("gal-count\">").nth(1).unwrap();
+    assert!(count.starts_with("1<"), "{count}");
+
+    let (_, _, body) = send(&t.app, get("/gallery?badge=image")).await;
+    assert!(body.contains("OUTAGE") && !body.contains("CPU BOOST"));
+    // valeur inconnue ignorée par la galerie, refusée par l'API
+    let (status, _, body) = send(&t.app, get("/gallery?foil=diamond")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("DDOS") && !body.contains("correspondant aux filtres"));
+
+    let (_, _, json) = send(&t.app, get("/api/cards?type=app&type=resource")).await;
+    assert!(json.contains("ARGO CD") && json.contains("CPU BOOST") && !json.contains("DDOS"));
+    let (status, _, _) = send(&t.app, get("/api/cards?type=app&type=nope")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 }

@@ -211,11 +211,33 @@ pub struct MenuPage {
     pub card_count: i64,
 }
 
-pub struct FilterLink {
+/// Une valeur cochable d'un menu de filtre.
+pub struct FilterOption {
+    pub value: &'static str,
+    pub label: &'static str,
+    /// Couleur du type (pastille), pour le menu Type.
+    pub color: Option<&'static str>,
+    pub checked: bool,
+    /// Cartes obtenues en cochant cette valeur, avec les autres réglages déjà choisis.
+    pub count: usize,
+}
+
+/// Un menu déroulant du panneau de filtres.
+pub struct FilterGroup {
+    pub key: &'static str,
+    pub title: &'static str,
+    /// Résumé dans le titre du menu : « Tous », la valeur choisie ou « 2 choisis ».
+    pub summary: String,
+    pub is_set: bool,
+    pub open: bool,
+    pub options: Vec<FilterOption>,
+}
+
+/// Filtre actif, affiché en pastille au-dessus des cartes ; le lien le retire.
+pub struct ActiveFilter {
+    pub title: &'static str,
     pub label: &'static str,
     pub href: String,
-    pub active: bool,
-    pub color: Option<&'static str>,
 }
 
 #[derive(Template)]
@@ -223,10 +245,8 @@ pub struct FilterLink {
 pub struct GalleryPage {
     pub ctx: Ctx,
     pub cards: Vec<CardView>,
-    pub type_links: Vec<FilterLink>,
-    pub foil_links: Vec<FilterLink>,
-    pub shape_links: Vec<FilterLink>,
-    pub size_links: Vec<FilterLink>,
+    pub groups: Vec<FilterGroup>,
+    pub active: Vec<ActiveFilter>,
     pub filtered: bool,
     /// Fichiers `cards/*.toml` ignorés au dernier chargement.
     pub load_errors: Vec<String>,

@@ -376,127 +376,131 @@ async fn menu(State(s): State<AppState>, CurrentUser(u): CurrentUser) -> AppResu
     })
 }
 
-#[derive(Deserialize, Default)]
-struct GalleryQuery {
-    #[serde(rename = "type")]
-    card_type: Option<String>,
-    foil: Option<String>,
-    shape: Option<String>,
-    size: Option<String>,
+/// URL de la galerie pour un filtre.
+fn gallery_href(f: &Filter) -> String {
+    let pairs = f.pairs();
+    if pairs.is_empty() {
+        return "/gallery".to_owned();
+    }
+    let q: Vec<String> = pairs.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    format!("/gallery?{}", q.join("&"))
 }
 
 async fn gallery(
     State(s): State<AppState>,
     CurrentUser(u): CurrentUser,
-    Query(q): Query<GalleryQuery>,
+    Query(q): Query<Vec<(String, String)>>,
 ) -> AppResult<Html<String>> {
-    // Une valeur inconnue dans l'URL revient à « pas de filtre » plutôt qu'à une erreur.
-    let filter = Filter {
-        card_type: q.card_type.as_deref().and_then(|v| v.parse().ok()),
-        foil: q.foil.as_deref().and_then(|v| v.parse().ok()),
-        shape: q.shape.as_deref().and_then(|v| v.parse().ok()),
-        size: q.size.as_deref().and_then(|v| v.parse().ok()),
-    };
-    let cards = db::list(&s.pool, filter).await?;
+    // Une valeur inconnue dans l'URL est ignorée plutôt que de renvoyer une erreur.
+    let filter = Filter::from_pairs(&q, false).unwrap_or_default();
+    let all = db::list(&s.pool, Filter::default()).await?;
+    let cards: Vec<&Card> = all.iter().filter(|c| filter.matches(&c.draft)).collect();
 
-    // Lien de filtre : reprend les filtres actifs en remplaçant ceux donnés.
-    let href = |f: Filter| {
-        let (t, fo, sh, si) = (f.card_type, f.foil, f.shape, f.size);
-        let mut parts = Vec::new();
-        if let Some(t) = t {
-            parts.push(format!("type={t}"));
-        }
-        if let Some(f) = fo {
-            parts.push(format!("foil={f}"));
-        }
-        if let Some(sh) = sh {
-            parts.push(format!("shape={sh}"));
-        }
-        if let Some(si) = si {
-            parts.push(format!("size={si}"));
-        }
-        if parts.is_empty() {
-            "/gallery".to_owned()
-        } else {
-            format!("/gallery?{}", parts.join("&"))
-        }
-    };
-
-    let mut type_links = vec![FilterLink {
-        label: "Tous",
-        href: href(Filter {
-            card_type: None,
-            ..filter
-        }),
-        active: filter.card_type.is_none(),
-        color: None,
-    }];
-    type_links.extend(CardType::ALL.iter().map(|&t| FilterLink {
-        label: t.label(),
-        href: href(Filter {
-            card_type: Some(t),
-            ..filter
-        }),
-        active: filter.card_type == Some(t),
-        color: Some(t.color()),
-    }));
-
-    let mut foil_links = vec![FilterLink {
-        label: "Toutes",
-        href: href(Filter {
-            foil: None,
-            ..filter
-        }),
-        active: filter.foil.is_none(),
-        color: None,
-    }];
-    foil_links.extend(Foil::ALL.iter().map(|&f| FilterLink {
-        label: f.label(),
-        href: href(Filter {
-            foil: Some(f),
-            ..filter
-        }),
-        active: filter.foil == Some(f),
-        color: None,
-    }));
-
-    let mut shape_links = vec![FilterLink {
-        label: "Tous les contours",
-        href: href(Filter {
-            shape: None,
-            ..filter
-        }),
-        active: filter.shape.is_none(),
-        color: None,
-    }];
-    shape_links.extend(Shape::ALL.iter().map(|&sh| FilterLink {
-        label: sh.label(),
-        href: href(Filter {
-            shape: Some(sh),
-            ..filter
-        }),
-        active: filter.shape == Some(sh),
-        color: None,
-    }));
-
-    let mut size_links = vec![FilterLink {
-        label: "Toutes les tailles",
-        href: href(Filter {
-            size: None,
-            ..filter
-        }),
-        active: filter.size.is_none(),
-        color: None,
-    }];
-    size_links.extend(Size::ALL.iter().map(|&si| FilterLink {
-        label: si.label(),
-        href: href(Filter {
-            size: Some(si),
-            ..filter
-        }),
-        active: filter.size == Some(si),
-        color: None,
-    }));
+    // Un menu par réglage : valeurs cochables et nombre de cartes qu'on obtiendrait en cochant
+    // chacune, avec les autres réglages déjà choisis.
+    fn options<T: Copy>(
+        values: &[T],
+        slug: fn(T) -> &'static str,
+        label: fn(T) -> &'static str,
+        color: fn(T) -> Option<&'static str>,
+    ) -> Vec<(&'static str, &'static str, Option<&'static str>)> {
+        values
+            .iter()
+            .map(|&v| (slug(v), label(v), color(v)))
+            .collect()
+    }
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 5] = [
+        (
+            "type",
+            "Type",
+            "Tous les types",
+            options(CardType::ALL, CardType::slug, CardType::label, |t| {
+                Some(t.color())
+            }),
+        ),
+        (
+            "foil",
+            "Finition",
+            "Toutes",
+            options(Foil::ALL, Foil::slug, Foil::label, |_| None),
+        ),
+        (
+            "shape",
+            "Contour",
+            "Tous",
+            options(Shape::ALL, Shape::slug, Shape::label, |_| None),
+        ),
+        (
+            "size",
+            "Taille",
+            "Toutes",
+            options(Size::ALL, Size::slug, Size::label, |_| None),
+        ),
+        (
+            "badge",
+            "Badge de type",
+            "Tous",
+            options(Badge::ALL, Badge::slug, Badge::label, |_| None),
+        ),
+    ];
+    let mut active = Vec::new();
+    let groups = menus
+        .into_iter()
+        .map(|(key, title, all_label, values)| {
+            let chosen = filter.values(key);
+            let options: Vec<FilterOption> = values
+                .into_iter()
+                .map(|(value, label, color)| {
+                    let checked = chosen.contains(&value);
+                    if checked {
+                        let pairs: Vec<(String, String)> = filter
+                            .pairs()
+                            .into_iter()
+                            .filter(|p| *p != (key, value))
+                            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                            .collect();
+                        active.push(ActiveFilter {
+                            title,
+                            label,
+                            href: gallery_href(
+                                &Filter::from_pairs(&pairs, false).unwrap_or_default(),
+                            ),
+                        });
+                    }
+                    FilterOption {
+                        value,
+                        label,
+                        color,
+                        checked,
+                        count: all
+                            .iter()
+                            .filter(|c| {
+                                db::field(&c.draft, key) == value
+                                    && filter.matches_except(&c.draft, Some(key))
+                            })
+                            .count(),
+                    }
+                })
+                .collect();
+            let picked: Vec<&str> = options
+                .iter()
+                .filter(|o| o.checked)
+                .map(|o| o.label)
+                .collect();
+            FilterGroup {
+                key,
+                title,
+                summary: match picked.len() {
+                    0 => all_label.to_owned(),
+                    1 => picked[0].to_owned(),
+                    n => format!("{n} choisis"),
+                },
+                is_set: !picked.is_empty(),
+                open: key == "type" || !picked.is_empty(),
+                options,
+            }
+        })
+        .collect();
 
     let load_errors = s
         .load_errors
@@ -512,14 +516,9 @@ async fn gallery(
             .iter()
             .map(|c| CardView::new(Some(&c.slug), &c.draft))
             .collect(),
-        type_links,
-        foil_links,
-        shape_links,
-        size_links,
-        filtered: filter.card_type.is_some()
-            || filter.foil.is_some()
-            || filter.shape.is_some()
-            || filter.size.is_some(),
+        groups,
+        active,
+        filtered: !filter.is_empty(),
         load_errors,
     })
 }
@@ -1205,35 +1204,10 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
 async fn api_list(
     State(s): State<AppState>,
     _user: CurrentUser,
-    Query(q): Query<GalleryQuery>,
+    Query(q): Query<Vec<(String, String)>>,
 ) -> AppResult<Json<Vec<Card>>> {
-    let parse_err = |e: dcb_core::UnknownVariant| AppError::BadRequest(e.to_string());
-    let filter = Filter {
-        card_type: q
-            .card_type
-            .as_deref()
-            .map(str::parse)
-            .transpose()
-            .map_err(parse_err)?,
-        foil: q
-            .foil
-            .as_deref()
-            .map(str::parse)
-            .transpose()
-            .map_err(parse_err)?,
-        shape: q
-            .shape
-            .as_deref()
-            .map(str::parse)
-            .transpose()
-            .map_err(parse_err)?,
-        size: q
-            .size
-            .as_deref()
-            .map(str::parse)
-            .transpose()
-            .map_err(parse_err)?,
-    };
+    // Clés répétables : ?type=resource&type=incident&foil=gold. Valeur inconnue : 400.
+    let filter = Filter::from_pairs(&q, true).map_err(|e| AppError::BadRequest(e.to_string()))?;
     Ok(Json(db::list(&s.pool, filter).await?))
 }
 

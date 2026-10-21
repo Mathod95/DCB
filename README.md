@@ -82,13 +82,13 @@ Le volume `/data` contient `app.db` (les comptes, à sauvegarder) et `cache.db` 
 
 ## Fonctionnalités
 
-- **Galerie** : grille de toutes les cartes, filtres par type et par finition.
+- **Galerie** : grille de toutes les cartes, avec un panneau de filtres à gauche (type, finition, contour, taille, badge de type). Plusieurs valeurs cochées dans un même réglage s'additionnent, les réglages se cumulent, et chaque valeur affiche le nombre de cartes qu'on obtiendrait en la cochant.
 - **Éditeur** : création et modification avec aperçu de la carte mis à jour pendant la saisie, compteurs de caractères calés sur la place disponible dans la carte, upload d'illustration (PNG, JPEG, WebP, GIF, 5 Mo max).
 - **Règles** (`/regles`) : contexte, début de partie, condition de victoire, types de cartes, phases d'une journée, cycle de vie des apps et finitions. Chaque type montre une carte de la collection tirée au hasard à chaque chargement (les cartes qui ont un texte d'abord), avec son nombre de cartes et un lien vers la galerie filtrée. Le texte vient de `rules/regles.toml`.
 - **Pistes de design** (`/regles/concepts`, lien depuis la partie Concepts des règles) : le document Carte DCB v2, avec les styles de contour, les idées de modernisation, des skins et des skins animées, dessinés avec des cartes de la collection tirées au hasard à chaque affichage. Sommaire sur le côté, clic sur une carte pour la voir en grand. Le texte vient de `rules/concepts.toml`.
 - **Fiche carte** : affichage en grand, modification, suppression (le fichier TOML et l'illustration sont supprimés avec la carte), et rappel des fichiers à commiter.
 - **API JSON** pour les futurs clients du jeu :
-  - `GET /api/cards` (filtres `?type=incident&foil=gold&shape=neon&size=compact`)
+  - `GET /api/cards` (filtres `?type=resource&type=incident&foil=gold&shape=neon&size=compact&badge=image`, clés répétables)
   - `GET /api/cards/{slug}`
   - `GET /api/meta` : types, couleurs, skins, finitions et limites de saisie
 
