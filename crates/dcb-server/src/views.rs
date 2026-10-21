@@ -1,7 +1,9 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
-use dcb_core::{Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Skin, limits};
+use dcb_core::{
+    Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Skin, Title, limits,
+};
 
 use crate::auth::{Role, User};
 use crate::rules::{self, Rules, TypeEntry, inline};
@@ -68,6 +70,9 @@ pub struct CardView {
     /// Emplacement du type (`text`, `image`), posé en `data-badge` sur la carte.
     pub badge: &'static str,
     pub badge_label: &'static str,
+    /// Emplacement du nom (`block`, `image`), posé en `data-title` sur la carte.
+    pub title: &'static str,
+    pub title_label: &'static str,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -111,8 +116,15 @@ impl CardView {
             shape: d.shape.slug(),
             size: d.size.slug(),
             size_label: d.size.label(),
-            badge: d.badge.slug(),
+            // nom sur l'illustration : le bloc du nom disparaît, le type passe en badge
+            badge: if d.title == Title::Image {
+                Badge::Image.slug()
+            } else {
+                d.badge.slug()
+            },
             badge_label: d.badge.label(),
+            title: d.title.slug(),
+            title_label: d.title.label(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost,
@@ -177,6 +189,17 @@ pub fn shape_choices() -> Vec<Choice> {
         .map(|s| Choice {
             value: s.slug(),
             label: s.label(),
+            color: None,
+        })
+        .collect()
+}
+
+pub fn title_choices() -> Vec<Choice> {
+    Title::ALL
+        .iter()
+        .map(|t| Choice {
+            value: t.slug(),
+            label: t.label(),
             color: None,
         })
         .collect()
@@ -276,6 +299,7 @@ pub struct FormValues {
     pub shape: String,
     pub size: String,
     pub badge: String,
+    pub title: String,
     pub description: String,
     pub effect: String,
     pub deploy_cost: String,
@@ -294,6 +318,7 @@ impl FormValues {
             shape: d.shape.slug().into(),
             size: d.size.slug().into(),
             badge: d.badge.slug().into(),
+            title: d.title.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost.to_string(),
@@ -311,6 +336,7 @@ impl FormValues {
             shape: Shape::Solid.slug().into(),
             size: Size::Normal.slug().into(),
             badge: Badge::Text.slug().into(),
+            title: Title::Block.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
             ..Default::default()
@@ -334,6 +360,7 @@ pub struct FormPage {
     pub shapes: Vec<Choice>,
     pub sizes: Vec<Choice>,
     pub badges: Vec<Choice>,
+    pub titles: Vec<Choice>,
     pub lim_name: usize,
     pub lim_description: usize,
     pub lim_effect: usize,
@@ -364,6 +391,7 @@ impl FormPage {
             shapes: shape_choices(),
             sizes: size_choices(),
             badges: badge_choices(),
+            titles: title_choices(),
             lim_name: limits::NAME,
             lim_description: limits::DESCRIPTION,
             lim_effect: limits::EFFECT,
@@ -688,10 +716,11 @@ impl AnatomyView {
             looks_title: a.looks_title.clone(),
             looks_text: inline(&a.looks_text),
             zones,
-            // le schéma suit la disposition du Figma : type dans le bloc du nom, taille normale
+            // le schéma suit la disposition du Figma : nom dans son bloc avec le type, taille normale
             card: card.map(|c| {
                 let mut d = c.draft.clone();
                 d.badge = Badge::Text;
+                d.title = Title::Block;
                 d.size = Size::Normal;
                 CardView::new(Some(&c.slug), &d)
             }),

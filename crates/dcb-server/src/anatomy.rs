@@ -178,7 +178,7 @@ pub fn toml_lines(d: &CardDraft) -> Vec<TomlLine> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dcb_core::{Badge, CardType, Foil, Shape, Size, Skin};
+    use dcb_core::{Badge, CardType, Foil, Shape, Size, Skin, Title};
 
     #[test]
     fn toml_lines_follow_the_file_and_map_zones() {
@@ -190,6 +190,7 @@ mod tests {
             shape: Shape::Solid,
             size: Size::Normal,
             badge: Badge::Text,
+            title: Title::Block,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi <env>".into(),
             deploy_cost: 2,

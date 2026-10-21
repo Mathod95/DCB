@@ -6,7 +6,7 @@
 
 use std::str::FromStr;
 
-use dcb_core::{Badge, Card, CardDraft, CardType, Foil, Shape, Size};
+use dcb_core::{Badge, Card, CardDraft, CardType, Foil, Shape, Size, Title};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{FromRow, Sqlite, SqlitePool};
 
@@ -30,6 +30,7 @@ struct CardRow {
     shape: String,
     size: String,
     badge: String,
+    title: String,
     description: String,
     effect: String,
     deploy_cost: i64,
@@ -53,6 +54,7 @@ impl TryFrom<CardRow> for Card {
                 shape: r.shape.parse().map_err(decode)?,
                 size: r.size.parse().map_err(decode)?,
                 badge: r.badge.parse().map_err(decode)?,
+                title: r.title.parse().map_err(decode)?,
                 description: r.description,
                 effect: r.effect,
                 deploy_cost: r.deploy_cost,
@@ -67,13 +69,13 @@ impl TryFrom<CardRow> for Card {
 /// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "slug, name, card_type, skin, foil, shape, size, badge, description, effect, \
+        "slug, name, card_type, skin, foil, shape, size, badge, title, description, effect, \
          deploy_cost, daily_cost, flavor_text, art"
     };
 }
 
 /// Réglages filtrables, dans l'ordre de la galerie : clé d'URL et valeur de la carte.
-pub const FILTER_KEYS: &[&str] = &["type", "foil", "shape", "size", "badge"];
+pub const FILTER_KEYS: &[&str] = &["type", "foil", "shape", "size", "badge", "title"];
 
 /// Filtre de la galerie et de l'API : dans un même réglage, les valeurs choisies s'additionnent
 /// (RESOURCE ou INCIDENT) ; d'un réglage à l'autre, elles se cumulent. Une liste vide ne filtre
@@ -85,6 +87,7 @@ pub struct Filter {
     pub shapes: Vec<Shape>,
     pub sizes: Vec<Size>,
     pub badges: Vec<Badge>,
+    pub titles: Vec<Title>,
 }
 
 /// Valeur d'un réglage sur une carte, sous la forme de son slug.
@@ -95,6 +98,7 @@ pub fn field(d: &CardDraft, key: &str) -> &'static str {
         "shape" => d.shape.slug(),
         "size" => d.size.slug(),
         "badge" => d.badge.slug(),
+        "title" => d.title.slug(),
         _ => "",
     }
 }
@@ -134,6 +138,7 @@ impl Filter {
                 "shape" => push(&mut f.shapes, v, strict)?,
                 "size" => push(&mut f.sizes, v, strict)?,
                 "badge" => push(&mut f.badges, v, strict)?,
+                "title" => push(&mut f.titles, v, strict)?,
                 _ => {}
             }
         }
@@ -148,6 +153,7 @@ impl Filter {
             "shape" => self.shapes.iter().map(|v| v.slug()).collect(),
             "size" => self.sizes.iter().map(|v| v.slug()).collect(),
             "badge" => self.badges.iter().map(|v| v.slug()).collect(),
+            "title" => self.titles.iter().map(|v| v.slug()).collect(),
             _ => Vec::new(),
         }
     }
@@ -222,13 +228,14 @@ where
 {
     let d = &c.draft;
     sqlx::query(
-        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, \
+        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, title, \
                             description, effect, deploy_cost, daily_cost, flavor_text, art) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (slug) DO UPDATE SET \
             name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
             foil = excluded.foil, shape = excluded.shape, size = excluded.size, \
             badge = excluded.badge, \
+            title = excluded.title, \
             description = excluded.description, \
             effect = excluded.effect, deploy_cost = excluded.deploy_cost, \
             daily_cost = excluded.daily_cost, flavor_text = excluded.flavor_text, \
@@ -242,6 +249,7 @@ where
     .bind(d.shape.slug())
     .bind(d.size.slug())
     .bind(d.badge.slug())
+    .bind(d.title.slug())
     .bind(&d.description)
     .bind(&d.effect)
     .bind(d.deploy_cost)

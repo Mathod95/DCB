@@ -1412,3 +1412,49 @@ async fn gallery_filters_combine_several_values() {
     let (status, _, _) = send(&t.app, get("/api/cards?type=app&type=nope")).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
+
+#[tokio::test]
+async fn title_on_the_art_drops_the_name_block_and_moves_the_type_to_a_badge() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    // une carte existante sans `title` garde son bloc nom
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-title="block""#) && !body.contains("card-art-shade"));
+
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Hero Pod", &[("title", b"image")])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    let toml = std::fs::read_to_string(t.cards().join("hero-pod.toml")).unwrap();
+    assert!(toml.contains("title = \"image\""), "{toml}");
+    // le badge n'est pas écrit : le type passe en badge à l'affichage seulement
+    assert!(!toml.contains("badge"), "{toml}");
+    let (_, _, body) = send(&t.app, get("/cards/hero-pod")).await;
+    assert!(body.contains(r#"data-title="image""#) && body.contains("card-art-shade"));
+    assert!(body.contains(r#"data-badge="image""#) && body.contains(r#"<div class="card-badge">"#));
+
+    // `block` n'est pas écrit dans le fichier
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Boxed Pod", &[("title", b"block")])),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("boxed-pod.toml")).unwrap();
+    assert!(!toml.contains("title"), "{toml}");
+
+    let (_, _, form_page) = send(&t.app, get("/cards/new")).await;
+    assert!(form_page.contains(r#"name="title" value="image""#));
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"titles\""));
+    let (_, _, body) = send(&t.app, get("/gallery?title=image")).await;
+    assert!(body.contains("Hero Pod") && !body.contains("aria-label=\"DDOS\""));
+    let (status, _, _) = send(&t.app, get("/api/cards?title=top")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Bad Pod", &[("title", b"top")])),
+    )
+    .await;
+    assert_ne!(status, StatusCode::SEE_OTHER);
+}

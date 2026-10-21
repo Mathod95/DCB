@@ -12,7 +12,8 @@
       <div><dt>Daily Cost</dt><dd>{{ card.daily_cost }} $</dd></div>
       <div><dt>Skin</dt><dd>{{ card.skin }}</dd></div>
       <div><dt>Taille</dt><dd>{{ card.size_label }}</dd></div>
-      <div><dt>Badge de type</dt><dd>{{ card.badge_label }}</dd></div>
+      <div><dt>Badge de type</dt><dd>{% if card.title == "image" %}Sur l'illustration{% else %}{{ card.badge_label }}{% endif %}</dd></div>
+      <div><dt>Nom</dt><dd>{{ card.title_label }}</dd></div>
     </dl>
     {% if let Some(slug) = card.slug %}
     {% if demo_card %}<p class="demo-note">Carte de démo, créée en ligne: elle disparaîtra à la prochaine mise à jour du site.</p>{% endif %}

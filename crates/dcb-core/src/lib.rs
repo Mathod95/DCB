@@ -141,6 +141,23 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Emplacement du nom. `Block` : dans son bloc au-dessus de l'illustration (Figma) ; `Image` :
+    /// plus de bloc, le nom est écrit en bas de l'illustration, sur un dégradé sombre, et
+    /// l'illustration grandit de 70 px. Le type passe alors en badge.
+    Title {
+        Block => "block", "Dans son bloc",
+        Image => "image", "Sur l'illustration",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Title {
+    fn default() -> Self {
+        Title::Block
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for Badge {
     fn default() -> Self {
@@ -197,6 +214,9 @@ pub struct CardDraft {
     /// Emplacement du type ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub badge: Badge,
+    /// Emplacement du nom ; absent des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub title: Title,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -384,6 +404,7 @@ mod tests {
             shape: Shape::Solid,
             size: Size::Normal,
             badge: Badge::Text,
+            title: Title::Block,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -421,6 +442,15 @@ mod tests {
             assert_eq!(s.slug().parse::<Size>().unwrap(), *s);
         }
         assert!("tiny".parse::<Size>().is_err());
+    }
+
+    #[test]
+    fn titles_round_trip() {
+        assert_eq!(Title::default(), Title::Block);
+        for t in Title::ALL {
+            assert_eq!(t.slug().parse::<Title>().unwrap(), *t);
+        }
+        assert!("top".parse::<Title>().is_err());
     }
 
     #[test]

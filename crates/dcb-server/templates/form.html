@@ -102,6 +102,20 @@
       </div>
 
       <div class="field">
+        <span class="label">Nom de la carte</span>
+        <div class="segmented">
+          {% for c in titles %}
+          <label class="seg">
+            <input type="radio" name="title" value="{{ c.value }}"{% if values.title.as_str() == c.value %} checked{% endif %}>
+            <span>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-hint">Sur l'illustration: plus de bloc nom, le nom est écrit en bas de l'image, qui grandit de 70 px. Le type passe en badge.</p>
+        <p class="field-error">{{ self.error("title") }}</p>
+      </div>
+
+      <div class="field">
         <label for="f-description">Description</label>
         <textarea id="f-description" name="description" rows="2" maxlength="{{ lim_description }}" data-count placeholder="Ce que représente la carte">{{ values.description }}</textarea>
         <p class="field-error">{{ self.error("description") }}</p>

@@ -16,7 +16,9 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use dcb_core::{Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, is_valid_slug};
+use dcb_core::{
+    Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Title, is_valid_slug,
+};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::services::ServeDir;
@@ -409,7 +411,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 5] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 6] = [
         (
             "type",
             "Type",
@@ -441,6 +443,12 @@ async fn gallery(
             "Badge de type",
             "Tous",
             options(Badge::ALL, Badge::slug, Badge::label, |_| None),
+        ),
+        (
+            "title",
+            "Nom",
+            "Tous",
+            options(Title::ALL, Title::slug, Title::label, |_| None),
         ),
     ];
     let mut active = Vec::new();
@@ -877,6 +885,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.badge, Badge::Text, "badge", &mut errors)
         },
+        title: if v.title.is_empty() {
+            Title::Block
+        } else {
+            pick(&v.title, Title::Block, "title", &mut errors)
+        },
         description: v.description.clone(),
         effect: v.effect.clone(),
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
@@ -996,6 +1009,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "shape" => v.shape = text,
             "size" => v.size = text,
             "badge" => v.badge = text,
+            "title" => v.title = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -1157,6 +1171,8 @@ struct PreviewForm {
     #[serde(default)]
     badge: String,
     #[serde(default)]
+    title: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -1185,6 +1201,7 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         shape: f.shape,
         size: f.size,
         badge: f.badge,
+        title: f.title,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -1236,6 +1253,9 @@ async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
         })).collect::<Vec<_>>(),
         "badges": Badge::ALL.iter().map(|b| serde_json::json!({
             "slug": b.slug(), "label": b.label()
+        })).collect::<Vec<_>>(),
+        "titles": Title::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "limits": {
             "name": dcb_core::limits::NAME,

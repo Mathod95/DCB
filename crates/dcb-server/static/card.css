@@ -237,6 +237,32 @@
 .card-badge svg { width: 14px; height: 14px; flex: none; }
 .card[data-type="resource"] .card-badge { color: #082f49; }
 
+/* Nom sur l'illustration (champ `title` = image) : plus de bloc nom, l'illustration monte de
+   70 px et le nom est écrit en bas, sur un dégradé sombre ; le badge du type remonte avec elle. */
+.card[data-title="image"] .card-art { top: 19px; height: 250px; }
+.card-art-shade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 55%;
+  background: linear-gradient(transparent, rgb(2 6 23 / .82));
+  pointer-events: none;
+}
+.card[data-title="image"] .card-block.card-name {
+  top: 197px;
+  height: 70px;
+  z-index: 2;
+  align-items: flex-end;
+  padding: 0 14px 12px;
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 24px;
+  text-shadow: 0 1px 8px rgb(2 6 23 / .6);
+}
+.card[data-title="image"] .card-block.card-name[data-size="m"] { font-size: 20px; }
+.card[data-title="image"] .card-block.card-name[data-size="s"] { font-size: 17px; }
+.card[data-title="image"] .card-badge { top: 31px; }
+
 /* Texte d'ambiance */
 .card-flavor {
   position: absolute;

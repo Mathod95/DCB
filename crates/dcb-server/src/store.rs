@@ -4,7 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
-use dcb_core::{Badge, Card, CardDraft, CardType, Foil, Shape, Size, Skin, is_valid_slug, slugify};
+use dcb_core::{
+    Badge, Card, CardDraft, CardType, Foil, Shape, Size, Skin, Title, is_valid_slug, slugify,
+};
 use serde::{Deserialize, Serialize};
 
 /// Contenu d'un fichier `cards/<slug>.toml`. Le slug n'y figure pas : c'est le nom du fichier.
@@ -33,6 +35,9 @@ struct CardFile {
     /// Emplacement du type, absent du fichier quand c'est `text`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     badge: Option<String>,
+    /// Emplacement du nom, absent du fichier quand c'est `block`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    title: Option<String>,
     #[serde(default)]
     deploy_cost: i64,
     #[serde(default)]
@@ -63,6 +68,7 @@ impl From<&CardDraft> for CardFile {
             shape: (d.shape != Shape::Solid).then(|| d.shape.slug().to_owned()),
             size: (d.size != Size::Normal).then(|| d.size.slug().to_owned()),
             badge: (d.badge != Badge::Text).then(|| d.badge.slug().to_owned()),
+            title: (d.title != Title::Block).then(|| d.title.slug().to_owned()),
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             description: d.description.clone(),
@@ -118,6 +124,17 @@ impl TryFrom<CardFile> for CardDraft {
                 )
             })?,
         };
+        let title = match f.title.as_deref().map(str::trim) {
+            None | Some("") => Title::Block,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = Title::ALL.iter().map(|t| t.slug()).collect();
+                format!(
+                    "title {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         Ok(Self {
             name: f.name,
             card_type: f.card_type,
@@ -126,6 +143,7 @@ impl TryFrom<CardFile> for CardDraft {
             shape,
             size,
             badge,
+            title,
             description: f.description,
             effect: f.effect,
             deploy_cost: f.deploy_cost,
@@ -342,6 +360,7 @@ mod tests {
             shape: Shape::Neon,
             size: Size::Compact,
             badge: Badge::Image,
+            title: Title::Image,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
             deploy_cost: 3,
@@ -373,6 +392,7 @@ mod tests {
         assert!(text.contains("shape = \"neon\""), "{text}");
         assert!(text.contains("size = \"compact\""), "{text}");
         assert!(text.contains("badge = \"image\""), "{text}");
+        assert!(text.contains("title = \"image\""), "{text}");
 
         let (cards, errors) = store.load_all().await.unwrap();
         assert!(errors.is_empty(), "{errors:?}");

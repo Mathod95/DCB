@@ -1,14 +1,15 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}" data-title="{{ card.title }}">
   <div class="card-skin">{{ card.fx|safe }}</div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span{% if card.data_text %} data-text="{{ card.name }}"{% endif %}>{{ card.name }}</span></div>
 
   {% if let Some(word) = card.ascii_word %}
   {#- Skin ASCII : l'illustration (ou le sigle du type) est dessinée en caractères par concepts.js -#}
-  <div class="card-block card-art"><pre class="ascii-art" data-src="{% if let Some(art) = card.art_url %}{{ art }}{% endif %}" data-word="{{ word }}"></pre></div>
+  <div class="card-block card-art"><pre class="ascii-art" data-src="{% if let Some(art) = card.art_url %}{{ art }}{% endif %}" data-word="{{ word }}"></pre>{% if card.title == "image" %}<div class="card-art-shade"></div>{% endif %}</div>
   {% else if let Some(art) = card.art_url %}
   <div class="card-block card-art">
     <img src="{{ art }}" alt="" loading="lazy" draggable="false">
+    {% if card.title == "image" %}<div class="card-art-shade"></div>{% endif %}
   </div>
   {% else %}
   {# Pas d'illustration : fond de la couleur du type, motif de points et icône du type #}
@@ -16,6 +17,7 @@
     <svg class="card-art-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       {% include "card_icon.html" %}
     </svg>
+    {% if card.title == "image" %}<div class="card-art-shade"></div>{% endif %}
   </div>
   {% endif %}
 
