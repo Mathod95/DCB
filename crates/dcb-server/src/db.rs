@@ -6,6 +6,8 @@
 
 use std::str::FromStr;
 
+use dcb_core::Refs;
+use dcb_core::Relief;
 use dcb_core::{Badge, Card, CardDraft, CardType, DescStyle, Foil, Shape, Size, Title};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{FromRow, Sqlite, SqlitePool};
@@ -31,6 +33,8 @@ struct CardRow {
     size: String,
     badge: String,
     desc_style: String,
+    relief: String,
+    refs: String,
     title: String,
     description: String,
     effect: String,
@@ -56,6 +60,8 @@ impl TryFrom<CardRow> for Card {
                 size: r.size.parse().map_err(decode)?,
                 badge: r.badge.parse().map_err(decode)?,
                 desc_style: r.desc_style.parse().map_err(decode)?,
+                relief: r.relief.parse().map_err(decode)?,
+                refs: r.refs.parse().map_err(decode)?,
                 title: r.title.parse().map_err(decode)?,
                 description: r.description,
                 effect: r.effect,
@@ -71,13 +77,15 @@ impl TryFrom<CardRow> for Card {
 /// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, description, effect, \
+        "slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, refs, relief, description, effect, \
          deploy_cost, daily_cost, flavor_text, art"
     };
 }
 
 /// Réglages filtrables, dans l'ordre de la galerie : clé d'URL et valeur de la carte.
-pub const FILTER_KEYS: &[&str] = &["type", "foil", "shape", "size", "badge", "title", "desc"];
+pub const FILTER_KEYS: &[&str] = &[
+    "type", "foil", "shape", "size", "badge", "title", "desc", "refs", "relief",
+];
 
 /// Filtre de la galerie et de l'API : dans un même réglage, les valeurs choisies s'additionnent
 /// (RESOURCE ou INCIDENT) ; d'un réglage à l'autre, elles se cumulent. Une liste vide ne filtre
@@ -90,6 +98,8 @@ pub struct Filter {
     pub sizes: Vec<Size>,
     pub badges: Vec<Badge>,
     pub descs: Vec<DescStyle>,
+    pub reliefs: Vec<Relief>,
+    pub refs: Vec<Refs>,
     pub titles: Vec<Title>,
 }
 
@@ -102,6 +112,8 @@ pub fn field(d: &CardDraft, key: &str) -> &'static str {
         "size" => d.size.slug(),
         "badge" => d.badge.slug(),
         "desc" => d.desc_style.slug(),
+        "relief" => d.relief.slug(),
+        "refs" => d.refs.slug(),
         "title" => d.title.slug(),
         _ => "",
     }
@@ -143,6 +155,8 @@ impl Filter {
                 "size" => push(&mut f.sizes, v, strict)?,
                 "badge" => push(&mut f.badges, v, strict)?,
                 "desc" => push(&mut f.descs, v, strict)?,
+                "relief" => push(&mut f.reliefs, v, strict)?,
+                "refs" => push(&mut f.refs, v, strict)?,
                 "title" => push(&mut f.titles, v, strict)?,
                 _ => {}
             }
@@ -159,6 +173,8 @@ impl Filter {
             "size" => self.sizes.iter().map(|v| v.slug()).collect(),
             "badge" => self.badges.iter().map(|v| v.slug()).collect(),
             "desc" => self.descs.iter().map(|v| v.slug()).collect(),
+            "relief" => self.reliefs.iter().map(|v| v.slug()).collect(),
+            "refs" => self.refs.iter().map(|v| v.slug()).collect(),
             "title" => self.titles.iter().map(|v| v.slug()).collect(),
             _ => Vec::new(),
         }
@@ -234,14 +250,16 @@ where
 {
     let d = &c.draft;
     sqlx::query(
-        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, \
+        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, refs, relief, \
                             description, effect, deploy_cost, daily_cost, flavor_text, art) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (slug) DO UPDATE SET \
             name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
             foil = excluded.foil, shape = excluded.shape, size = excluded.size, \
             badge = excluded.badge, \
             desc_style = excluded.desc_style, \
+            relief = excluded.relief, \
+            refs = excluded.refs, \
             title = excluded.title, \
             description = excluded.description, \
             effect = excluded.effect, deploy_cost = excluded.deploy_cost, \
@@ -258,6 +276,8 @@ where
     .bind(d.badge.slug())
     .bind(d.title.slug())
     .bind(d.desc_style.slug())
+    .bind(d.refs.slug())
+    .bind(d.relief.slug())
     .bind(&d.description)
     .bind(&d.effect)
     .bind(d.deploy_cost)

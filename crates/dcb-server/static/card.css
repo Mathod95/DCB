@@ -278,6 +278,32 @@
   color: color-mix(in srgb, var(--text) 60%, transparent);
 }
 
+/* Cartes citées dans l'effet (champ `refs` = linked) : le nom prend la couleur de son type */
+.card-ref {
+  --rtype: #94a3b8;
+  color: color-mix(in srgb, var(--rtype) 75%, var(--text));
+  font-weight: 600;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.card-ref[data-type="resource"] { --rtype: #0ea5e9; }
+.card-ref[data-type="incident"] { --rtype: #f83838; }
+.card-ref[data-type="hr"]       { --rtype: #4f46e5; }
+.card-ref[data-type="app"]      { --rtype: #f88838; }
+.card-ref[data-type="event"]    { --rtype: #a538f8; }
+.card[data-skin="dark"] .card-ref[data-type="hr"] { --rtype: #6d68ff; }
+a.card-ref:hover { text-decoration-style: solid; }
+
+/* Relief (champ `relief` = soft), skin claire seulement : blocs avec une ombre douce et une
+   bordure plus légère, sur un fond un peu plus soutenu */
+.card[data-relief="soft"][data-skin="light"] .card-skin { background: linear-gradient(to bottom, #eef2f7, #d9e1ec); }
+.card[data-relief="soft"][data-skin="light"] .card-block,
+.card[data-relief="soft"][data-skin="light"] .card-stat {
+  border-color: #eef2f7;
+  box-shadow: 0 1px 2px rgb(15 23 42 / .06), 0 8px 18px -8px rgb(15 23 42 / .18);
+}
+.card[data-relief="soft"][data-title="image"] .card-block.card-name { box-shadow: none; }
+
 /* Texte d'ambiance */
 .card-flavor {
   position: absolute;

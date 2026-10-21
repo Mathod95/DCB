@@ -1513,3 +1513,67 @@ async fn description_is_classic_untitled_or_a_comment_in_the_effect_block() {
     let (status, _, _) = send(&t.app, get("/api/cards?desc=yaml")).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
+
+#[tokio::test]
+async fn cited_cards_are_highlighted_and_linked_on_the_detail_page() {
+    let t = app(&[
+        (
+            "argo-cd.toml",
+            "name = \"ARGO CD\"\ntype = \"app\"\nrefs = \"linked\"\neffect = \"- Débloque la carte Application Set\\n- Pas de <script> ici\"\n",
+        ),
+        ("appset.toml", "name = \"APPLICATION SET\"\ntype = \"app\"\n"),
+        (
+            "plain.toml",
+            "name = \"PLAIN CARD\"\ntype = \"event\"\neffect = \"Cite Application Set sans mise en avant\"\n",
+        ),
+    ])
+    .await;
+    // fiche : le nom cité mène à la carte, le reste du texte reste échappé
+    let (_, _, body) = send(&t.app, get("/cards/argo-cd")).await;
+    assert!(
+        body.contains(
+            r#"<a class="card-ref" data-type="app" href="/cards/appset">Application Set</a>"#
+        ),
+        "{body}"
+    );
+    assert!(body.contains("&lt;script&gt;") && !body.contains("<script> ici"));
+    assert!(body.contains(r#"data-refs="linked""#));
+    // galerie : la carte est déjà un lien, le nom est seulement mis en couleur
+    let (_, _, body) = send(&t.app, get("/gallery")).await;
+    assert!(body.contains(r#"<span class="card-ref" data-type="app">Application Set</span>"#));
+    // sans le réglage, rien ne change
+    let (_, _, body) = send(&t.app, get("/cards/plain")).await;
+    assert!(!body.contains("card-ref"));
+    let (_, _, body) = send(&t.app, get("/gallery?refs=linked")).await;
+    assert!(body.contains("ARGO CD") && !body.contains("aria-label=\"PLAIN CARD\""));
+}
+
+#[tokio::test]
+async fn relief_is_saved_and_set_on_the_card() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-relief="flat""#));
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("Soft Pod", &[("relief", b"soft"), ("skin", b"light")]),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("soft-pod.toml")).unwrap();
+    assert!(toml.contains("relief = \"soft\""), "{toml}");
+    let (_, _, body) = send(&t.app, get("/cards/soft-pod")).await;
+    assert!(body.contains(r#"data-relief="soft""#));
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Flat Pod", &[("relief", b"flat")])),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("flat-pod.toml")).unwrap();
+    assert!(!toml.contains("relief"), "{toml}");
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"reliefs\"") && meta.contains("\"refs\""));
+    let (status, _, _) = send(&t.app, get("/api/cards?relief=bumpy")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}

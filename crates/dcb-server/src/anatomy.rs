@@ -178,6 +178,8 @@ pub fn toml_lines(d: &CardDraft) -> Vec<TomlLine> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dcb_core::Refs;
+    use dcb_core::Relief;
     use dcb_core::{Badge, CardType, DescStyle, Foil, Shape, Size, Skin, Title};
 
     #[test]
@@ -192,6 +194,8 @@ mod tests {
             badge: Badge::Text,
             title: Title::Block,
             desc_style: DescStyle::Classic,
+            relief: Relief::Flat,
+            refs: Refs::Plain,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi <env>".into(),
             deploy_cost: 2,

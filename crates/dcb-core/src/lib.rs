@@ -169,6 +169,38 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Cartes citées dans l'effet. `Plain` : texte simple ; `Linked` : le nom d'une autre carte
+    /// du jeu prend la couleur de son type et se souligne, et mène à cette carte sur la fiche.
+    Refs {
+        Plain => "plain", "Texte simple",
+        Linked => "linked", "Cartes citées",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Refs {
+    fn default() -> Self {
+        Refs::Plain
+    }
+}
+
+text_enum! {
+    /// Relief des blocs de la skin claire. `Flat` : blocs à plat (Figma) ; `Soft` : blocs avec une
+    /// ombre douce et une bordure plus légère, sur un fond un peu plus soutenu.
+    Relief {
+        Flat => "flat", "Plat",
+        Soft => "soft", "En relief",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Relief {
+    fn default() -> Self {
+        Relief::Flat
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for DescStyle {
     fn default() -> Self {
@@ -238,6 +270,12 @@ pub struct CardDraft {
     /// Présentation de la description ; absente des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub desc_style: DescStyle,
+    /// Relief des blocs ; absent des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub relief: Relief,
+    /// Cartes citées dans l'effet ; absent des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub refs: Refs,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -427,6 +465,8 @@ mod tests {
             badge: Badge::Text,
             title: Title::Block,
             desc_style: DescStyle::Classic,
+            relief: Relief::Flat,
+            refs: Refs::Plain,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -473,6 +513,24 @@ mod tests {
             assert_eq!(t.slug().parse::<Title>().unwrap(), *t);
         }
         assert!("top".parse::<Title>().is_err());
+    }
+
+    #[test]
+    fn refs_round_trip() {
+        assert_eq!(Refs::default(), Refs::Plain);
+        for t in Refs::ALL {
+            assert_eq!(t.slug().parse::<Refs>().unwrap(), *t);
+        }
+        assert!("nope".parse::<Refs>().is_err());
+    }
+
+    #[test]
+    fn relief_round_trip() {
+        assert_eq!(Relief::default(), Relief::Flat);
+        for t in Relief::ALL {
+            assert_eq!(t.slug().parse::<Relief>().unwrap(), *t);
+        }
+        assert!("nope".parse::<Relief>().is_err());
     }
 
     #[test]

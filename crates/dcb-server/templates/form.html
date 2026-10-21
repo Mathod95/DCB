@@ -130,6 +130,34 @@
       </div>
 
       <div class="field">
+        <span class="label">Relief</span>
+        <div class="segmented">
+          {% for c in reliefs %}
+          <label class="seg">
+            <input type="radio" name="relief" value="{{ c.value }}"{% if values.relief.as_str() == c.value %} checked{% endif %}>
+            <span>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-hint">En relief: blocs avec une ombre douce et une bordure plus légère. Visible avec la skin Light.</p>
+        <p class="field-error">{{ self.error("relief") }}</p>
+      </div>
+
+      <div class="field">
+        <span class="label">Cartes citées</span>
+        <div class="segmented">
+          {% for c in refs_options %}
+          <label class="seg">
+            <input type="radio" name="refs" value="{{ c.value }}"{% if values.refs.as_str() == c.value %} checked{% endif %}>
+            <span>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-hint">Cartes citées: le nom d'une autre carte du jeu dans l'effet prend la couleur de son type, et mène à cette carte depuis la fiche.</p>
+        <p class="field-error">{{ self.error("refs") }}</p>
+      </div>
+
+      <div class="field">
         <label for="f-description">Description</label>
         <textarea id="f-description" name="description" rows="2" maxlength="{{ lim_description }}" data-count placeholder="Ce que représente la carte">{{ values.description }}</textarea>
         <p class="field-error">{{ self.error("description") }}</p>

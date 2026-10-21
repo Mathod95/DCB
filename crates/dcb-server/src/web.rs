@@ -17,6 +17,8 @@ use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use dcb_core::DescStyle;
+use dcb_core::Refs;
+use dcb_core::Relief;
 use dcb_core::{
     Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Title, is_valid_slug,
 };
@@ -412,7 +414,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 7] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 9] = [
         (
             "type",
             "Type",
@@ -456,6 +458,18 @@ async fn gallery(
             "Description",
             "Toutes",
             options(DescStyle::ALL, DescStyle::slug, DescStyle::label, |_| None),
+        ),
+        (
+            "relief",
+            "Relief",
+            "Tous",
+            options(Relief::ALL, Relief::slug, Relief::label, |_| None),
+        ),
+        (
+            "refs",
+            "Cartes citées",
+            "Toutes",
+            options(Refs::ALL, Refs::slug, Refs::label, |_| None),
         ),
     ];
     let mut active = Vec::new();
@@ -527,10 +541,13 @@ async fn gallery(
 
     render(GalleryPage {
         ctx: s.ctx(&u),
-        cards: cards
-            .iter()
-            .map(|c| CardView::new(Some(&c.slug), &c.draft))
-            .collect(),
+        cards: {
+            let idx = RefIndex::new(&all);
+            cards
+                .iter()
+                .map(|c| CardView::new(Some(&c.slug), &c.draft).cite(&idx, false))
+                .collect()
+        },
         groups,
         active,
         filtered: !filter.is_empty(),
@@ -776,6 +793,7 @@ async fn detail(
     Path(slug): Path<String>,
 ) -> AppResult<Html<String>> {
     let card = load(&s.pool, &slug).await?;
+    let idx = RefIndex::new(&db::list(&s.pool, Filter::default()).await?);
     let demo_card = s.sandbox
         && s.owners
             .read()
@@ -791,7 +809,7 @@ async fn detail(
             .art
             .as_ref()
             .map(|a| s.store.art_dir().join(a).display().to_string()),
-        card: CardView::new(Some(&card.slug), &card.draft),
+        card: CardView::new(Some(&card.slug), &card.draft).cite(&idx, true),
     })
 }
 
@@ -825,7 +843,10 @@ async fn edit_form(
         format!("/cards/{slug}"),
         FormValues::from_draft(&card.draft),
         Vec::new(),
-        CardView::new(Some(&slug), &card.draft),
+        CardView::new(Some(&slug), &card.draft).cite(
+            &RefIndex::new(&db::list(&s.pool, Filter::default()).await?),
+            false,
+        ),
     ))?
     .into_response())
 }
@@ -901,6 +922,16 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
             DescStyle::Classic
         } else {
             pick(&v.desc_style, DescStyle::Classic, "desc_style", &mut errors)
+        },
+        relief: if v.relief.is_empty() {
+            Relief::Flat
+        } else {
+            pick(&v.relief, Relief::Flat, "relief", &mut errors)
+        },
+        refs: if v.refs.is_empty() {
+            Refs::Plain
+        } else {
+            pick(&v.refs, Refs::Plain, "refs", &mut errors)
         },
         description: v.description.clone(),
         effect: v.effect.clone(),
@@ -1023,6 +1054,8 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "badge" => v.badge = text,
             "title" => v.title = text,
             "desc_style" => v.desc_style = text,
+            "relief" => v.relief = text,
+            "refs" => v.refs = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -1188,6 +1221,10 @@ struct PreviewForm {
     #[serde(default)]
     desc_style: String,
     #[serde(default)]
+    relief: String,
+    #[serde(default)]
+    refs: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -1205,7 +1242,11 @@ struct PreviewForm {
 
 /// Aperçu en direct : rend la carte telle qu'elle serait enregistrée, même si le formulaire
 /// contient encore des erreurs. N'écrit rien.
-async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<Html<String>> {
+async fn preview(
+    State(s): State<AppState>,
+    _editor: EditorUser,
+    Form(f): Form<PreviewForm>,
+) -> AppResult<Html<String>> {
     let current_art =
         Some(f.current_art).filter(|a| f.remove_art.is_empty() && is_safe_file_name(a));
     let values = FormValues {
@@ -1218,6 +1259,8 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         badge: f.badge,
         title: f.title,
         desc_style: f.desc_style,
+        relief: f.relief,
+        refs: f.refs,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -1226,8 +1269,9 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         current_art,
     };
     let draft = parse_values(&values).unwrap_or_else(|(d, _)| d);
+    let idx = RefIndex::new(&db::list(&s.pool, Filter::default()).await?);
     render(CardPreview {
-        card: CardView::new(None, &draft),
+        card: CardView::new(None, &draft).cite(&idx, false),
     })
 }
 
@@ -1274,6 +1318,12 @@ async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "desc_styles": DescStyle::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
+        })).collect::<Vec<_>>(),
+        "reliefs": Relief::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
+        })).collect::<Vec<_>>(),
+        "refs": Refs::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "limits": {

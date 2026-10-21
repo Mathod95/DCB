@@ -2,6 +2,8 @@
 
 use askama::Template;
 use dcb_core::DescStyle;
+use dcb_core::Refs;
+use dcb_core::Relief;
 use dcb_core::{
     Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Skin, Title, limits,
 };
@@ -77,8 +79,16 @@ pub struct CardView {
     /// Présentation de la description (`classic`, `untitled`, `comment`), en `data-desc`.
     pub desc_style: &'static str,
     pub desc_style_label: &'static str,
+    /// Relief des blocs (`data-relief` sur la carte).
+    pub relief: &'static str,
+    pub relief_label: &'static str,
+    /// Cartes citées dans l'effet (`data-refs` sur la carte).
+    pub refs: &'static str,
+    pub refs_label: &'static str,
     pub description: String,
     pub effect: String,
+    /// Effet en HTML, avec les cartes citées mises en avant (réglage `refs` = linked).
+    pub effect_html: Option<String>,
     pub deploy_cost: i64,
     pub daily_cost: i64,
     pub flavor_text: String,
@@ -94,7 +104,91 @@ pub struct CardView {
     pub data_text: bool,
 }
 
+/// Noms des cartes de la collection qu'un effet peut citer : en minuscules, avec le slug et le
+/// type, les plus longs d'abord (« DROP DATABASE; » avant « DROP »). Les noms de moins de cinq
+/// lettres sont ignorés, trop souvent des mots courants.
+pub struct RefIndex(Vec<(String, String, CardType)>);
+
+impl RefIndex {
+    pub fn new(cards: &[Card]) -> Self {
+        let mut v: Vec<(String, String, CardType)> = cards
+            .iter()
+            .filter(|c| c.draft.name.trim().chars().count() >= 5)
+            .map(|c| {
+                (
+                    c.draft.name.trim().to_lowercase(),
+                    c.slug.clone(),
+                    c.draft.card_type,
+                )
+            })
+            .collect();
+        v.sort_by_key(|n| std::cmp::Reverse(n.0.len()));
+        v.dedup_by(|a, b| a.0 == b.0);
+        Self(v)
+    }
+}
+
+fn esc_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// Texte de l'effet en HTML, chaque carte citée (sauf la carte elle-même) entourée d'un lien ou
+/// d'un `<span>` à la couleur de son type.
+pub fn cite_html(text: &str, idx: &RefIndex, own: &str, link: bool) -> String {
+    let own = own.trim().to_lowercase();
+    let lower = text.to_lowercase();
+    // `to_lowercase` peut changer les longueurs hors ASCII : on ne cherche les noms que si les
+    // deux chaînes restent alignées.
+    if lower.len() != text.len() {
+        return esc_html(text);
+    }
+    let word = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+    let mut out = String::new();
+    let mut i = 0;
+    while i < text.len() {
+        let hit = idx.0.iter().find(|(n, _, _)| {
+            *n != own
+                && lower[i..].starts_with(n.as_str())
+                && text.is_char_boundary(i + n.len())
+                && !word(text[..i].chars().next_back())
+                && !word(text[i + n.len()..].chars().next())
+        });
+        if let Some((n, slug, t)) = hit {
+            let shown = esc_html(&text[i..i + n.len()]);
+            let t = t.slug();
+            if link {
+                out.push_str(&format!(
+                    r#"<a class="card-ref" data-type="{t}" href="/cards/{slug}">{shown}</a>"#
+                ));
+            } else {
+                out.push_str(&format!(
+                    r#"<span class="card-ref" data-type="{t}">{shown}</span>"#
+                ));
+            }
+            i += n.len();
+            continue;
+        }
+        let ch = text[i..].chars().next().expect("indice sur une frontière");
+        out.push_str(&esc_html(ch.encode_utf8(&mut [0; 4])));
+        i += ch.len_utf8();
+    }
+    out
+}
+
 impl CardView {
+    /// Met en avant les cartes citées dans l'effet si la carte le demande (`refs` = linked).
+    /// `link` : les noms mènent aux cartes (fiche) ; sinon simple mise en couleur (la carte est
+    /// déjà un lien dans la galerie).
+    pub fn cite(mut self, idx: &RefIndex, link: bool) -> Self {
+        if self.refs == "linked" {
+            self.effect_html = Some(cite_html(&self.effect, idx, &self.name, link));
+        }
+        self
+    }
+
     pub fn new(slug: Option<&str>, d: &CardDraft) -> Self {
         let name = if d.name.trim().is_empty() {
             "CARD NAME".to_owned()
@@ -131,8 +225,13 @@ impl CardView {
             title_label: d.title.label(),
             desc_style: d.desc_style.slug(),
             desc_style_label: d.desc_style.label(),
+            relief: d.relief.slug(),
+            relief_label: d.relief.label(),
+            refs: d.refs.slug(),
+            refs_label: d.refs.label(),
             description: d.description.clone(),
             effect: d.effect.clone(),
+            effect_html: None,
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
             flavor_text: d.flavor_text.clone(),
@@ -195,6 +294,28 @@ pub fn shape_choices() -> Vec<Choice> {
         .map(|s| Choice {
             value: s.slug(),
             label: s.label(),
+            color: None,
+        })
+        .collect()
+}
+
+pub fn refs_choices() -> Vec<Choice> {
+    Refs::ALL
+        .iter()
+        .map(|t| Choice {
+            value: t.slug(),
+            label: t.label(),
+            color: None,
+        })
+        .collect()
+}
+
+pub fn relief_choices() -> Vec<Choice> {
+    Relief::ALL
+        .iter()
+        .map(|t| Choice {
+            value: t.slug(),
+            label: t.label(),
             color: None,
         })
         .collect()
@@ -318,6 +439,8 @@ pub struct FormValues {
     pub badge: String,
     pub title: String,
     pub desc_style: String,
+    pub relief: String,
+    pub refs: String,
     pub description: String,
     pub effect: String,
     pub deploy_cost: String,
@@ -338,6 +461,8 @@ impl FormValues {
             badge: d.badge.slug().into(),
             title: d.title.slug().into(),
             desc_style: d.desc_style.slug().into(),
+            relief: d.relief.slug().into(),
+            refs: d.refs.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost.to_string(),
@@ -357,6 +482,8 @@ impl FormValues {
             badge: Badge::Text.slug().into(),
             title: Title::Block.slug().into(),
             desc_style: DescStyle::Classic.slug().into(),
+            relief: Relief::Flat.slug().into(),
+            refs: Refs::Plain.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
             ..Default::default()
@@ -382,6 +509,8 @@ pub struct FormPage {
     pub badges: Vec<Choice>,
     pub titles: Vec<Choice>,
     pub desc_styles: Vec<Choice>,
+    pub reliefs: Vec<Choice>,
+    pub refs_options: Vec<Choice>,
     pub lim_name: usize,
     pub lim_description: usize,
     pub lim_effect: usize,
@@ -414,6 +543,8 @@ impl FormPage {
             badges: badge_choices(),
             titles: title_choices(),
             desc_styles: desc_style_choices(),
+            reliefs: relief_choices(),
+            refs_options: refs_choices(),
             lim_name: limits::NAME,
             lim_description: limits::DESCRIPTION,
             lim_effect: limits::EFFECT,
@@ -744,6 +875,8 @@ impl AnatomyView {
                 d.badge = Badge::Text;
                 d.title = Title::Block;
                 d.desc_style = DescStyle::Classic;
+                d.relief = Relief::Flat;
+                d.refs = Refs::Plain;
                 d.size = Size::Normal;
                 CardView::new(Some(&c.slug), &d)
             }),

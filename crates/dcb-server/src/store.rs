@@ -5,6 +5,8 @@
 use std::path::{Path, PathBuf};
 
 use dcb_core::DescStyle;
+use dcb_core::Refs;
+use dcb_core::Relief;
 use dcb_core::{
     Badge, Card, CardDraft, CardType, Foil, Shape, Size, Skin, Title, is_valid_slug, slugify,
 };
@@ -39,6 +41,12 @@ struct CardFile {
     /// Présentation de la description, absente du fichier quand c'est `classic`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     desc_style: Option<String>,
+    /// Relief des blocs, absent du fichier quand c'est `flat`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    relief: Option<String>,
+    /// Cartes citées dans l'effet, absent du fichier quand c'est `plain`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    refs: Option<String>,
     /// Emplacement du nom, absent du fichier quand c'est `block`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     title: Option<String>,
@@ -74,6 +82,8 @@ impl From<&CardDraft> for CardFile {
             badge: (d.badge != Badge::Text).then(|| d.badge.slug().to_owned()),
             desc_style: (d.desc_style != DescStyle::Classic)
                 .then(|| d.desc_style.slug().to_owned()),
+            relief: (d.relief != Relief::Flat).then(|| d.relief.slug().to_owned()),
+            refs: (d.refs != Refs::Plain).then(|| d.refs.slug().to_owned()),
             title: (d.title != Title::Block).then(|| d.title.slug().to_owned()),
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
@@ -141,6 +151,28 @@ impl TryFrom<CardFile> for CardDraft {
                 )
             })?,
         };
+        let refs = match f.refs.as_deref().map(str::trim) {
+            None | Some("") => Refs::Plain,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = Refs::ALL.iter().map(|t| t.slug()).collect();
+                format!(
+                    "refs {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
+        let relief = match f.relief.as_deref().map(str::trim) {
+            None | Some("") => Relief::Flat,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = Relief::ALL.iter().map(|t| t.slug()).collect();
+                format!(
+                    "relief {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         let desc_style = match f.desc_style.as_deref().map(str::trim) {
             None | Some("") => DescStyle::Classic,
             Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
@@ -161,6 +193,8 @@ impl TryFrom<CardFile> for CardDraft {
             size,
             badge,
             desc_style,
+            relief,
+            refs,
             title,
             description: f.description,
             effect: f.effect,
@@ -379,6 +413,8 @@ mod tests {
             size: Size::Compact,
             badge: Badge::Image,
             desc_style: DescStyle::Comment,
+            relief: Relief::Soft,
+            refs: Refs::Linked,
             title: Title::Image,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
@@ -412,6 +448,8 @@ mod tests {
         assert!(text.contains("size = \"compact\""), "{text}");
         assert!(text.contains("badge = \"image\""), "{text}");
         assert!(text.contains("desc_style = \"comment\""), "{text}");
+        assert!(text.contains("relief = \"soft\""), "{text}");
+        assert!(text.contains("refs = \"linked\""), "{text}");
         assert!(text.contains("title = \"image\""), "{text}");
 
         let (cards, errors) = store.load_all().await.unwrap();

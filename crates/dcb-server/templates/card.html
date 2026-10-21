@@ -1,4 +1,4 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}" data-title="{{ card.title }}" data-desc="{{ card.desc_style }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}" data-title="{{ card.title }}" data-desc="{{ card.desc_style }}" data-refs="{{ card.refs }}" data-relief="{{ card.relief }}">
   <div class="card-skin">{{ card.fx|safe }}</div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span{% if card.data_text %} data-text="{{ card.name }}"{% endif %}>{{ card.name }}</span></div>
@@ -31,7 +31,7 @@
 
   <div class="card-block card-effect">
     <p class="card-block-title">Effect</p>
-    <p class="card-block-text">{% if card.desc_style == "comment" && !card.description.trim().is_empty() %}<span class="card-comment"># {{ card.description }}</span>{% endif %}{{ card.effect }}</p>
+    <p class="card-block-text">{% if card.desc_style == "comment" && !card.description.trim().is_empty() %}<span class="card-comment"># {{ card.description }}</span>{% endif %}{% if let Some(h) = card.effect_html %}{{ h|safe }}{% else %}{{ card.effect }}{% endif %}</p>
   </div>
 
   {#- Deux cases de coût ; en taille compacte, des chips avec icône (fusée, pièce) -#}
