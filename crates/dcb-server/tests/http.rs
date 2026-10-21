@@ -1458,3 +1458,58 @@ async fn title_on_the_art_drops_the_name_block_and_moves_the_type_to_a_badge() {
     .await;
     assert_ne!(status, StatusCode::SEE_OTHER);
 }
+
+#[tokio::test]
+async fn description_is_classic_untitled_or_a_comment_in_the_effect_block() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    // une carte existante sans `desc_style` garde le bloc classique, avec son titre
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-desc="classic""#));
+    assert!(body.contains(r#"<p class="card-block-title">Description</p>"#));
+
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("Bare Pod", &[("desc_style", b"untitled")]),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("bare-pod.toml")).unwrap();
+    assert!(toml.contains("desc_style = \"untitled\""), "{toml}");
+    let (_, _, body) = send(&t.app, get("/cards/bare-pod")).await;
+    assert!(body.contains(r#"class="card-block card-description""#));
+    assert!(!body.contains(r#"<p class="card-block-title">Description</p>"#));
+
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("Note Pod", &[("desc_style", b"comment")]),
+        ),
+    )
+    .await;
+    let (_, _, body) = send(&t.app, get("/cards/note-pod")).await;
+    assert!(!body.contains(r#"class="card-block card-description""#));
+    assert!(body.contains(r#"<span class="card-comment"># Le cluster ne répond plus</span>"#));
+
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("Std Pod", &[("desc_style", b"classic")]),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("std-pod.toml")).unwrap();
+    assert!(!toml.contains("desc_style"), "{toml}");
+
+    let (_, _, form_page) = send(&t.app, get("/cards/new")).await;
+    assert!(form_page.contains(r#"name="desc_style" value="comment""#));
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"desc_styles\""));
+    let (_, _, body) = send(&t.app, get("/gallery?desc=comment")).await;
+    assert!(body.contains("Note Pod") && !body.contains("Bare Pod"));
+    let (status, _, _) = send(&t.app, get("/api/cards?desc=yaml")).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}

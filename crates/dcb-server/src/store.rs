@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use dcb_core::DescStyle;
 use dcb_core::{
     Badge, Card, CardDraft, CardType, Foil, Shape, Size, Skin, Title, is_valid_slug, slugify,
 };
@@ -35,6 +36,9 @@ struct CardFile {
     /// Emplacement du type, absent du fichier quand c'est `text`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     badge: Option<String>,
+    /// Présentation de la description, absente du fichier quand c'est `classic`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    desc_style: Option<String>,
     /// Emplacement du nom, absent du fichier quand c'est `block`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     title: Option<String>,
@@ -68,6 +72,8 @@ impl From<&CardDraft> for CardFile {
             shape: (d.shape != Shape::Solid).then(|| d.shape.slug().to_owned()),
             size: (d.size != Size::Normal).then(|| d.size.slug().to_owned()),
             badge: (d.badge != Badge::Text).then(|| d.badge.slug().to_owned()),
+            desc_style: (d.desc_style != DescStyle::Classic)
+                .then(|| d.desc_style.slug().to_owned()),
             title: (d.title != Title::Block).then(|| d.title.slug().to_owned()),
             deploy_cost: d.deploy_cost,
             daily_cost: d.daily_cost,
@@ -135,6 +141,17 @@ impl TryFrom<CardFile> for CardDraft {
                 )
             })?,
         };
+        let desc_style = match f.desc_style.as_deref().map(str::trim) {
+            None | Some("") => DescStyle::Classic,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = DescStyle::ALL.iter().map(|t| t.slug()).collect();
+                format!(
+                    "desc_style {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         Ok(Self {
             name: f.name,
             card_type: f.card_type,
@@ -143,6 +160,7 @@ impl TryFrom<CardFile> for CardDraft {
             shape,
             size,
             badge,
+            desc_style,
             title,
             description: f.description,
             effect: f.effect,
@@ -360,6 +378,7 @@ mod tests {
             shape: Shape::Neon,
             size: Size::Compact,
             badge: Badge::Image,
+            desc_style: DescStyle::Comment,
             title: Title::Image,
             description: "GitOps".into(),
             effect: "- Ajoute +1 deployment MAX\n- Multi environment".into(),
@@ -392,6 +411,7 @@ mod tests {
         assert!(text.contains("shape = \"neon\""), "{text}");
         assert!(text.contains("size = \"compact\""), "{text}");
         assert!(text.contains("badge = \"image\""), "{text}");
+        assert!(text.contains("desc_style = \"comment\""), "{text}");
         assert!(text.contains("title = \"image\""), "{text}");
 
         let (cards, errors) = store.load_all().await.unwrap();

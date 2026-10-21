@@ -14,6 +14,7 @@
       <div><dt>Taille</dt><dd>{{ card.size_label }}</dd></div>
       <div><dt>Badge de type</dt><dd>{% if card.title == "image" %}Sur l'illustration{% else %}{{ card.badge_label }}{% endif %}</dd></div>
       <div><dt>Nom</dt><dd>{{ card.title_label }}</dd></div>
+      <div><dt>Description</dt><dd>{{ card.desc_style_label }}</dd></div>
     </dl>
     {% if let Some(slug) = card.slug %}
     {% if demo_card %}<p class="demo-note">Carte de démo, créée en ligne: elle disparaîtra à la prochaine mise à jour du site.</p>{% endif %}

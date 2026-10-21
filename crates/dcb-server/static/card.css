@@ -263,6 +263,21 @@
 .card[data-title="image"] .card-block.card-name[data-size="s"] { font-size: 17px; }
 .card[data-title="image"] .card-badge { top: 31px; }
 
+/* Description (champ `desc_style`). `untitled` : sans titre, le texte commence en haut du bloc.
+   `comment` : plus de bloc Description, le bloc Effect monte de 70 px et la description en est
+   la première ligne, en commentaire. */
+.card[data-desc="untitled"] .card-description .card-block-text { top: 7px; }
+.card[data-desc="comment"] .card-effect { top: 279px; height: 180px; }
+.card[data-desc="comment"][data-size="compact"] .card-effect { height: 205px; }
+.card-comment {
+  display: block;
+  margin-bottom: 3px;
+  padding-left: .95em; /* largeur de « # » : la suite s'aligne sur le texte */
+  text-indent: -.95em;
+  font-style: italic;
+  color: color-mix(in srgb, var(--text) 60%, transparent);
+}
+
 /* Texte d'ambiance */
 .card-flavor {
   position: absolute;

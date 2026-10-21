@@ -158,6 +158,24 @@ impl Default for Title {
     }
 }
 
+text_enum! {
+    /// Présentation de la description. `Classic` : bloc avec son titre (Figma) ; `Untitled` : le
+    /// titre disparaît et le texte gagne une ligne ; `Comment` : plus de bloc, la description
+    /// devient un commentaire en tête du bloc Effect, qui gagne 70 px de haut.
+    DescStyle {
+        Classic  => "classic",  "Classique",
+        Untitled => "untitled", "Sans titre",
+        Comment  => "comment",  "En commentaire",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for DescStyle {
+    fn default() -> Self {
+        DescStyle::Classic
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for Badge {
     fn default() -> Self {
@@ -217,6 +235,9 @@ pub struct CardDraft {
     /// Emplacement du nom ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub title: Title,
+    /// Présentation de la description ; absente des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub desc_style: DescStyle,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -405,6 +426,7 @@ mod tests {
             size: Size::Normal,
             badge: Badge::Text,
             title: Title::Block,
+            desc_style: DescStyle::Classic,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
             deploy_cost: 2,
@@ -451,6 +473,15 @@ mod tests {
             assert_eq!(t.slug().parse::<Title>().unwrap(), *t);
         }
         assert!("top".parse::<Title>().is_err());
+    }
+
+    #[test]
+    fn desc_styles_round_trip() {
+        assert_eq!(DescStyle::default(), DescStyle::Classic);
+        for t in DescStyle::ALL {
+            assert_eq!(t.slug().parse::<DescStyle>().unwrap(), *t);
+        }
+        assert!("top".parse::<DescStyle>().is_err());
     }
 
     #[test]

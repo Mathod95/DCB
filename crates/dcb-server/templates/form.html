@@ -116,6 +116,20 @@
       </div>
 
       <div class="field">
+        <span class="label">Description</span>
+        <div class="segmented">
+          {% for c in desc_styles %}
+          <label class="seg">
+            <input type="radio" name="desc_style" value="{{ c.value }}"{% if values.desc_style.as_str() == c.value %} checked{% endif %}>
+            <span>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-hint">Sans titre: le texte gagne une ligne. En commentaire: plus de bloc Description, le texte passe en tête du bloc Effect, qui gagne 70 px.</p>
+        <p class="field-error">{{ self.error("desc_style") }}</p>
+      </div>
+
+      <div class="field">
         <label for="f-description">Description</label>
         <textarea id="f-description" name="description" rows="2" maxlength="{{ lim_description }}" data-count placeholder="Ce que représente la carte">{{ values.description }}</textarea>
         <p class="field-error">{{ self.error("description") }}</p>

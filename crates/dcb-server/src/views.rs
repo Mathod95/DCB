@@ -1,6 +1,7 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
+use dcb_core::DescStyle;
 use dcb_core::{
     Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Skin, Title, limits,
 };
@@ -73,6 +74,9 @@ pub struct CardView {
     /// Emplacement du nom (`block`, `image`), posé en `data-title` sur la carte.
     pub title: &'static str,
     pub title_label: &'static str,
+    /// Présentation de la description (`classic`, `untitled`, `comment`), en `data-desc`.
+    pub desc_style: &'static str,
+    pub desc_style_label: &'static str,
     pub description: String,
     pub effect: String,
     pub deploy_cost: i64,
@@ -125,6 +129,8 @@ impl CardView {
             badge_label: d.badge.label(),
             title: d.title.slug(),
             title_label: d.title.label(),
+            desc_style: d.desc_style.slug(),
+            desc_style_label: d.desc_style.label(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost,
@@ -189,6 +195,17 @@ pub fn shape_choices() -> Vec<Choice> {
         .map(|s| Choice {
             value: s.slug(),
             label: s.label(),
+            color: None,
+        })
+        .collect()
+}
+
+pub fn desc_style_choices() -> Vec<Choice> {
+    DescStyle::ALL
+        .iter()
+        .map(|t| Choice {
+            value: t.slug(),
+            label: t.label(),
             color: None,
         })
         .collect()
@@ -300,6 +317,7 @@ pub struct FormValues {
     pub size: String,
     pub badge: String,
     pub title: String,
+    pub desc_style: String,
     pub description: String,
     pub effect: String,
     pub deploy_cost: String,
@@ -319,6 +337,7 @@ impl FormValues {
             size: d.size.slug().into(),
             badge: d.badge.slug().into(),
             title: d.title.slug().into(),
+            desc_style: d.desc_style.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
             deploy_cost: d.deploy_cost.to_string(),
@@ -337,6 +356,7 @@ impl FormValues {
             size: Size::Normal.slug().into(),
             badge: Badge::Text.slug().into(),
             title: Title::Block.slug().into(),
+            desc_style: DescStyle::Classic.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
             ..Default::default()
@@ -361,6 +381,7 @@ pub struct FormPage {
     pub sizes: Vec<Choice>,
     pub badges: Vec<Choice>,
     pub titles: Vec<Choice>,
+    pub desc_styles: Vec<Choice>,
     pub lim_name: usize,
     pub lim_description: usize,
     pub lim_effect: usize,
@@ -392,6 +413,7 @@ impl FormPage {
             sizes: size_choices(),
             badges: badge_choices(),
             titles: title_choices(),
+            desc_styles: desc_style_choices(),
             lim_name: limits::NAME,
             lim_description: limits::DESCRIPTION,
             lim_effect: limits::EFFECT,
@@ -721,6 +743,7 @@ impl AnatomyView {
                 let mut d = c.draft.clone();
                 d.badge = Badge::Text;
                 d.title = Title::Block;
+                d.desc_style = DescStyle::Classic;
                 d.size = Size::Normal;
                 CardView::new(Some(&c.slug), &d)
             }),

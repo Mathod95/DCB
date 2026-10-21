@@ -16,6 +16,7 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
+use dcb_core::DescStyle;
 use dcb_core::{
     Badge, Card, CardDraft, CardType, FieldError, Foil, Shape, Size, Title, is_valid_slug,
 };
@@ -411,7 +412,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 6] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 7] = [
         (
             "type",
             "Type",
@@ -449,6 +450,12 @@ async fn gallery(
             "Nom",
             "Tous",
             options(Title::ALL, Title::slug, Title::label, |_| None),
+        ),
+        (
+            "desc",
+            "Description",
+            "Toutes",
+            options(DescStyle::ALL, DescStyle::slug, DescStyle::label, |_| None),
         ),
     ];
     let mut active = Vec::new();
@@ -890,6 +897,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.title, Title::Block, "title", &mut errors)
         },
+        desc_style: if v.desc_style.is_empty() {
+            DescStyle::Classic
+        } else {
+            pick(&v.desc_style, DescStyle::Classic, "desc_style", &mut errors)
+        },
         description: v.description.clone(),
         effect: v.effect.clone(),
         deploy_cost: number(&v.deploy_cost, "deploy_cost", &mut errors),
@@ -1010,6 +1022,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "size" => v.size = text,
             "badge" => v.badge = text,
             "title" => v.title = text,
+            "desc_style" => v.desc_style = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
             "deploy_cost" => v.deploy_cost = text,
@@ -1173,6 +1186,8 @@ struct PreviewForm {
     #[serde(default)]
     title: String,
     #[serde(default)]
+    desc_style: String,
+    #[serde(default)]
     description: String,
     #[serde(default)]
     effect: String,
@@ -1202,6 +1217,7 @@ async fn preview(_editor: EditorUser, Form(f): Form<PreviewForm>) -> AppResult<H
         size: f.size,
         badge: f.badge,
         title: f.title,
+        desc_style: f.desc_style,
         description: f.description,
         effect: f.effect,
         deploy_cost: f.deploy_cost,
@@ -1255,6 +1271,9 @@ async fn api_meta(_user: CurrentUser) -> Json<serde_json::Value> {
             "slug": b.slug(), "label": b.label()
         })).collect::<Vec<_>>(),
         "titles": Title::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
+        })).collect::<Vec<_>>(),
+        "desc_styles": DescStyle::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "limits": {
