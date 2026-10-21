@@ -1,0 +1,13 @@
+name = "DAVID L."
+type = "hr"
+skin = "light"
+shape = "chamfer"
+size = "compact"
+deploy_cost = 2
+daily_cost = 99
+description = "David occupera la place de CEO"
+effect = """
+- Compétence Onitsuka Tiger Mexico 66: En salon il fait les meilleurs présentation ! Ce qui vous permet de récupérer 3 nouveaux clients !
+-"""
+flavor_text = "Bruce Banner dans la vrai vie, Hulk si besoin !"
+art = "david-l.png"

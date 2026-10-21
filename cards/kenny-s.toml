@@ -1,10 +1,14 @@
 name = "KENNY S."
 type = "hr"
 skin = "light"
-deploy_cost = 0
-daily_cost = 0
+foil = "rainbow"
+shape = "topbar"
+size = "compact"
+deploy_cost = 2
+daily_cost = 99
 description = "Kenny occupera la place de Cloud Architect !"
 effect = """
 - Ajoute +2 deployment MAX
 - Compétence Canard: quand un déploiement a une chance d'échouer, Kenny fait en sorte qu'il passe sans encombre"""
 flavor_text = "Ne lui parlez surtout pas de Terraspace"
+art = "kenny-s.png"

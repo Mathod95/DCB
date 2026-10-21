@@ -1,0 +1,9 @@
+name = "MATHIAS F."
+type = "hr"
+skin = "light"
+size = "compact"
+deploy_cost = 2
+daily_cost = 99
+description = "Mathias occupera la place de Mathias et les devs"
+flavor_text = "C'est la mascotte de votre entreprise"
+art = "mathias-f.png"
