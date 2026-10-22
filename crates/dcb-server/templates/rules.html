@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Règles · DevCardBattle{% endblock %}
+{% block title %}{% if self.is("overview") %}Règles{% else %}{{ page.label() }}{% endif %} · DevCardBattle{% endblock %}
 {#- Bande qui défile en boucle : les cartes sont doublées (copie masquée aux lecteurs d'écran) -#}
 {% macro rail(items, dir) %}
 <div class="skin-rail" data-dir="{{ dir }}"><div class="skin-track">
@@ -7,6 +7,40 @@
   <div class="foil-item"{% if pass == 1 %} aria-hidden="true"{% endif %}{% if !f.desc.is_empty() %} data-desc="{{ f.desc }}"{% endif %}><div class="st {{ f.wrap }}"><div class="card-frame">{% include "card.html" %}</div></div><b>{{ f.label }}</b></div>
   {% endfor %}{% endfor %}
 </div></div>
+{% endmacro %}
+
+{#- Pastille « Brouillon » des sections encore à écrire -#}
+{% macro pill() %}<span class="draft-pill">Brouillon</span>{% endmacro %}
+
+{% macro text(t, id, toc) %}
+  <section aria-labelledby="{{ id }}" data-toc="{{ toc }}">
+    <div class="section-head">
+      <p class="eyebrow">{{ t.eyebrow }}{% if t.draft %}{% call pill() %}{% endcall %}{% endif %}</p>
+      <h2 id="{{ id }}">{{ t.title }}</h2>
+      <div class="prose">{% for p in t.paragraphs %}<p>{{ p|safe }}</p>{% endfor %}</div>
+    </div>
+    {% if !t.flow.is_empty() %}<div class="flow">{% for f in t.flow %}{% if !loop.first %}<span class="flow-arrow" aria-hidden="true">→</span>{% endif %}<span class="flow-step{% if loop.first %} is-in{% else if loop.last %} is-out{% else %} is-mid{% endif %}">{{ f }}</span>{% endfor %}</div>{% endif %}
+  </section>
+{% endmacro %}
+
+{% macro terms(t, id, toc) %}
+  <section aria-labelledby="{{ id }}" data-toc="{{ toc }}">
+    <div class="section-head">
+      <p class="eyebrow">{{ t.eyebrow }}{% if t.draft %}{% call pill() %}{% endcall %}{% endif %}</p>
+      <h2 id="{{ id }}">{{ t.title }}</h2>
+    </div>
+    <dl class="glossary">{% for (term, def) in t.items %}<div><dt>{{ term }}</dt><dd>{{ def|safe }}</dd></div>{% endfor %}</dl>
+  </section>
+{% endmacro %}
+
+{% macro steps(t, id, toc) %}
+  <section aria-labelledby="{{ id }}" data-toc="{{ toc }}">
+    <div class="section-head">
+      <p class="eyebrow">{{ t.eyebrow }}{% if t.draft %}{% call pill() %}{% endcall %}{% endif %}</p>
+      <h2 id="{{ id }}">{{ t.title }}</h2>
+    </div>
+    <ol class="steps">{% for (title, text) in t.items %}<li><b>{{ title }}</b>{{ text|safe }}</li>{% endfor %}</ol>
+  </section>
 {% endmacro %}
 
 {% block content %}
@@ -25,12 +59,13 @@
   <nav class="doc-nav" aria-label="Documentation">
     <p class="doc-nav-title">Documentation</p>
     <ul>
-      <li><a href="#top" aria-current="page">Overview</a></li>
+      {% for n in nav %}{% if n.sep_before %}<li class="nav-sep" aria-hidden="true"></li>{% endif %}<li><a href="{{ n.href }}"{% if n.current %} aria-current="page"{% endif %}>{{ n.label }}</a></li>
+      {% endfor %}
     </ul>
   </nav>
 
-<div class="rules">
-
+<div class="rules page-{{ page.key() }}">
+{% if self.is("overview") %}
   <section class="rules-hero" aria-labelledby="t-hero" data-toc="Règles du jeu">
     <div class="rules-hero-text">
       {% if !c.draft_notice.is_empty() %}<span class="draft">{{ c.draft_notice }}</span>{% endif %}
@@ -88,14 +123,10 @@
       </div>
     </div>
   </section>
-
-  <section aria-labelledby="t-types">
+{% else if self.is("basics") %}
+  <section aria-labelledby="t-types" data-toc="Les 5 types de cartes">
     <div class="section-head">
       <p class="eyebrow">Les cartes</p>
-    </div>
-    {% let a = c.anatomy %}
-    {% include "anatomy.html" %}
-    <div class="section-head anat-next">
       <h2 id="t-types">{{ c.types_title }}</h2>
     </div>
     <div class="types">
@@ -115,7 +146,28 @@
     </div>
   </section>
 
-  <section aria-labelledby="t-day">
+  <section aria-labelledby="t-anatomy" data-toc="Anatomie d'une carte">
+    {% let a = c.anatomy %}
+    {% include "anatomy.html" %}
+  </section>
+
+  <section class="concepts" aria-labelledby="t-foils" data-toc="Finitions et rareté">
+    {% if c.foils.is_empty() %}<p class="muted">Les exemples apparaîtront dès qu'une carte sera dans la collection.</p>{% else %}
+    <div class="concept" aria-labelledby="t-foils">
+      <div class="concept-head">
+        <p class="eyebrow">Finition et rareté</p>
+        <h3 id="t-foils">{{ c.rarity_title }}</h3>
+        <p>{{ c.rarity_text|safe }}</p>
+      </div>
+      <p class="rail-label">Finitions <span class="rail-count">{{ c.foils.len() }}</span></p>
+      {% call rail(c.foils, "left") %}{% endcall %}
+    </div>
+    {% endif %}
+  </section>
+
+  {% if let Some(t) = c.glossary %}{% call terms(t, "t-glossary", "Glossaire") %}{% endcall %}{% endif %}
+{% else if self.is("core") %}
+  <section aria-labelledby="t-day" data-toc="Le cycle de jeu">
     <div class="section-head">
       <p class="eyebrow">Phases de jeu</p>
       <h2 id="t-day">{{ c.day_title }}</h2>
@@ -138,7 +190,7 @@
     </div>
   </section>
 
-  <section class="rules-split" aria-labelledby="t-life">
+  <section class="rules-split" aria-labelledby="t-life" data-toc="Cycle de vie d'une app">
     <div class="section-head">
       <p class="eyebrow">App lifecycle</p>
       <h2 id="t-life">{{ c.life_title }}</h2>
@@ -154,17 +206,28 @@
     </div>
   </section>
 
-  <section class="concepts" aria-labelledby="t-concepts">
+  {% if let Some(t) = c.economy %}{% call text(t, "t-economy", "L'économie") %}{% endcall %}{% endif %}
+  {% if let Some(t) = c.incidents %}{% call text(t, "t-incidents", "Incidents et résilience") %}{% endcall %}{% endif %}
+  {% if let Some(t) = c.interactions %}{% call text(t, "t-combos", "Interactions entre cartes") %}{% endcall %}{% endif %}
+  {% if let Some(b) = c.board %}
+  <section aria-labelledby="t-board" data-toc="Le plateau">
     <div class="section-head">
-      <p class="eyebrow">Concepts</p>
-      <h2 id="t-concepts">{{ c.concepts_title }}</h2>
-      <div class="prose"><p>{{ c.concepts_text|safe }}</p></div>
-      <p><a class="btn" href="/regles/concepts">Voir les pistes de design (Carte DCB v2) &rarr;</a></p>
+      <p class="eyebrow">{{ b.eyebrow }}{% if b.draft %}{% call pill() %}{% endcall %}{% endif %}</p>
+      <h2 id="t-board">{{ b.title }}</h2>
+      <div class="prose"><p>{{ b.text|safe }}</p></div>
     </div>
-
-    {% if c.foils.is_empty() %}
-    <p class="muted">Les exemples apparaîtront dès qu'une carte sera dans la collection.</p>
-    {% else %}
+    <div class="board" role="img" aria-label="Schéma du plateau">
+      {% for (key, label, note) in b.zones %}<div class="zone z-{{ key }}">{{ label }}{% if !note.is_empty() %}<small>{{ note|safe }}</small>{% endif %}</div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+{% else if self.is("start") %}
+  {% if let Some(t) = c.first_game %}{% call steps(t, "t-first", "Première partie") %}{% endcall %}{% endif %}
+  {% if let Some(t) = c.deck %}{% call text(t, "t-deck", "Construire un deck") %}{% endcall %}{% endif %}
+  {% if let Some(t) = c.create_card %}{% call steps(t, "t-create", "Créer une carte") %}{% endcall %}{% endif %}
+  <section class="concepts" aria-labelledby="t-skins" data-toc="Skins">
+    {% if c.foils.is_empty() %}<p class="muted">Les exemples apparaîtront dès qu'une carte sera dans la collection.</p>{% else %}
     <div class="concept" aria-labelledby="t-skins">
       <div class="concept-head">
         <p class="eyebrow">Skin</p>
@@ -176,17 +239,11 @@
       <p class="rail-label">Animées <span class="rail-count">{{ c.skins_animated.len() }}</span></p>
       {% call rail(c.skins_animated, "right") %}{% endcall %}
     </div>
+    {% endif %}
+  </section>
 
-    <div class="concept" aria-labelledby="t-foils">
-      <div class="concept-head">
-        <p class="eyebrow">Finition et rareté</p>
-        <h3 id="t-foils">{{ c.rarity_title }}</h3>
-        <p>{{ c.rarity_text|safe }}</p>
-      </div>
-      <p class="rail-label">Finitions <span class="rail-count">{{ c.foils.len() }}</span></p>
-      {% call rail(c.foils, "left") %}{% endcall %}
-    </div>
-
+  <section class="concepts" aria-labelledby="t-shapes" data-toc="Contours">
+    {% if c.foils.is_empty() %}<p class="muted">Les exemples apparaîtront dès qu'une carte sera dans la collection.</p>{% else %}
     <div class="concept" aria-labelledby="t-shapes">
       <div class="concept-head">
         <p class="eyebrow">Contour</p>
@@ -196,7 +253,51 @@
       <p class="rail-label">Contours <span class="rail-count">{{ c.shapes.len() }}</span></p>
       {% call rail(c.shapes, "right") %}{% endcall %}
     </div>
+    {% endif %}
+  </section>
 
+  {% if let Some(t) = c.settings %}{% call terms(t, "t-settings", "Les autres réglages") %}{% endcall %}{% endif %}
+{% else if self.is("releases") %}
+  <section aria-labelledby="t-releases" class="rel-head">
+    <div class="section-head">
+      <p class="eyebrow">Releases</p>
+      <h2 id="t-releases">Ce qui a changé</h2>
+      <p class="rules-lead">Chaque mise à jour du site, de la plus récente à la plus ancienne.</p>
+    </div>
+  </section>
+  {% for r in c.releases %}
+  <section class="release" id="{{ r.version }}" aria-labelledby="t-{{ r.version }}" data-toc="{{ r.version }}">
+    <header><span class="rel-version">{{ r.version }}</span><h3 id="t-{{ r.version }}">{{ r.title }}</h3><time>{{ r.date }}</time></header>
+    {% for (key, title, items) in r.groups %}
+    <div class="rel-group"><p class="rel-kind k-{{ key }}">{{ title }}</p><ul>{% for i in items %}<li>{{ i|safe }}</li>{% endfor %}</ul></div>
+    {% endfor %}
+  </section>
+  {% else %}
+  <p class="muted">Aucune release pour l'instant (<code>rules/releases.toml</code>).</p>
+  {% endfor %}
+{% else %}
+  <section aria-labelledby="t-road" data-toc="Roadmap">
+    <div class="section-head">
+      <p class="eyebrow">Roadmap</p>
+      <h2 id="t-road">Ce qui arrive</h2>
+      <p class="rules-lead">Ce qu'on prévoit de faire. Quand une entrée est terminée, elle passe dans Fait avec sa release. Les pistes de design détaillées sont dans <a href="/regles/concepts">Carte DCB v2</a>.</p>
+    </div>
+    <div class="road">
+      {% for col in c.road %}
+      <div class="road-col c-{{ col.key }}">
+        <p class="road-title">{{ col.title }} <span>{{ col.items.len() }}</span></p>
+        <ul>
+          {% for i in col.items %}<li class="road-item"><b>{{ i.title }}</b>{% if !i.release.is_empty() %}<span><a href="/regles/releases#{{ i.release }}">Release {{ i.release }}</a></span>{% else if !i.text.is_empty() %}<span>{{ i.text }}</span>{% endif %}</li>
+          {% else %}<li class="road-empty">Rien pour l'instant</li>{% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% if self.is("basics") || self.is("start") %}
+{% if !c.foils.is_empty() %}
     {#- Vue zoomée : clic sur une carte des bandes ; les flèches passent d'une carte à l'autre, les
         boutons de catégorie tirent une carte du type choisi parmi les modèles ci-dessous. -#}
     <dialog id="card-modal" aria-label="Carte agrandie" data-frames=".skin-rail .foil-item:not([aria-hidden]) .card-frame" data-click=".skin-rail .card-frame">
@@ -213,9 +314,8 @@
       </div>
     </dialog>
     {% for t in c.templates %}{% let card = t.card %}<template class="tpl-card" data-type="{{ card.type_slug }}" data-filled="{% if t.filled %}1{% else %}0{% endif %}">{% include "card.html" %}</template>{% endfor %}
-    {% endif %}
-  </section>
-
+{% endif %}
+{% endif %}
 </div>
 
   <aside class="doc-toc" aria-label="Sur cette page">

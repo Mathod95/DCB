@@ -1,0 +1,62 @@
+# Roadmap (/regles/roadmap). `status` : study (à l'étude), planned (prévu), doing (en cours),
+# done (fait). Une entrée faite cite sa version de releases.toml dans `release`.
+
+[[items]]
+status = "study"
+title = "Numéro de collection"
+text = "DCB-042/090 sur chaque carte"
+
+[[items]]
+status = "study"
+title = "Texte d'ambiance façon terminal"
+text = "Piste de la page Carte DCB v2"
+
+[[items]]
+status = "planned"
+title = "Effets structurés"
+text = "Des effets que le moteur sait appliquer, plus seulement du texte"
+
+[[items]]
+status = "planned"
+title = "Deck builder"
+text = "Composer et enregistrer ses decks"
+
+[[items]]
+status = "planned"
+title = "Plateau de jeu"
+text = "Les zones du Board, côte à côte avec l'adversaire"
+
+[[items]]
+status = "planned"
+title = "Moteur de duel"
+text = "Les phases, les coûts, la trésorerie, en temps réel"
+
+[[items]]
+status = "planned"
+title = "Parties en ligne"
+text = "Inviter un joueur, jouer à deux"
+
+[[items]]
+status = "done"
+title = "Documentation en catégories"
+release = "v0.9"
+
+[[items]]
+status = "done"
+title = "Jeu ouvert à tous"
+release = "v0.8"
+
+[[items]]
+status = "done"
+title = "Filtres de la galerie"
+release = "v0.7"
+
+[[items]]
+status = "done"
+title = "Réglages de carte"
+release = "v0.7"
+
+[[items]]
+status = "done"
+title = "Anatomie d'une carte"
+release = "v0.6"

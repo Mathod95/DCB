@@ -674,7 +674,11 @@ input[type="file"]::file-selector-button {
 .rules-note::before { content: "# "; color: var(--accent); font-style: normal; }
 
 /* Début de partie sur une colonne ; équipe avec avatar, application dont le nom se tape */
-.rules-stack { display: grid; gap: 28px; }
+.rules-stack { display: grid; gap: 0; }
+/* Début de partie : la liste Équipe suit de près l'annotation */
+.rules-stack > .section-head { margin-bottom: 18px; }
+/* Overview (règles, début de partie, victoire) : sections plus resserrées que le reste (88 px) */
+.page-overview > [data-toc] + [data-toc] { margin-top: -32px; }
 .rules-stack .tiles { display: flex; flex-wrap: wrap; }
 .rules-stack .tile { white-space: nowrap; min-width: 150px; gap: 10px; }
 .avatar-dot {
@@ -762,3 +766,74 @@ input[type="file"]::file-selector-button {
 .guest-hint { margin: 4px 0 0 4px; color: var(--muted); font-size: 14px; }
 .role-form { margin: 0; display: flex; gap: 6px; align-items: center; }
 .role-form select { background: var(--panel-2); color: var(--text); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 14px; }
+
+/* Documentation en pages : séparation avant Releases, pastille des sections à écrire */
+.nav-sep { height: 1px; margin: 10px 6px; background: var(--line); }
+.draft-pill { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #fef3c7; color: #78350f; font-size: 10px; letter-spacing: .06em; vertical-align: 1px; }
+
+/* Glossaire et réglages : termes en grille */
+.glossary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.glossary > div { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.glossary dt { font-weight: 700; margin-bottom: 4px; }
+.glossary dd { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.5; }
+
+/* Économie : flux de l'argent */
+.flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.flow-step { padding: 10px 14px; border: 1px solid var(--line-2); border-left-width: 3px; border-radius: var(--radius); background: var(--panel); font-weight: 600; font-size: 14px; }
+.flow-step.is-in { border-left-color: #34d399; }
+.flow-step.is-mid { border-left-color: #fbbf24; }
+.flow-step.is-out { border-left-color: #f87171; }
+.flow-arrow { color: var(--muted); font-size: 18px; }
+
+/* Plateau : zones placées par leur clé (rules::BOARD_ZONES) */
+.board {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;
+  grid-template-areas: "opp opp opp opp opp opp" "mid mid mid mid mid mid" "cluster cluster apps apps kanban kanban" "team team hand hand hand cash" "deck discard hand hand hand cash";
+}
+.zone { display: grid; align-content: center; gap: 2px; min-height: 64px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--panel); font-weight: 600; font-size: 14px; }
+.zone small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.z-opp { grid-area: opp; opacity: .65; }
+.z-mid { grid-area: mid; min-height: 44px; border-color: rgb(248 56 56 / .4); color: #fca5a5; }
+.z-cluster { grid-area: cluster; border-left: 3px solid var(--t-resource); }
+.z-apps { grid-area: apps; border-left: 3px solid var(--t-app); }
+.z-kanban { grid-area: kanban; }
+.z-team { grid-area: team; border-left: 3px solid #6d68ff; }
+.z-hand { grid-area: hand; }
+.z-deck { grid-area: deck; }
+.z-discard { grid-area: discard; }
+.z-cash { grid-area: cash; }
+
+/* Étapes numérotées */
+.steps { list-style: none; counter-reset: st; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 760px; }
+.steps li { counter-increment: st; position: relative; padding: 12px 16px 12px 52px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text-2); font-size: 15px; line-height: 1.5; }
+.steps li::before { content: counter(st); position: absolute; left: 14px; top: 12px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--panel-2); color: var(--accent); font-weight: 800; font-size: 13px; }
+.steps b { display: block; color: var(--text); }
+
+/* Releases */
+.page-releases { gap: 20px; }
+.rel-head { margin-bottom: 8px; }
+.release { padding: 20px 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); display: grid; gap: 12px; }
+.release header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.release h3 { margin: 0; font-size: 18px; }
+.rel-version { font-family: var(--mono); font-weight: 600; color: var(--accent); }
+.release time { margin-left: auto; color: var(--muted); font-size: 13px; }
+.rel-group ul { margin: 4px 0 0; padding-left: 18px; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+.rel-kind { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.k-new { color: #34d399; }
+.k-changed { color: #fbbf24; }
+.k-fixed { color: #93c5fd; }
+
+/* Roadmap : une colonne par statut */
+.road { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.road-col { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.road-title { margin: 0 2px 10px; display: flex; justify-content: space-between; font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.road-title span { color: var(--text-2); }
+.road-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.road-item { display: grid; gap: 3px; padding: 10px 12px; border-radius: 10px; border-left: 3px solid var(--line-2); background: var(--panel-2); }
+.road-item b { font-size: 14px; }
+.road-item span { font-size: 13px; color: var(--muted); line-height: 1.45; }
+.road-empty { padding: 10px 12px; color: var(--muted); font-size: 13px; }
+.c-study .road-item { border-left-color: #a78bfa; }
+.c-doing .road-item { border-left-color: var(--accent); }
+.c-done .road-item { border-left-color: #34d399; }
+.c-done .road-item b { color: var(--text-2); }

@@ -418,12 +418,16 @@ async fn api_rejects_unknown_filter() {
 }
 
 const RULES: &str = include_str!("../../../rules/regles.toml");
+const RELEASES: &str = include_str!("../../../rules/releases.toml");
+const ROADMAP: &str = include_str!("../../../rules/roadmap.toml");
 
 async fn app_with_rules(files: &[(&str, &str)], rules: Option<&str>) -> TestApp {
     let mut t = app(files).await;
     let path = t.dir.join("regles.toml");
     if let Some(r) = rules {
         std::fs::write(&path, r).unwrap();
+        std::fs::write(t.dir.join("releases.toml"), RELEASES).unwrap();
+        std::fs::write(t.dir.join("roadmap.toml"), ROADMAP).unwrap();
     }
     t.state = t.state.clone().with_rules_file(&path);
     t.state.reload().await.unwrap();
@@ -448,9 +452,23 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
         Some(RULES),
     )
     .await;
-    let (status, _, body) = send(&t.app, get("/regles")).await;
+    let (status, _, overview) = send(&t.app, get("/regles")).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("Atteignez le million"));
+    assert!(overview.contains("Atteignez le million"));
+    // la documentation est découpée en pages ; les vérifications portent sur leur ensemble
+    let mut body = overview.clone();
+    let mut pages = Vec::new();
+    for uri in [
+        "/regles/basics",
+        "/regles/core-concepts",
+        "/regles/getting-started",
+    ] {
+        let (status, _, page) = send(&t.app, get(uri)).await;
+        assert_eq!(status, StatusCode::OK, "{uri}");
+        body.push_str(&page);
+        pages.push(page);
+    }
+    let (basics, start) = (&pages[0], &pages[2]);
     assert!(
         body.contains("2 cartes dans la collection"),
         "compteur des incidents"
@@ -465,11 +483,11 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     );
     assert!(body.contains(r#"href="/gallery?type=incident""#));
     // la carte remplie passe avant la carte vide, dans la liste des types
-    let types_part = body
+    let types_part = basics
         .split(r#"id="t-types""#)
         .nth(1)
         .unwrap()
-        .split(r#"id="t-day""#)
+        .split(r#"id="t-anatomy""#)
         .next()
         .unwrap();
     assert!(
@@ -481,7 +499,7 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     assert!(body.contains("<strong><em>to-do</em></strong>"));
     // partie Concepts : 10 skins classiques, 8 animées, 6 finitions et 9 contours, chacune en
     // double dans sa bande qui défile
-    assert!(body.contains("Anatomie d") && body.contains(r#"id="t-concepts""#));
+    assert!(body.contains("Anatomie d"));
     assert_eq!(
         body.matches(r#"<div class="foil-item""#).count(),
         (10 + 8 + 6 + 9) * 2
@@ -505,13 +523,8 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     );
     // chaque exemple des bandes est une carte différente de la collection (ici 3 cartes pour
     // 33 exemples : les trois apparaissent)
-    let rails = body
-        .split(r#"id="t-concepts""#)
-        .nth(1)
-        .unwrap()
-        .split("<dialog")
-        .next()
-        .unwrap();
+    let rails =
+        start.split("<dialog").next().unwrap().to_owned() + basics.split("<dialog").next().unwrap();
     for name in ["DDOS", "VIDE", "ARGO CD"] {
         assert!(rails.contains(&format!("<span>{name}</span>")), "{name}");
     }
@@ -525,7 +538,7 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     assert!(body.contains("Plan d&#39;architecte") || body.contains("Plan d'architecte"));
     // navigation, sommaire, chiffres clés, annotations, équipe et partie simulée
     assert!(body.contains(r#"<nav class="doc-nav""#) && body.contains(r#"<aside class="doc-toc""#));
-    assert_eq!(body.matches("data-toc=").count(), 3);
+    assert_eq!(overview.matches("data-toc=").count(), 3);
     assert_eq!(body.matches(r#"<div class="fact-tile">"#).count(), 5);
     assert!(body.contains("Weekly Sprint") && body.contains("One to One"));
     assert!(!body.contains("Version de travail") && !body.contains("La partie en chiffres</p>"));
@@ -534,9 +547,9 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     assert!(body.contains(r#"data-names="MaSuperApp|xX_Application_Xx"#));
     assert!(body.contains(r#"<div class="race" data-start="25000" data-goal="1000000">"#));
     assert!(body.contains(r#"src="/static/rules.js""#));
-    // anatomie d'une carte, entre « Les cartes » et les types de cartes
-    let anat = body.find(r#"id="t-anatomy""#).expect("anatomie");
-    assert!(anat < body.find(r#"id="t-types""#).unwrap());
+    // Understand the Basics : les types de cartes, puis l'anatomie d'une carte
+    let anat = basics.find(r#"id="t-anatomy""#).expect("anatomie");
+    assert!(anat > basics.find(r#"id="t-types""#).unwrap());
     assert_eq!(
         body.matches(r#"<button type="button" class="anat-pin"#)
             .count(),
@@ -549,9 +562,10 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
     // description des contours dans la vue zoomée
     assert!(body.contains("Trait fin de 2 px avec un halo lumineux"));
     // vue zoomée : choix de la catégorie et une carte modèle par carte de la collection
-    assert!(body.contains(r#"<dialog id="card-modal""#));
-    assert_eq!(body.matches(r#"class="modal-type""#).count(), 5);
-    assert_eq!(body.matches(r#"<template class="tpl-card""#).count(), 3);
+    assert!(start.contains(r#"<dialog id="card-modal""#));
+    assert_eq!(start.matches(r#"class="modal-type""#).count(), 5);
+    assert_eq!(start.matches(r#"<template class="tpl-card""#).count(), 3);
+    assert!(!overview.contains("<dialog"));
     assert!(body.contains(r#"data-type="incident" data-filled="0""#));
     assert!(body.contains(r#"src="/static/concepts.js""#));
     for foil in ["basic", "gold", "stars", "glitter", "shards", "rainbow"] {
@@ -571,7 +585,7 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
 #[tokio::test]
 async fn rules_page_handles_empty_collection() {
     let t = app_with_rules(&[], Some(RULES)).await;
-    let (status, _, body) = send(&t.app, get("/regles")).await;
+    let (status, _, body) = send(&t.app, get("/regles/basics")).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body.matches("Aucune carte de ce type pour l").count(), 5);
     assert!(!body.contains("foil-item"));
@@ -1131,7 +1145,7 @@ async fn concepts_page_renders_live_cards_with_a_toc() {
         send(&t.anon, get("/regles/concepts")).await.0,
         StatusCode::OK
     );
-    let (_, _, rules) = send(&t.app, get("/regles")).await;
+    let (_, _, rules) = send(&t.app, get("/regles/roadmap")).await;
     assert!(rules.contains(r#"href="/regles/concepts""#));
 
     // une clé inconnue est signalée, la dernière version valide reste affichée
@@ -1615,4 +1629,53 @@ async fn relief_is_saved_and_set_on_the_card() {
     assert!(meta.contains("\"reliefs\"") && meta.contains("\"refs\""));
     let (status, _, _) = send(&t.app, get("/api/cards?relief=bumpy")).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn documentation_pages_with_releases_and_roadmap() {
+    let t = app_with_rules(&[("ddos.toml", DDOS)], Some(RULES)).await;
+    // navigation : six entrées, la page courante marquée, publique
+    let (_, _, overview) = send(&t.anon, get("/regles")).await;
+    for href in [
+        "/regles",
+        "/regles/basics",
+        "/regles/core-concepts",
+        "/regles/getting-started",
+        "/regles/releases",
+        "/regles/roadmap",
+    ] {
+        assert!(overview.contains(&format!(r#"<a href="{href}""#)), "{href}");
+        let (status, _, page) = send(&t.anon, get(href)).await;
+        assert_eq!(status, StatusCode::OK, "{href}");
+        assert!(
+            page.contains(&format!(r#"<a href="{href}" aria-current="page">"#)),
+            "{href}"
+        );
+    }
+    assert!(overview.contains(r#"<li class="nav-sep""#));
+    assert_eq!(
+        send(&t.anon, get("/regles/nope")).await.0,
+        StatusCode::NOT_FOUND
+    );
+
+    let (_, _, basics) = send(&t.anon, get("/regles/basics")).await;
+    assert!(basics.contains("Les mots du jeu") && basics.contains(r#"<dl class="glossary">"#));
+    assert!(basics.contains(r#"<span class="draft-pill">Brouillon</span>"#));
+    assert!(!basics.contains("Atteignez le million"));
+    let (_, _, core) = send(&t.anon, get("/regles/core-concepts")).await;
+    assert!(core.contains(r#"<div class="zone z-cash">Trésorerie"#));
+    assert!(core.contains(r#"class="flow-step is-in""#) && core.contains("Le cycle de jeu"));
+    let (_, _, start) = send(&t.anon, get("/regles/getting-started")).await;
+    assert!(start.contains(r#"<ol class="steps">"#) && start.contains("Les autres réglages"));
+
+    // releases : la plus récente d'abord, date en toutes lettres, rubriques
+    let (_, _, rel) = send(&t.anon, get("/regles/releases")).await;
+    assert!(rel.contains(r#"id="v0.9""#) && rel.contains("22 octobre 2026"));
+    assert!(rel.find(r#"id="v0.9""#).unwrap() < rel.find(r#"id="v0.1""#).unwrap());
+    assert!(rel.contains(r#"class="rel-kind k-new">Nouveau"#));
+    // roadmap : quatre colonnes, une entrée faite renvoie vers sa release
+    let (_, _, road) = send(&t.anon, get("/regles/roadmap")).await;
+    assert_eq!(road.matches(r#"<div class="road-col"#).count(), 4);
+    assert!(road.contains(r#"href="/regles/releases#v0.8""#));
+    assert!(road.contains(r#"href="/regles/concepts""#));
 }

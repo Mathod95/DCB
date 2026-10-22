@@ -1,0 +1,90 @@
+# Patch notes de la page Releases (/regles/releases), de la plus récente à la plus ancienne.
+# Une entrée par mise en ligne : version, date (AAAA-MM-JJ), titre, puis ce qui est nouveau,
+# ce qui a changé et ce qui est corrigé.
+
+[[releases]]
+version = "v0.9"
+date = "2026-10-22"
+title = "La documentation en catégories"
+new = [
+  "Documentation en pages : Overview, Understand the Basics, Core Concepts, Getting Started",
+  "Releases : le patch note de chaque mise à jour",
+  "Roadmap : ce qui est à l'étude, prévu, en cours et fait",
+  "Glossaire, économie, incidents, interactions, plateau, première partie (brouillons)",
+]
+changed = ["Overview plus resserrée entre les sections"]
+
+[[releases]]
+version = "v0.8"
+date = "2026-10-21"
+title = "Le jeu s'ouvre à tous"
+new = [
+  "Accueil, galerie, fiches et documentation consultables sans compte",
+  "Connexion depuis le bouton en haut à droite, retour à la page où l'on était",
+  "Rôle Créateur : crée des cartes et modifie les siennes, « Mes cartes » dans le menu du compte",
+]
+changed = [
+  "Page Comptes : trois rôles (Joueur, Créateur, Admin), choisis dans une liste",
+  "En mode démo, seuls les créateurs créent des cartes",
+]
+
+[[releases]]
+version = "v0.7"
+date = "2026-10-21"
+title = "Galerie et réglages de carte"
+new = [
+  "Galerie : panneau de filtres à gauche, plusieurs choix par réglage, compteurs",
+  "Badge de type sur l'illustration",
+  "Nom de la carte sur l'illustration",
+  "Description sans titre ou en commentaire",
+  "Cartes citées dans l'effet, liens vers leur fiche",
+  "Relief de la skin claire",
+]
+
+[[releases]]
+version = "v0.6"
+date = "2026-10-20"
+title = "La documentation prend forme"
+new = [
+  "Navigation à gauche et sommaire à droite",
+  "Anatomie d'une carte : schéma, vue squelette, fichier TOML",
+  "Toutes les skins en bandes défilantes, vue zoomée par catégorie",
+  "Taille compacte des cartes",
+]
+changed = ["La case Rarity disparaît des cartes : la finition suffit"]
+
+[[releases]]
+version = "v0.5"
+date = "2026-10-19"
+title = "Comptes et mode démo"
+new = [
+  "Connexion, rôles et administration des comptes",
+  "Image Docker, hébergement sur dcb.mathod.fr",
+  "Mode démo de l'éditeur en ligne",
+  "Contours sélectionnables",
+  "Cartes sans illustration : fond et icône du type",
+]
+changed = ["Menu d'accueil simplifié, barre du haut épurée"]
+
+[[releases]]
+version = "v0.4"
+date = "2026-10-18"
+title = "Les règles et la rareté"
+new = ["Page des règles", "25 nouvelles cartes"]
+changed = ["La rareté devient une finition"]
+fixed = ["Orthographe de 30 cartes"]
+
+[[releases]]
+version = "v0.3"
+date = "2026-10-17"
+title = "Finitions holographiques"
+new = [
+  "Étoiles, paillettes, éclats et irisé, reflet qui suit la souris",
+  "Emplacement du texte d'ambiance dans l'aperçu",
+]
+
+[[releases]]
+version = "v0.1"
+date = "2026-10-16"
+title = "Première version"
+new = ["Galerie et éditeur de cartes", "Cartes stockées en fichiers TOML"]

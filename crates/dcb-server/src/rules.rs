@@ -26,6 +26,180 @@ pub struct Rules {
     pub rarity: Rarity,
     pub anatomy: Anatomy,
     pub concepts: Concepts,
+    /// Understand the Basics : glossaire.
+    #[serde(default)]
+    pub glossary: Option<Terms>,
+    /// Core Concepts : économie, incidents, interactions, plateau.
+    #[serde(default)]
+    pub economy: Option<TextPart>,
+    #[serde(default)]
+    pub incidents: Option<TextPart>,
+    #[serde(default)]
+    pub interactions: Option<TextPart>,
+    #[serde(default)]
+    pub board: Option<Board>,
+    /// Getting Started : première partie, deck, création de carte, autres réglages.
+    #[serde(default)]
+    pub first_game: Option<Steps>,
+    #[serde(default)]
+    pub deck: Option<TextPart>,
+    #[serde(default)]
+    pub create_card: Option<Steps>,
+    #[serde(default)]
+    pub settings: Option<Terms>,
+    /// Patch notes (`rules/releases.toml`), de la plus récente à la plus ancienne.
+    #[serde(skip)]
+    pub releases: Vec<Release>,
+    /// Ce qui est prévu (`rules/roadmap.toml`).
+    #[serde(skip)]
+    pub roadmap: Vec<RoadItem>,
+}
+
+/// Section de texte simple ; `draft` affiche la pastille « Brouillon ».
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TextPart {
+    pub eyebrow: String,
+    pub title: String,
+    #[serde(default)]
+    pub draft: bool,
+    pub text: Vec<String>,
+    /// Étapes d'un flux, de gauche à droite (entrée, milieu, sortie).
+    #[serde(default)]
+    pub flow: Vec<String>,
+}
+
+/// Liste de termes et de définitions (glossaire, réglages).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Terms {
+    pub eyebrow: String,
+    pub title: String,
+    #[serde(default)]
+    pub draft: bool,
+    pub items: Vec<Term>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Term {
+    pub term: String,
+    pub text: String,
+}
+
+/// Étapes numérotées (première partie, créer une carte).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Steps {
+    pub eyebrow: String,
+    pub title: String,
+    #[serde(default)]
+    pub draft: bool,
+    pub items: Vec<Term>,
+}
+
+/// Schéma du plateau : `key` place la zone (voir `BOARD_ZONES`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Board {
+    pub eyebrow: String,
+    pub title: String,
+    #[serde(default)]
+    pub draft: bool,
+    pub text: String,
+    pub zones: Vec<BoardZone>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoardZone {
+    pub key: String,
+    pub label: String,
+    #[serde(default)]
+    pub note: String,
+}
+
+/// Zones du schéma du plateau, placées par `app.css` (`.z-<clé>`).
+pub const BOARD_ZONES: &[&str] = &[
+    "opp", "mid", "cluster", "apps", "kanban", "team", "hand", "deck", "discard", "cash",
+];
+
+/// Une version du site : ce qui est nouveau, ce qui a changé, ce qui est corrigé.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Release {
+    pub version: String,
+    /// AAAA-MM-JJ
+    pub date: String,
+    pub title: String,
+    #[serde(default)]
+    pub new: Vec<String>,
+    #[serde(default)]
+    pub changed: Vec<String>,
+    #[serde(default)]
+    pub fixed: Vec<String>,
+}
+
+/// Une entrée de la roadmap ; `release` relie une entrée faite à sa version.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoadItem {
+    pub status: String,
+    pub title: String,
+    #[serde(default)]
+    pub text: String,
+    #[serde(default)]
+    pub release: String,
+}
+
+/// Colonnes de la roadmap : clé de `status` et titre.
+pub const ROAD_STATUSES: &[(&str, &str)] = &[
+    ("study", "À l'étude"),
+    ("planned", "Prévu"),
+    ("doing", "En cours"),
+    ("done", "Fait"),
+];
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReleasesFile {
+    #[serde(default)]
+    releases: Vec<Release>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RoadmapFile {
+    #[serde(default)]
+    items: Vec<RoadItem>,
+}
+
+/// `2026-10-21` → `21 octobre 2026`.
+pub fn french_date(iso: &str) -> Option<String> {
+    const MONTHS: [&str; 12] = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ];
+    let mut it = iso.split('-');
+    let (y, m, d) = (it.next()?, it.next()?, it.next()?);
+    if it.next().is_some() || y.len() != 4 {
+        return None;
+    }
+    let (y, m, d): (u32, usize, u32) = (y.parse().ok()?, m.parse().ok()?, d.parse().ok()?);
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return None;
+    }
+    Some(format!("{d} {} {y}", MONTHS[m - 1]))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -255,14 +429,69 @@ impl Rules {
                 ));
             }
         }
+        if let Some(b) = &rules.board {
+            for z in &b.zones {
+                if !BOARD_ZONES.contains(&z.key.as_str()) {
+                    return Err(format!(
+                        "plateau : zone {:?} inconnue (valeurs : {})",
+                        z.key,
+                        BOARD_ZONES.join(", ")
+                    ));
+                }
+            }
+        }
         Ok(rules)
     }
 
+    /// Patch notes et roadmap, lus à part : chaque version vérifiée (date), chaque entrée de
+    /// roadmap reliée à un statut connu et, si elle en cite une, à une version existante.
+    pub fn with_notes(mut self, releases: &str, roadmap: &str) -> Result<Self, String> {
+        let rel: ReleasesFile =
+            toml::from_str(releases).map_err(|e| format!("releases.toml: {e}"))?;
+        for r in &rel.releases {
+            if french_date(&r.date).is_none() {
+                return Err(format!(
+                    "releases.toml : date {:?} de {} invalide (AAAA-MM-JJ)",
+                    r.date, r.version
+                ));
+            }
+        }
+        let road: RoadmapFile =
+            toml::from_str(roadmap).map_err(|e| format!("roadmap.toml: {e}"))?;
+        for i in &road.items {
+            if !ROAD_STATUSES.iter().any(|(k, _)| *k == i.status) {
+                let valid: Vec<_> = ROAD_STATUSES.iter().map(|(k, _)| *k).collect();
+                return Err(format!(
+                    "roadmap.toml : statut {:?} de « {} » inconnu (valeurs : {})",
+                    i.status,
+                    i.title,
+                    valid.join(", ")
+                ));
+            }
+            if !i.release.is_empty() && !rel.releases.iter().any(|r| r.version == i.release) {
+                return Err(format!(
+                    "roadmap.toml : « {} » cite la version {:?}, absente de releases.toml",
+                    i.title, i.release
+                ));
+            }
+        }
+        self.releases = rel.releases;
+        self.roadmap = road.items;
+        Ok(self)
+    }
+
+    /// Lit `regles.toml`, et `releases.toml` et `roadmap.toml` à côté s'ils existent.
     pub async fn load(path: &Path) -> Result<Self, String> {
         let text = tokio::fs::read_to_string(path)
             .await
             .map_err(|e| format!("{}: {e}", path.display()))?;
-        Self::parse(&text).map_err(|e| format!("{}: {e}", path.display()))
+        let rules = Self::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+        let side = |name: &str| {
+            let p = path.with_file_name(name);
+            async move { tokio::fs::read_to_string(&p).await.unwrap_or_default() }
+        };
+        let (releases, roadmap) = (side("releases.toml").await, side("roadmap.toml").await);
+        rules.with_notes(&releases, &roadmap)
     }
 
     /// Part du budget de départ dans l'objectif, en pourcentage (pour la piste).
@@ -393,5 +622,48 @@ mod tests {
             );
         }
         assert!((rules.start_percent() - 2.5).abs() < 1e-9);
+        assert!(rules.glossary.is_some() && rules.board.is_some());
+        let rules = rules
+            .with_notes(
+                include_str!("../../../rules/releases.toml"),
+                include_str!("../../../rules/roadmap.toml"),
+            )
+            .expect("releases.toml ou roadmap.toml invalide");
+        assert!(!rules.releases.is_empty() && !rules.roadmap.is_empty());
+    }
+
+    #[test]
+    fn notes_are_checked() {
+        let r = Rules::parse(include_str!("../../../rules/regles.toml")).unwrap();
+        let rel = "[[releases]]\nversion = \"v1\"\ndate = \"2026-10-22\"\ntitle = \"T\"\n";
+        assert!(
+            r.clone()
+                .with_notes(
+                    rel,
+                    "[[items]]\nstatus = \"done\"\ntitle = \"x\"\nrelease = \"v1\"\n"
+                )
+                .is_ok()
+        );
+        assert!(
+            r.clone()
+                .with_notes(rel, "[[items]]\nstatus = \"later\"\ntitle = \"x\"\n")
+                .is_err()
+        );
+        assert!(
+            r.clone()
+                .with_notes(
+                    rel,
+                    "[[items]]\nstatus = \"done\"\ntitle = \"x\"\nrelease = \"v9\"\n"
+                )
+                .is_err()
+        );
+        assert!(
+            r.with_notes(&rel.replace("2026-10-22", "22/10"), "")
+                .is_err()
+        );
+        assert_eq!(
+            french_date("2026-10-21").as_deref(),
+            Some("21 octobre 2026")
+        );
     }
 }

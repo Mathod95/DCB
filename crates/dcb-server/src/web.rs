@@ -203,6 +203,7 @@ pub fn router(state: AppState) -> Router {
         .route("/gallery", get(gallery))
         .route("/regles", get(rules_page))
         .route("/regles/concepts", get(concepts_page))
+        .route("/regles/{page}", get(doc_page))
         .route("/reload", post(reload))
         .route("/cards/new", get(new_form))
         .route("/cards", post(create))
@@ -580,13 +581,33 @@ async fn gallery(
     })
 }
 
-async fn rules_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Response> {
+/// Autres pages de la documentation : Basics, Core Concepts, Getting Started, Releases, Roadmap.
+async fn doc_page(
+    State(s): State<AppState>,
+    user: MaybeUser,
+    Path(seg): Path<String>,
+) -> AppResult<Response> {
+    let Some(page) = DocPage::from_segment(&seg) else {
+        return Ok(not_found_for(user.0.as_ref(), &s));
+    };
+    rules_page_for(s, user, page).await
+}
+
+async fn rules_page(State(s): State<AppState>, user: MaybeUser) -> AppResult<Response> {
+    rules_page_for(s, user, DocPage::Overview).await
+}
+
+async fn rules_page_for(
+    s: AppState,
+    MaybeUser(u): MaybeUser,
+    page: DocPage,
+) -> AppResult<Response> {
     let (rules, error) = {
         let state = s.rules.read().expect("verrou empoisonné");
         (state.rules.clone(), state.error.clone())
     };
     let Some(rules) = rules else {
-        let page = RulesPage::missing(s.ctx_for(u.as_ref()), error);
+        let page = RulesPage::missing(s.ctx_for(u.as_ref()), error).on(page);
         return Ok((StatusCode::SERVICE_UNAVAILABLE, render(page)?).into_response());
     };
 
@@ -722,14 +743,10 @@ async fn rules_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppRe
             .collect(),
     };
 
-    Ok(render(RulesPage::new(
-        s.ctx_for(u.as_ref()),
-        &rules,
-        error,
-        types,
-        samples,
-    ))?
-    .into_response())
+    Ok(
+        render(RulesPage::new(s.ctx_for(u.as_ref()), &rules, error, types, samples).on(page))?
+            .into_response(),
+    )
 }
 
 /// Document « Carte DCB v2 » (pistes de design) : texte de `rules/concepts.toml`, cartes de

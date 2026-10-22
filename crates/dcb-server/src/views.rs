@@ -941,6 +941,17 @@ pub struct RulesContent {
     pub shape_title: String,
     pub shape_text: String,
     pub shapes: Vec<FoilSample>,
+    pub glossary: Option<TermsView>,
+    pub economy: Option<TextView>,
+    pub incidents: Option<TextView>,
+    pub interactions: Option<TextView>,
+    pub board: Option<BoardView>,
+    pub first_game: Option<StepsView>,
+    pub deck: Option<TextView>,
+    pub create_card: Option<StepsView>,
+    pub settings: Option<TermsView>,
+    pub releases: Vec<ReleaseView>,
+    pub road: Vec<RoadColumn>,
 }
 
 /// Exemples de la partie « Concepts », une carte par réglage.
@@ -958,6 +969,8 @@ pub struct ConceptSamples {
 #[template(path = "rules.html")]
 pub struct RulesPage {
     pub ctx: Ctx,
+    pub page: DocPage,
+    pub nav: Vec<DocNavItem>,
     pub content: Option<RulesContent>,
     /// Erreur du dernier chargement de `rules/regles.toml` (les règles affichées sont alors
     /// les dernières valides).
@@ -968,6 +981,8 @@ impl RulesPage {
     pub fn missing(ctx: Ctx, error: Option<String>) -> Self {
         Self {
             ctx,
+            page: DocPage::Overview,
+            nav: Vec::new(),
             content: None,
             error,
         }
@@ -1055,11 +1070,253 @@ impl RulesPage {
             shape_title: r.concepts.shape.title.clone(),
             shape_text: inline(&r.concepts.shape.text),
             shapes: samples.shapes,
+            glossary: r.glossary.as_ref().map(TermsView::new),
+            economy: r.economy.as_ref().map(TextView::new),
+            incidents: r.incidents.as_ref().map(TextView::new),
+            interactions: r.interactions.as_ref().map(TextView::new),
+            board: r.board.as_ref().map(|b| BoardView {
+                eyebrow: b.eyebrow.clone(),
+                title: b.title.clone(),
+                draft: b.draft,
+                text: inline(&b.text),
+                zones: b
+                    .zones
+                    .iter()
+                    .map(|z| (z.key.clone(), z.label.clone(), inline(&z.note)))
+                    .collect(),
+            }),
+            first_game: r.first_game.as_ref().map(StepsView::new),
+            deck: r.deck.as_ref().map(TextView::new),
+            create_card: r.create_card.as_ref().map(StepsView::new),
+            settings: r.settings.as_ref().map(TermsView::new),
+            releases: r.releases.iter().map(ReleaseView::new).collect(),
+            road: rules::ROAD_STATUSES
+                .iter()
+                .map(|&(key, title)| RoadColumn {
+                    key,
+                    title,
+                    items: r
+                        .roadmap
+                        .iter()
+                        .filter(|i| i.status == key)
+                        .map(|i| RoadItemView {
+                            title: i.title.clone(),
+                            text: i.text.clone(),
+                            release: i.release.clone(),
+                        })
+                        .collect(),
+                })
+                .collect(),
         };
         Self {
             ctx,
+            page: DocPage::Overview,
+            nav: Vec::new(),
             content: Some(content),
             error,
         }
     }
+
+    /// Page de la documentation à afficher, et navigation de gauche.
+    pub fn on(mut self, page: DocPage) -> Self {
+        self.page = page;
+        self.nav = DocPage::ALL
+            .iter()
+            .map(|&p| DocNavItem {
+                label: p.label(),
+                href: p.href(),
+                current: p == page,
+                sep_before: p == DocPage::Releases,
+            })
+            .collect();
+        self
+    }
+
+    pub fn is(&self, key: &str) -> bool {
+        self.page.key() == key
+    }
+}
+
+/// Pages de la documentation, dans l'ordre de la navigation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DocPage {
+    Overview,
+    Basics,
+    Core,
+    Start,
+    Releases,
+    Roadmap,
+}
+
+impl DocPage {
+    pub const ALL: [DocPage; 6] = [
+        DocPage::Overview,
+        DocPage::Basics,
+        DocPage::Core,
+        DocPage::Start,
+        DocPage::Releases,
+        DocPage::Roadmap,
+    ];
+
+    pub fn key(self) -> &'static str {
+        match self {
+            DocPage::Overview => "overview",
+            DocPage::Basics => "basics",
+            DocPage::Core => "core",
+            DocPage::Start => "start",
+            DocPage::Releases => "releases",
+            DocPage::Roadmap => "roadmap",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            DocPage::Overview => "Overview",
+            DocPage::Basics => "Understand the Basics",
+            DocPage::Core => "Core Concepts",
+            DocPage::Start => "Getting Started",
+            DocPage::Releases => "Releases",
+            DocPage::Roadmap => "Roadmap",
+        }
+    }
+
+    pub fn href(self) -> &'static str {
+        match self {
+            DocPage::Overview => "/regles",
+            DocPage::Basics => "/regles/basics",
+            DocPage::Core => "/regles/core-concepts",
+            DocPage::Start => "/regles/getting-started",
+            DocPage::Releases => "/regles/releases",
+            DocPage::Roadmap => "/regles/roadmap",
+        }
+    }
+
+    /// Page d'une adresse `/regles/<segment>`.
+    pub fn from_segment(seg: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|p| p.href().rsplit('/').next() == Some(seg) && *p != DocPage::Overview)
+    }
+}
+
+pub struct DocNavItem {
+    pub label: &'static str,
+    pub href: &'static str,
+    pub current: bool,
+    /// Trait de séparation avant l'entrée (Releases).
+    pub sep_before: bool,
+}
+
+pub struct TextView {
+    pub eyebrow: String,
+    pub title: String,
+    pub draft: bool,
+    pub paragraphs: Vec<String>,
+    pub flow: Vec<String>,
+}
+
+impl TextView {
+    fn new(t: &rules::TextPart) -> Self {
+        Self {
+            eyebrow: t.eyebrow.clone(),
+            title: t.title.clone(),
+            draft: t.draft,
+            paragraphs: t.text.iter().map(|p| inline(p)).collect(),
+            flow: t.flow.clone(),
+        }
+    }
+}
+
+pub struct TermsView {
+    pub eyebrow: String,
+    pub title: String,
+    pub draft: bool,
+    /// Terme, puis définition en HTML.
+    pub items: Vec<(String, String)>,
+}
+
+impl TermsView {
+    fn new(t: &rules::Terms) -> Self {
+        Self {
+            eyebrow: t.eyebrow.clone(),
+            title: t.title.clone(),
+            draft: t.draft,
+            items: t
+                .items
+                .iter()
+                .map(|i| (i.term.clone(), inline(&i.text)))
+                .collect(),
+        }
+    }
+}
+
+pub struct StepsView {
+    pub eyebrow: String,
+    pub title: String,
+    pub draft: bool,
+    pub items: Vec<(String, String)>,
+}
+
+impl StepsView {
+    fn new(t: &rules::Steps) -> Self {
+        Self {
+            eyebrow: t.eyebrow.clone(),
+            title: t.title.clone(),
+            draft: t.draft,
+            items: t
+                .items
+                .iter()
+                .map(|i| (i.term.clone(), inline(&i.text)))
+                .collect(),
+        }
+    }
+}
+
+pub struct BoardView {
+    pub eyebrow: String,
+    pub title: String,
+    pub draft: bool,
+    pub text: String,
+    /// Clé de placement, libellé, précision en HTML.
+    pub zones: Vec<(String, String, String)>,
+}
+
+pub struct ReleaseView {
+    pub version: String,
+    pub date: String,
+    pub title: String,
+    /// Rubrique (clé CSS, titre) et ses lignes, dans l'ordre Nouveau, Changé, Corrigé.
+    pub groups: Vec<(&'static str, &'static str, Vec<String>)>,
+}
+
+impl ReleaseView {
+    fn new(r: &rules::Release) -> Self {
+        let groups = [
+            ("new", "Nouveau", &r.new),
+            ("changed", "Changé", &r.changed),
+            ("fixed", "Corrigé", &r.fixed),
+        ]
+        .into_iter()
+        .filter(|(_, _, items)| !items.is_empty())
+        .map(|(k, t, items)| (k, t, items.iter().map(|i| inline(i)).collect()))
+        .collect();
+        Self {
+            version: r.version.clone(),
+            date: rules::french_date(&r.date).unwrap_or_else(|| r.date.clone()),
+            title: r.title.clone(),
+            groups,
+        }
+    }
+}
+
+pub struct RoadColumn {
+    pub key: &'static str,
+    pub title: &'static str,
+    pub items: Vec<RoadItemView>,
+}
+
+pub struct RoadItemView {
+    pub title: String,
+    pub text: String,
+    pub release: String,
 }

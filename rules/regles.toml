@@ -368,3 +368,201 @@ text = "Filet fin tout autour, et une barre épaisse de la couleur du type en ha
 [[concepts.shape.items]]
 key = "tinted"
 text = "Plus de trait épais, le fond de la carte prend une teinte du type, avec un filet fin."
+
+# ---------------------------------------------------------------------------------------------
+# Understand the Basics
+
+[glossary]
+eyebrow = "Vocabulaire"
+title = "Les mots du jeu"
+draft = true
+
+[[glossary.items]]
+term = "Deploy"
+text = "Poser une carte en jeu en payant son coût en points de déploiement."
+
+[[glossary.items]]
+term = "Deploy cost"
+text = "Points de déploiement à dépenser pour jouer la carte, pendant le Sprint."
+
+[[glossary.items]]
+term = "Daily cost"
+text = "Ce que la carte coûte en $ chaque jour tant qu'elle reste en jeu."
+
+[[glossary.items]]
+term = "Trésorerie"
+text = "L'argent de votre startup. Elle part de $25.000,00 ; à zéro, c'est la banqueroute."
+
+[[glossary.items]]
+term = "Weekly Sprint"
+text = "Le cycle de jeu : une semaine de journées, chacune en trois phases."
+
+[[glossary.items]]
+term = "Phase"
+text = "Sprint, Deployment, End of the day : les trois temps d'une journée."
+
+[[glossary.items]]
+term = "Main"
+text = "Les cartes que vous tenez, 10 au départ."
+
+[[glossary.items]]
+term = "KPI"
+text = "Points gagnés par les features de vos applications Métier."
+
+# ---------------------------------------------------------------------------------------------
+# Core Concepts
+
+[economy]
+eyebrow = "Économie"
+title = "L'argent rentre, l'argent sort"
+draft = true
+text = ["Vos applications Métier rapportent des revenus ; chaque carte en jeu coûte son daily cost tous les jours. La partie se joue sur cet écart : grandir assez vite pour atteindre $1.000.000,00, sans que les coûts ne vident la trésorerie."]
+flow = ["Revenus des apps Métier", "Trésorerie", "Daily costs, incidents"]
+
+[incidents]
+eyebrow = "Incidents"
+title = "Tenir la prod"
+draft = true
+text = ["Les cartes INCIDENT se jouent en fin de journée et frappent le Kanban de l'adversaire : panne, fuite, pic de trafic. À décrire : ce qu'un incident bloque, combien de temps, et quelles cartes (monitoring, redondance, astreinte) en réduisent l'effet."]
+
+[interactions]
+eyebrow = "Interactions"
+title = "Les cartes qui se répondent"
+draft = true
+text = ["Certaines cartes en débloquent d'autres ou en changent le coût : ARGO CD débloque Application Set, Backstage rend les nouvelles apps moins chères. Une carte citée dans un effet prend la couleur de son type et mène à sa fiche."]
+
+[board]
+eyebrow = "Le plateau"
+title = "Où vont les cartes"
+draft = true
+text = "Base de travail : le frame Board du Figma. Chaque joueur a sa moitié du plateau, face à celle de l'adversaire."
+
+[[board.zones]]
+key = "opp"
+label = "Équipe d'en face"
+note = "cluster, apps en production, Kanban"
+
+[[board.zones]]
+key = "mid"
+label = "Incidents en cours"
+
+[[board.zones]]
+key = "cluster"
+label = "Votre cluster"
+note = "Resources, apps Platform"
+
+[[board.zones]]
+key = "apps"
+label = "Vos apps Métier"
+note = "features, KPI"
+
+[[board.zones]]
+key = "kanban"
+label = "Kanban"
+note = "to-do, pending, done"
+
+[[board.zones]]
+key = "team"
+label = "Équipe"
+note = "Ressources humaines"
+
+[[board.zones]]
+key = "hand"
+label = "Main"
+
+[[board.zones]]
+key = "deck"
+label = "Pioche"
+
+[[board.zones]]
+key = "discard"
+label = "Défausse"
+
+[[board.zones]]
+key = "cash"
+label = "Trésorerie"
+note = "$25.000,00"
+
+# ---------------------------------------------------------------------------------------------
+# Getting Started
+
+[first_game]
+eyebrow = "Pas à pas"
+title = "Votre première partie"
+draft = true
+
+[[first_game.items]]
+term = "Mise en place"
+text = "Prenez votre équipe et votre cluster de départ, piochez 10 cartes."
+
+[[first_game.items]]
+term = "Sprint"
+text = "Piochez, planifiez vos tâches, dépensez vos points de déploiement."
+
+[[first_game.items]]
+term = "Deployment"
+text = "Jouez les cartes planifiées : infrastructure, apps, ressources."
+
+[[first_game.items]]
+term = "End of the day"
+text = "Lancez vos incidents sur l'équipe d'en face, payez vos daily costs."
+
+[[first_game.items]]
+term = "Et on recommence"
+text = "Jour après jour, jusqu'au million ou à la banqueroute."
+
+[deck]
+eyebrow = "Deck"
+title = "Construire son deck"
+draft = true
+text = ["À définir : nombre de cartes, limites par type et par finition. Le deck builder arrivera ici (voir la Roadmap)."]
+
+[create_card]
+eyebrow = "Éditeur"
+title = "Créer une carte"
+draft = true
+
+[[create_card.items]]
+term = "Avoir le rôle Créateur"
+text = "Demandez-le à l'admin, depuis la page Comptes."
+
+[[create_card.items]]
+term = "Nouvelle carte"
+text = "Depuis l'accueil ou la galerie : nom, type, textes, coûts, illustration."
+
+[[create_card.items]]
+term = "Réglages d'allure"
+text = "Skin, finition, contour, taille, badge… l'aperçu suit chaque changement."
+
+[[create_card.items]]
+term = "Enregistrer"
+text = "La carte rejoint la galerie ; vous la retrouvez dans « Mes cartes »."
+
+[settings]
+eyebrow = "Réglages"
+title = "Les autres réglages"
+draft = true
+
+[[settings.items]]
+term = "Taille"
+text = "Normale, ou compacte : coûts en chips, bloc Effect plus grand."
+
+[[settings.items]]
+term = "Badge de type"
+text = "Dans le nom, ou en pastille sur l'illustration."
+
+[[settings.items]]
+term = "Nom"
+text = "Dans son bloc, ou en bas de l'illustration agrandie."
+
+[[settings.items]]
+term = "Description"
+text = "Classique, sans titre, ou en commentaire en tête du bloc Effect."
+
+[[settings.items]]
+term = "Cartes citées"
+text = "Les noms d'autres cartes dans l'effet prennent la couleur de leur type."
+
+[[settings.items]]
+term = "Relief"
+text = "Ombre douce des blocs, avec la skin Light."
