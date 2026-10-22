@@ -774,6 +774,13 @@ pub struct ConceptsPage {
     pub error: Option<String>,
 }
 
+/// Maquette du plateau (`/plateau`), recopiée du frame Figma `Board`.
+#[derive(Template)]
+#[template(path = "board.html")]
+pub struct BoardPage {
+    pub ctx: Ctx,
+}
+
 #[derive(Template)]
 #[template(path = "forbidden.html")]
 pub struct ForbiddenPage {

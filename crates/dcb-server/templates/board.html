@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Plateau · DevCardBattle{% endblock %}
+{% block content %}
+{#- Maquette du plateau, recopiée du frame Figma `Board` (node 36:2621) à ses cotes : 4048 × 2861,
+    mis à l'échelle de la largeur disponible. Pas encore jouable : chaque zone porte un numéro
+    pour lui donner un rôle. -#}
+<style>
+  .board-page { padding: 24px 24px 40px; }
+  .board-head { display: flex; align-items: baseline; gap: 16px; margin: 0 0 16px; }
+  .board-head h1 { margin: 0; font-size: 26px; }
+  .board-head p { margin: 0; color: var(--muted); }
+  .board-fit { width: 100%; aspect-ratio: 4048 / 2861; position: relative; }
+  .board {
+    --s: 0.3;
+    position: absolute; top: 0; left: 0;
+    width: 4048px; height: 2861px;
+    transform: scale(var(--s)); transform-origin: 0 0;
+    border-radius: 48px; overflow: hidden;
+    background:
+      radial-gradient(1400px 700px at 92% 12%, rgb(255 40 70 / .38), transparent 70%),
+      radial-gradient(1200px 900px at 100% 100%, rgb(200 40 90 / .45), transparent 70%),
+      radial-gradient(900px 600px at 0% 100%, rgb(255 60 60 / .18), transparent 70%),
+      linear-gradient(160deg, #0c1730 0%, #021730 45%, #101831 75%, #251730 100%);
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .board-hex { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .55; }
+  .z { position: absolute; box-sizing: border-box; }
+  .z-white { background: #fff; border-radius: 36px; border: 3px solid #0b1228; }
+  .z-back { border-radius: 12px; border: 3px solid rgb(255 255 255 / .55); }
+  .z-red  { background: linear-gradient(to bottom, #c94646, #772c2c); }
+  .z-blue { background: linear-gradient(to bottom, #1579de, #1d4880); }
+  .z-panel { border-radius: 18px; overflow: hidden; border: 3px solid rgb(255 255 255 / .7); }
+  .z-panel > h3 {
+    margin: 0; height: 38px; display: flex; align-items: center; justify-content: center;
+    font-size: 21px; font-weight: 800; letter-spacing: .02em;
+  }
+  .z-panel > .v { position: absolute; left: 0; right: 0; top: 70px; text-align: center; font-size: 22px; font-weight: 800; }
+  .p-res  { background: #edf1f6; } .p-res > h3  { background: #fefcff; color: #111; }
+  .p-cost { background: #d6c1ff; } .p-cost > h3 { background: #f3e6ff; color: #a855f7; }
+  .p-bud  { background: #c7f0de; } .p-bud > h3  { background: #bde1d0; color: #065f46; } .p-bud > .v { color: #065f46; }
+  .p-dep  { background: #c1e1ff; } .p-dep > h3  { background: #becde1; color: #0b1f3a; } .p-dep > .v { color: #0b1f3a; }
+  .p-org  { background: #fff1d8; } .p-org > h3  { background: #fffdf5; color: #f97316; }
+  .p-kpi  { background: #d6c1ff; } .p-kpi > h3  { background: #e4d3fb; color: #a855f7; }
+  .p-kpi ul { list-style: none; margin: 14px 0 0 19px; padding: 0; color: #a78bfa; font-size: 21px; font-weight: 600; line-height: 1.15; }
+  .deck-kpis { position: absolute; left: 133px; top: 235px; margin: 0; padding: 0; list-style: none; font-size: 11px; line-height: 1.5; color: #0b1228; }
+  .z-ghost { border: 3px dashed #c7cfdb; border-radius: 16px; }
+  /* numéros des zones, pour leur donner un rôle */
+  .zn {
+    position: absolute; top: 10px; left: 10px; z-index: 2;
+    min-width: 44px; height: 44px; padding: 0 10px; border-radius: 22px;
+    display: grid; place-items: center;
+    background: #f59e0b; color: #111; font-size: 24px; font-weight: 800;
+    box-shadow: 0 4px 12px rgb(0 0 0 / .35);
+  }
+  .z-panel > .zn { top: auto; bottom: 10px; }
+  .board.no-num .zn { display: none; }
+  .board-legend { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 24px; color: var(--muted); font-size: 14px; }
+  .board-legend b { color: #f59e0b; display: inline-block; min-width: 28px; }
+</style>
+
+<section class="board-page">
+  <div class="board-head">
+    <h1>Plateau</h1>
+    <p>Maquette du frame Board de Figma. Chaque zone a un numéro : dis-moi ce qu'elle contient.</p>
+    <label style="margin-left:auto;color:var(--muted);font-size:14px"><input type="checkbox" id="board-num" checked> Numéros</label>
+  </div>
+
+  <div class="board-fit" id="board-fit">
+    <div class="board" id="board">
+      <svg class="board-hex" viewBox="0 0 4048 2861" aria-hidden="true">
+        <defs>
+          <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g fill="none" stroke="#ff3355" stroke-width="5" filter="url(#glow)" opacity=".8">
+          <path d="M760 1160 L920 1160 L1000 1020 M920 1160 L1000 1300 M760 1160 L680 1020 L760 880 M680 1020 L520 1020"/>
+          <path d="M1300 60 L1380 200 L1300 340 M1380 200 L1540 200"/>
+          <path d="M3700 260 L4048 120 M3600 420 L3900 300"/>
+          <path d="M3950 1600 L4048 1680 M3950 1600 L3950 1760 M3950 1600 L3860 1690"/>
+          <path d="M3230 1440 L3360 1420 L3420 1380"/>
+        </g>
+      </svg>
+
+      {# Adversaire : pioche, main, zone de jeu, colonne de droite #}
+      <div class="z z-back z-red" style="left:605px;top:168px;width:374px;height:574px"><span class="zn">1</span></div>
+      {% for i in 0..10 %}
+      <div class="z z-back z-red" style="left:{{ 999 + i * 207 }}px;top:168px;width:187px;height:287px">{% if i == 0 %}<span class="zn">2</span>{% endif %}</div>
+      {% endfor %}
+      <div class="z z-white" style="left:999px;top:505px;width:2050px;height:900px"><span class="zn">3</span></div>
+      <div class="z z-white" style="left:3069px;top:168px;width:608px;height:400px"><span class="zn">4</span></div>
+      <div class="z z-white" style="left:3069px;top:587px;width:608px;height:399px"><span class="zn">5</span></div>
+      <div class="z z-white" style="left:3069px;top:1005px;width:608px;height:400px"><span class="zn">6</span></div>
+
+      {# Joueur : colonne de gauche, trois zones, zone de jeu, main, pioche et tableaux de bord #}
+      <div class="z z-white" style="left:12px;top:1455px;width:340px;height:1237px"><span class="zn">7</span></div>
+      <div class="z z-white" style="left:371px;top:1455px;width:608px;height:400px"><span class="zn">8</span></div>
+      <div class="z z-white" style="left:371px;top:1874px;width:608px;height:399px"><span class="zn">9</span></div>
+      <div class="z z-white" style="left:371px;top:2292px;width:608px;height:400px"><span class="zn">10</span></div>
+      <div class="z z-white" style="left:999px;top:1455px;width:2050px;height:930px">
+        <span class="zn">11</span>
+        <div class="z z-ghost" style="left:485px;top:214px;width:328px;height:102px"><span class="zn">11b</span></div>
+      </div>
+      {% for i in 0..10 %}
+      <div class="z z-back z-blue" style="left:{{ 999 + i * 207 }}px;top:2405px;width:187px;height:287px">{% if i == 0 %}<span class="zn">12</span>{% endif %}</div>
+      {% endfor %}
+      <div class="z z-panel p-res" style="left:3069px;top:1455px;width:834px;height:637px"><span class="zn">13</span><h3>RESOURCES</h3></div>
+      <div class="z z-back z-blue" style="left:3069px;top:2102px;width:374px;height:590px">
+        <span class="zn">14</span>
+        <ul class="deck-kpis"><li>Stabilité</li><li>Traffic</li><li>Taux de réponse</li><li>Taux de disponibilité</li><li>Taux de click</li><li>Temps de réponse</li><li>Taux de conversion</li></ul>
+      </div>
+      <div class="z z-panel p-cost" style="left:3463px;top:2102px;width:440px;height:290px"><span class="zn">15</span><h3>COST EXPLORER</h3></div>
+      <div class="z z-panel p-bud" style="left:3463px;top:2402px;width:140px;height:140px"><span class="zn">16</span><h3>BUDGETS</h3><div class="v">$25.000,00</div></div>
+      <div class="z z-panel p-dep" style="left:3613px;top:2402px;width:140px;height:140px"><span class="zn">17</span><h3>DEPLOYS</h3><div class="v">5/5</div></div>
+      <div class="z z-panel p-org" style="left:3463px;top:2552px;width:290px;height:140px"><span class="zn">18</span><h3>ORGANIGRAMME</h3></div>
+      <div class="z z-panel p-kpi" style="left:3763px;top:2402px;width:140px;height:290px"><span class="zn">19</span><h3>KPI</h3>
+        <ul><li>CTR 100%</li><li>STB 85%</li><li>ART</li><li>CVR</li><li>???</li><li>???</li><li>???</li><li>???</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="board-legend">
+    <div><b>1</b>Grande carte rouge (adversaire)</div>
+    <div><b>2</b>10 petites cartes rouges (adversaire)</div>
+    <div><b>3</b>Grande zone haute</div>
+    <div><b>4 5 6</b>Colonne de droite, en haut</div>
+    <div><b>7</b>Colonne étroite de gauche</div>
+    <div><b>8 9 10</b>Trois zones de gauche</div>
+    <div><b>11</b>Grande zone basse (11b : encart)</div>
+    <div><b>12</b>10 petites cartes bleues</div>
+    <div><b>13</b>Resources</div>
+    <div><b>14</b>Grande carte bleue (avec la liste des KPI)</div>
+    <div><b>15</b>Cost Explorer</div>
+    <div><b>16</b>Budgets · <b>17</b>Deploys</div>
+    <div><b>18</b>Organigramme · <b>19</b>KPI</div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const fit = document.getElementById("board-fit");
+  const board = document.getElementById("board");
+  const resize = () => board.style.setProperty("--s", fit.clientWidth / 4048);
+  new ResizeObserver(resize).observe(fit);
+  resize();
+  document.getElementById("board-num").addEventListener("change", (e) => board.classList.toggle("no-num", !e.target.checked));
+})();
+</script>
+{% endblock %}

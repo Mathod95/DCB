@@ -205,6 +205,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/", get(menu))
         .route("/gallery", get(gallery))
+        .route("/plateau", get(board_page))
         .route("/regles", get(rules_page))
         .route("/regles/concepts", get(concepts_page))
         .route("/regles/{page}", get(doc_page))
@@ -390,6 +391,13 @@ async fn foil_texture(Path(name): Path<String>) -> Response {
 
 async fn menu(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Html<String>> {
     menu_page(&s, s.ctx_for(u.as_ref())).await
+}
+
+/// Maquette du plateau de jeu, publique.
+async fn board_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Html<String>> {
+    render(BoardPage {
+        ctx: s.ctx_for(u.as_ref()),
+    })
 }
 
 /// Accueil, aussi rendu par `/login` avec le panneau de connexion ouvert.
