@@ -1,4 +1,4 @@
-<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}" data-title="{{ card.title }}" data-desc="{{ card.desc_style }}" data-refs="{{ card.refs }}" data-relief="{{ card.relief }}">
+<div class="card" data-type="{{ card.type_slug }}" data-skin="{{ card.skin }}" data-foil="{{ card.foil }}" data-shape="{{ card.shape }}" data-size="{{ card.size }}" data-badge="{{ card.badge }}" data-title="{{ card.title }}" data-desc="{{ card.desc_style }}" data-refs="{{ card.refs }}" data-relief="{{ card.relief }}" data-effect="{{ card.effect_style }}">
   <div class="card-skin">{{ card.fx|safe }}</div>
 
   <div class="card-block card-name" data-size="{{ card.name_size }}"><span{% if card.data_text %} data-text="{{ card.name }}"{% endif %}>{{ card.name }}</span></div>
@@ -29,10 +29,18 @@
   </div>
   {% endif %}
 
+  {% if card.effect_style == "code" -%}
+  {#- Bloc Effect façon éditeur : nom de fichier choisi, une ligne YAML par effet -#}
+  <div class="card-block card-effect card-code">
+    <div class="code-head"><span class="code-file">{{ card.effect_file }}</span></div>
+    <ol class="code-body">{% for r in card.effect_rows %}{{ r|safe }}{% endfor %}</ol>
+  </div>
+  {%- else -%}
   <div class="card-block card-effect">
     <p class="card-block-title">Effect</p>
     <p class="card-block-text">{% if card.desc_style == "comment" && !card.description.trim().is_empty() %}<span class="card-comment"># {{ card.description }}</span>{% endif %}{% if let Some(h) = card.effect_html %}{{ h|safe }}{% else %}{{ card.effect }}{% endif %}</p>
   </div>
+  {%- endif %}
 
   {#- Deux cases de coût ; en taille compacte, des chips avec icône (fusée, pièce) -#}
   <div class="card-stat card-stat-deploy">

@@ -17,6 +17,7 @@ use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use dcb_core::DescStyle;
+use dcb_core::EffectStyle;
 use dcb_core::Refs;
 use dcb_core::Relief;
 use dcb_core::{
@@ -437,7 +438,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 9] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 10] = [
         (
             "type",
             "Type",
@@ -487,6 +488,17 @@ async fn gallery(
             "Relief",
             "Tous",
             options(Relief::ALL, Relief::slug, Relief::label, |_| None),
+        ),
+        (
+            "effect",
+            "Bloc Effect",
+            "Tous",
+            options(
+                EffectStyle::ALL,
+                EffectStyle::slug,
+                EffectStyle::label,
+                |_| None,
+            ),
         ),
         (
             "refs",
@@ -974,6 +986,17 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.relief, Relief::Flat, "relief", &mut errors)
         },
+        effect_style: if v.effect_style.is_empty() {
+            EffectStyle::Text
+        } else {
+            pick(
+                &v.effect_style,
+                EffectStyle::Text,
+                "effect_style",
+                &mut errors,
+            )
+        },
+        effect_file: v.effect_file.clone(),
         refs: if v.refs.is_empty() {
             Refs::Plain
         } else {
@@ -1101,6 +1124,8 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "title" => v.title = text,
             "desc_style" => v.desc_style = text,
             "relief" => v.relief = text,
+            "effect_style" => v.effect_style = text,
+            "effect_file" => v.effect_file = text,
             "refs" => v.refs = text,
             "description" => v.description = text,
             "effect" => v.effect = text,
@@ -1269,6 +1294,10 @@ struct PreviewForm {
     #[serde(default)]
     relief: String,
     #[serde(default)]
+    effect_style: String,
+    #[serde(default)]
+    effect_file: String,
+    #[serde(default)]
     refs: String,
     #[serde(default)]
     description: String,
@@ -1306,6 +1335,8 @@ async fn preview(
         title: f.title,
         desc_style: f.desc_style,
         relief: f.relief,
+        effect_style: f.effect_style,
+        effect_file: f.effect_file,
         refs: f.refs,
         description: f.description,
         effect: f.effect,
@@ -1359,6 +1390,9 @@ async fn api_meta() -> Json<serde_json::Value> {
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "desc_styles": DescStyle::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
+        })).collect::<Vec<_>>(),
+        "effect_styles": EffectStyle::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "reliefs": Relief::ALL.iter().map(|t| serde_json::json!({

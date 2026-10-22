@@ -564,5 +564,9 @@ term = "Cartes citées"
 text = "Les noms d'autres cartes dans l'effet prennent la couleur de leur type."
 
 [[settings.items]]
+term = "Bloc Effect"
+text = "En texte, ou façon éditeur de code avec le nom de fichier de votre choix."
+
+[[settings.items]]
 term = "Relief"
 text = "Ombre douce des blocs, avec la skin Light."

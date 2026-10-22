@@ -144,6 +144,27 @@
       </div>
 
       <div class="field">
+        <span class="label">Bloc Effect</span>
+        <div class="segmented">
+          {% for c in effect_styles %}
+          <label class="seg">
+            <input type="radio" name="effect_style" value="{{ c.value }}"{% if values.effect_style.as_str() == c.value %} checked{% endif %}>
+            <span>{{ c.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="field-hint">Code: bloc façon éditeur, une ligne YAML par effet, avec le nom de fichier ci-dessous en titre.</p>
+        <p class="field-error">{{ self.error("effect_style") }}</p>
+      </div>
+
+      <div class="field">
+        <label for="f-effect-file">Nom du fichier</label>
+        <input id="f-effect-file" name="effect_file" value="{{ values.effect_file }}" maxlength="{{ lim_effect_file }}" placeholder="effect.yaml" autocomplete="off" spellcheck="false">
+        <p class="field-hint">Titre du bloc Effect façon code. Vide: effect.yaml.</p>
+        <p class="field-error">{{ self.error("effect_file") }}</p>
+      </div>
+
+      <div class="field">
         <span class="label">Cartes citées</span>
         <div class="segmented">
           {% for c in refs_options %}

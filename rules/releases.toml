@@ -3,6 +3,16 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.10"
+date = "2026-10-22"
+title = "Le bloc Effect façon code"
+new = [
+  "Bloc Effect façon éditeur de code : une ligne YAML par effet, nombres et clés en couleur",
+  "Nom de fichier libre en tête du bloc (effect.yaml par défaut, main.tf, deploy.sh…)",
+  "Avec la description en commentaire et les cartes citées, tout s'affiche dans le code",
+]
+
+[[releases]]
 version = "v0.9"
 date = "2026-10-22"
 title = "La documentation en catégories"

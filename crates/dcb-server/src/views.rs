@@ -2,6 +2,7 @@
 
 use askama::Template;
 use dcb_core::DescStyle;
+use dcb_core::EffectStyle;
 use dcb_core::Refs;
 use dcb_core::Relief;
 use dcb_core::{
@@ -105,7 +106,13 @@ pub struct CardView {
     pub desc_style_label: &'static str,
     /// Relief des blocs (`data-relief` sur la carte).
     pub relief: &'static str,
+    pub effect_style: &'static str,
     pub relief_label: &'static str,
+    pub effect_style_label: &'static str,
+    /// Nom de fichier en tête du bloc Effect façon code.
+    pub effect_file: String,
+    /// Lignes du bloc Effect façon code (`<li>…</li>`), avec les cartes citées si demandé.
+    pub effect_rows: Vec<String>,
     /// Cartes citées dans l'effet (`data-refs` sur la carte).
     pub refs: &'static str,
     pub refs_label: &'static str,
@@ -209,6 +216,23 @@ impl CardView {
     pub fn cite(mut self, idx: &RefIndex, link: bool) -> Self {
         if self.refs == "linked" {
             self.effect_html = Some(cite_html(&self.effect, idx, &self.name, link));
+            if self.effect_style == "code" {
+                // même rendu YAML, avec les noms des autres cartes à la couleur de leur type
+                let own = self.name.trim().to_lowercase();
+                let refs: Vec<(String, CardType)> = idx
+                    .0
+                    .iter()
+                    .filter(|(n, _, _)| *n != own)
+                    .map(|(n, _, t)| (n.clone(), *t))
+                    .collect();
+                let mut rows = crate::concepts::effect_rows(&self.effect, &refs);
+                if let Some(first) = self.effect_rows.first()
+                    && first.starts_with(r#"<li class="y-c">"#)
+                {
+                    rows.insert(0, first.clone());
+                }
+                self.effect_rows = rows;
+            }
         }
         self
     }
@@ -250,7 +274,19 @@ impl CardView {
             desc_style: d.desc_style.slug(),
             desc_style_label: d.desc_style.label(),
             relief: d.relief.slug(),
+            effect_style: d.effect_style.slug(),
             relief_label: d.relief.label(),
+            effect_style_label: d.effect_style.label(),
+            effect_file: if d.effect_file.trim().is_empty() {
+                "effect.yaml".to_owned()
+            } else {
+                d.effect_file.trim().to_owned()
+            },
+            effect_rows: if d.effect_style == EffectStyle::Code {
+                code_rows(d, &[])
+            } else {
+                Vec::new()
+            },
             refs: d.refs.slug(),
             refs_label: d.refs.label(),
             description: d.description.clone(),
@@ -332,6 +368,33 @@ pub fn refs_choices() -> Vec<Choice> {
             color: None,
         })
         .collect()
+}
+
+pub fn effect_style_choices() -> Vec<Choice> {
+    EffectStyle::ALL
+        .iter()
+        .map(|t| Choice {
+            value: t.slug(),
+            label: t.label(),
+            color: None,
+        })
+        .collect()
+}
+
+/// Lignes YAML du bloc Effect façon code : la description en commentaire si elle y est placée
+/// (`desc_style` = comment), puis une ligne par effet.
+fn code_rows(d: &CardDraft, refs: &[(String, CardType)]) -> Vec<String> {
+    let mut rows = crate::concepts::effect_rows(&d.effect, refs);
+    if d.desc_style == DescStyle::Comment && !d.description.trim().is_empty() {
+        rows.insert(
+            0,
+            format!(
+                r#"<li class="y-c"><span class="y-comment"># {}</span></li>"#,
+                esc_html(d.description.trim())
+            ),
+        );
+    }
+    rows
 }
 
 pub fn relief_choices() -> Vec<Choice> {
@@ -468,6 +531,8 @@ pub struct FormValues {
     pub title: String,
     pub desc_style: String,
     pub relief: String,
+    pub effect_style: String,
+    pub effect_file: String,
     pub refs: String,
     pub description: String,
     pub effect: String,
@@ -490,6 +555,8 @@ impl FormValues {
             title: d.title.slug().into(),
             desc_style: d.desc_style.slug().into(),
             relief: d.relief.slug().into(),
+            effect_style: d.effect_style.slug().into(),
+            effect_file: d.effect_file.clone(),
             refs: d.refs.slug().into(),
             description: d.description.clone(),
             effect: d.effect.clone(),
@@ -511,6 +578,8 @@ impl FormValues {
             title: Title::Block.slug().into(),
             desc_style: DescStyle::Classic.slug().into(),
             relief: Relief::Flat.slug().into(),
+            effect_style: EffectStyle::Text.slug().into(),
+            effect_file: String::new(),
             refs: Refs::Plain.slug().into(),
             deploy_cost: "0".into(),
             daily_cost: "0".into(),
@@ -538,8 +607,10 @@ pub struct FormPage {
     pub titles: Vec<Choice>,
     pub desc_styles: Vec<Choice>,
     pub reliefs: Vec<Choice>,
+    pub effect_styles: Vec<Choice>,
     pub refs_options: Vec<Choice>,
     pub lim_name: usize,
+    pub lim_effect_file: usize,
     pub lim_description: usize,
     pub lim_effect: usize,
     pub lim_flavor: usize,
@@ -572,8 +643,10 @@ impl FormPage {
             titles: title_choices(),
             desc_styles: desc_style_choices(),
             reliefs: relief_choices(),
+            effect_styles: effect_style_choices(),
             refs_options: refs_choices(),
             lim_name: limits::NAME,
+            lim_effect_file: limits::EFFECT_FILE,
             lim_description: limits::DESCRIPTION,
             lim_effect: limits::EFFECT,
             lim_flavor: limits::FLAVOR,
@@ -886,6 +959,7 @@ impl AnatomyView {
                 d.title = Title::Block;
                 d.desc_style = DescStyle::Classic;
                 d.relief = Relief::Flat;
+                d.effect_style = EffectStyle::Text;
                 d.refs = Refs::Plain;
                 d.size = Size::Normal;
                 CardView::new(Some(&c.slug), &d)

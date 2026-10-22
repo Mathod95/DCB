@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 /// Limites de saisie, calées sur la place disponible dans le gabarit Figma (374×574).
 pub mod limits {
     pub const NAME: usize = 24;
+    /// Nom de fichier du bloc Effect façon code.
+    pub const EFFECT_FILE: usize = 32;
     pub const DESCRIPTION: usize = 120;
     pub const EFFECT: usize = 220;
     pub const FLAVOR: usize = 60;
@@ -194,6 +196,23 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Présentation du bloc Effect. `Text` : titre « Effect » et texte (Figma) ; `Code` : bloc
+    /// façon éditeur, avec un nom de fichier (`effect_file`, `effect.yaml` par défaut) et une
+    /// ligne YAML par effet.
+    EffectStyle {
+        Text => "text", "Texte",
+        Code => "code", "Code",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for EffectStyle {
+    fn default() -> Self {
+        EffectStyle::Text
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for Relief {
     fn default() -> Self {
@@ -273,6 +292,12 @@ pub struct CardDraft {
     /// Relief des blocs ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub relief: Relief,
+    /// Présentation du bloc Effect ; absente des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub effect_style: EffectStyle,
+    /// Nom de fichier affiché en tête du bloc Effect façon code (vide : `effect.yaml`).
+    #[serde(default)]
+    pub effect_file: String,
     /// Cartes citées dans l'effet ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub refs: Refs,
@@ -366,6 +391,7 @@ impl CardDraft {
     pub fn validated(mut self) -> Result<Self, Vec<FieldError>> {
         self.name = self.name.trim().to_owned();
         self.description = self.description.trim().to_owned();
+        self.effect_file = self.effect_file.trim().to_owned();
         self.effect = normalize_multiline(&self.effect);
         self.flavor_text = self.flavor_text.trim().to_owned();
 
@@ -382,6 +408,7 @@ impl CardDraft {
         check_len("name", &self.name, limits::NAME);
         check_len("description", &self.description, limits::DESCRIPTION);
         check_len("effect", &self.effect, limits::EFFECT);
+        check_len("effect_file", &self.effect_file, limits::EFFECT_FILE);
         check_len("flavor_text", &self.flavor_text, limits::FLAVOR);
 
         if self.name.is_empty() {
@@ -466,6 +493,8 @@ mod tests {
             title: Title::Block,
             desc_style: DescStyle::Classic,
             relief: Relief::Flat,
+            effect_style: EffectStyle::Text,
+            effect_file: String::new(),
             refs: Refs::Plain,
             description: "GitOps".into(),
             effect: "\r\n- Ajoute +1 deployment MAX  \r\n- Multi environment\r\n\r\n".into(),
@@ -522,6 +551,15 @@ mod tests {
             assert_eq!(t.slug().parse::<Refs>().unwrap(), *t);
         }
         assert!("nope".parse::<Refs>().is_err());
+    }
+
+    #[test]
+    fn effect_style_round_trip() {
+        assert_eq!(EffectStyle::default(), EffectStyle::Text);
+        for t in EffectStyle::ALL {
+            assert_eq!(t.slug().parse::<EffectStyle>().unwrap(), *t);
+        }
+        assert!("nope".parse::<EffectStyle>().is_err());
     }
 
     #[test]

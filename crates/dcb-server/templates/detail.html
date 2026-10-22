@@ -16,6 +16,7 @@
       <div><dt>Nom</dt><dd>{{ card.title_label }}</dd></div>
       <div><dt>Description</dt><dd>{{ card.desc_style_label }}</dd></div>
       <div><dt>Relief</dt><dd>{{ card.relief_label }}</dd></div>
+      <div><dt>Bloc Effect</dt><dd>{{ card.effect_style_label }}{% if card.effect_style == "code" %} <code>{{ card.effect_file }}</code>{% endif %}</dd></div>
       <div><dt>Cartes citées</dt><dd>{{ card.refs_label }}</dd></div>
     </dl>
     {% if let Some(slug) = card.slug %}

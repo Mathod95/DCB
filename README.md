@@ -108,6 +108,7 @@ Reproduite depuis le composant `card` du fichier Figma DevCardBattle (374×574),
 | Badge de type (`badge`) | Dans le nom (par défaut), Sur l'illustration (pastille avec l'icône du type) |
 | Description (`desc_style`) | Classique (par défaut), Sans titre (le texte gagne une ligne), En commentaire (en tête du bloc Effect, qui gagne 70 px) |
 | Cartes citées (`refs`) | Texte simple (par défaut), Cartes citées (le nom d'une autre carte dans l'effet prend la couleur de son type et mène à elle depuis la fiche) |
+| Bloc Effect (`effect_style`, `effect_file`) | Texte (par défaut), Code (bloc façon éditeur, une ligne YAML par effet, nom de fichier libre, `effect.yaml` par défaut) |
 | Relief (`relief`) | Plat (par défaut), En relief (ombre douce des blocs, skin Light) |
 | Nom (`title`) | Dans son bloc (par défaut), Sur l'illustration (en bas de l'image agrandie, le type passe en badge) |
 | Finition (`foil`, fait office de rareté) | Basic, Gold (overlay doré du Figma), Étoiles, Paillettes, Éclats, Irisé, avec un reflet qui suit la souris |

@@ -1679,3 +1679,82 @@ async fn documentation_pages_with_releases_and_roadmap() {
     assert!(road.contains(r#"href="/regles/releases#v0.8""#));
     assert!(road.contains(r#"href="/regles/concepts""#));
 }
+
+#[tokio::test]
+async fn effect_block_can_be_code_with_a_chosen_file_name() {
+    let t = app(&[
+        ("ddos.toml", DDOS),
+        (
+            "appset.toml",
+            "name = \"APPLICATION SET\"\ntype = \"app\"\n",
+        ),
+    ])
+    .await;
+    // par défaut : bloc Effect en texte, rien d'écrit dans le fichier
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-effect="text""#) && !body.contains("card-code"));
+
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields(
+                "Code Pod",
+                &[
+                    ("effect_style", b"code"),
+                    ("effect_file", b"  deploy.sh "),
+                    ("desc_style", b"comment"),
+                    ("refs", b"linked"),
+                    ("effect", b"- Debloque Application Set\r\n- Rapporte +2 KPI"),
+                ],
+            ),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("code-pod.toml")).unwrap();
+    assert!(
+        toml.contains("effect_style = \"code\"") && toml.contains("effect_file = \"deploy.sh\""),
+        "{toml}"
+    );
+    let (_, _, body) = send(&t.app, get("/cards/code-pod")).await;
+    assert!(
+        body.contains(r#"<span class="code-file">deploy.sh</span>"#),
+        "{body}"
+    );
+    assert!(body.contains(r#"<span class="y-num">+2</span>"#));
+    assert!(body.contains(
+        r#"<li class="y-c"><span class="y-comment"># Le cluster ne répond plus</span></li>"#
+    ));
+    assert!(body.contains(r#"<span class="y-ref" data-type="app">Application Set</span>"#));
+
+    // sans nom de fichier : effect.yaml ; nom trop long refusé
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("Yaml Pod", &[("effect_style", b"code")]),
+        ),
+    )
+    .await;
+    let (_, _, body) = send(&t.app, get("/cards/yaml-pod")).await;
+    assert!(body.contains(r#"<span class="code-file">effect.yaml</span>"#));
+    let toml = std::fs::read_to_string(t.cards().join("yaml-pod.toml")).unwrap();
+    assert!(!toml.contains("effect_file"), "{toml}");
+    let long = "x".repeat(40);
+    let (status, _, _) = send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields(
+                "Long Pod",
+                &[("effect_style", b"code"), ("effect_file", long.as_bytes())],
+            ),
+        ),
+    )
+    .await;
+    assert_ne!(status, StatusCode::SEE_OTHER);
+    let (_, _, body) = send(&t.app, get("/gallery?effect=code")).await;
+    assert!(body.contains("Code Pod") && !body.contains("aria-label=\"DDOS\""));
+    let (_, _, form_page) = send(&t.app, get("/cards/new")).await;
+    assert!(form_page.contains(r#"name="effect_file""#) && form_page.contains(r#"value="code""#));
+}

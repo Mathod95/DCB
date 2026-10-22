@@ -38,6 +38,11 @@ text = "Inviter un joueur, jouer à deux"
 
 [[items]]
 status = "done"
+title = "Bloc Effect façon code"
+release = "v0.10"
+
+[[items]]
+status = "done"
 title = "Documentation en catégories"
 release = "v0.9"
 

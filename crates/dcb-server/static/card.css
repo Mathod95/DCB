@@ -304,6 +304,56 @@ a.card-ref:hover { text-decoration-style: solid; }
 }
 .card[data-relief="soft"][data-title="image"] .card-block.card-name { box-shadow: none; }
 
+/* Bloc Effect façon éditeur de code (champ `effect_style` = code), mêmes cotes que le bloc
+   Effect : en-tête avec le nom de fichier (`effect_file`), une ligne YAML par effet. Repris de
+   la page Carte DCB v2. Le fond reste sombre quelle que soit la skin. */
+.card-code {
+  --code-bg: #0b1120;
+  --code-head: #111a2e;
+  --code-line: #1e293b;
+  border-radius: 6px;
+  background: var(--code-bg);
+  border-color: var(--code-line);
+  font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+.card[data-skin="dark"] .card-code { --code-bg: #060a14; --code-head: #0d1424; border-color: #334155; }
+.code-head {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  background: var(--code-head);
+  border-bottom: 1px solid var(--code-line);
+  font-size: 14px;
+  color: #94a3b8;
+}
+.code-file { font-weight: 700; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.code-body {
+  list-style: none;
+  margin: 0;
+  padding: 5px 8px 0 9px;
+  font-size: 11px;
+  line-height: 15px;
+  color: #e2e8f0;
+}
+.code-body li { display: grid; grid-template-columns: 13px 1fr; }
+.code-body li > .y-dash:only-child { grid-column: 1 / -1; }
+.code-body li.y-c { display: block; padding-left: 2ch; text-indent: -2ch; margin-bottom: 3px; }
+.code-body li.y-c .y-comment { color: #7c8aa3; }
+.y-val { min-width: 0; overflow-wrap: anywhere; }
+.y-dash { color: #64748b; }
+.y-key { color: #7dd3fc; }
+.y-num { color: #fdba74; }
+.y-comment { color: #64748b; font-style: italic; }
+.y-ref { --rtype: #94a3b8; color: color-mix(in srgb, var(--rtype) 65%, #fff); text-decoration: underline dotted; text-underline-offset: 2px; }
+.y-ref[data-type="resource"] { --rtype: #38bdf8; }
+.y-ref[data-type="incident"] { --rtype: #f83838; }
+.y-ref[data-type="hr"]       { --rtype: #6d68ff; }
+.y-ref[data-type="app"]      { --rtype: #f88838; }
+.y-ref[data-type="event"]    { --rtype: #a538f8; }
+.card[data-relief="soft"][data-skin="light"] .card-block.card-code { border-color: var(--code-line); }
+
 /* Texte d'ambiance */
 .card-flavor {
   position: absolute;
