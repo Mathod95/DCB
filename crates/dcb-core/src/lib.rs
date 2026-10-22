@@ -231,6 +231,14 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Filtre de la galerie : cartes avec ou sans illustration (pas un réglage de la carte).
+    ArtPresence {
+        With => "with", "Avec",
+        Without => "without", "Sans",
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for CardVersion {
     fn default() -> Self {

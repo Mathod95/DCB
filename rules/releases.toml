@@ -3,6 +3,12 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.13.2"
+date = "2026-10-22"
+title = "Filtre Illustration"
+new = ["Galerie : filtre Illustration, pour voir les cartes avec ou sans image (aussi dans l'API, `?art=with` ou `?art=without`)"]
+
+[[releases]]
 version = "v0.13.1"
 date = "2026-10-22"
 title = "Préprod"

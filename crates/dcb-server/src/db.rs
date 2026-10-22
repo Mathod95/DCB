@@ -6,6 +6,7 @@
 
 use std::str::FromStr;
 
+use dcb_core::ArtPresence;
 use dcb_core::Background;
 use dcb_core::CardVersion;
 use dcb_core::EffectStyle;
@@ -95,8 +96,8 @@ macro_rules! columns {
 
 /// Réglages filtrables, dans l'ordre de la galerie : clé d'URL et valeur de la carte.
 pub const FILTER_KEYS: &[&str] = &[
-    "type", "foil", "shape", "size", "badge", "title", "desc", "refs", "relief", "bg", "version",
-    "effect",
+    "type", "art", "foil", "shape", "size", "badge", "title", "desc", "refs", "relief", "bg",
+    "version", "effect",
 ];
 
 /// Filtre de la galerie et de l'API : dans un même réglage, les valeurs choisies s'additionnent
@@ -105,6 +106,7 @@ pub const FILTER_KEYS: &[&str] = &[
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Filter {
     pub card_types: Vec<CardType>,
+    pub arts: Vec<ArtPresence>,
     pub foils: Vec<Foil>,
     pub shapes: Vec<Shape>,
     pub sizes: Vec<Size>,
@@ -119,9 +121,17 @@ pub struct Filter {
 }
 
 /// Valeur d'un réglage sur une carte, sous la forme de son slug.
-pub fn field(d: &CardDraft, key: &str) -> &'static str {
+pub fn field(c: &Card, key: &str) -> &'static str {
+    if key == "art" {
+        let art = if c.draft.art.is_some() {
+            ArtPresence::With
+        } else {
+            ArtPresence::Without
+        };
+        return art.slug();
+    }
     // les filtres portent sur ce que la carte affiche (une carte v2 est compacte, etc.)
-    let d = &d.effective();
+    let d = &c.draft.effective();
     match key {
         "type" => d.card_type.slug(),
         "foil" => d.foil.slug(),
@@ -170,6 +180,7 @@ impl Filter {
             }
             match k.as_str() {
                 "type" => push(&mut f.card_types, v, strict)?,
+                "art" => push(&mut f.arts, v, strict)?,
                 "foil" => push(&mut f.foils, v, strict)?,
                 "shape" => push(&mut f.shapes, v, strict)?,
                 "size" => push(&mut f.sizes, v, strict)?,
@@ -191,6 +202,7 @@ impl Filter {
     pub fn values(&self, key: &str) -> Vec<&'static str> {
         match key {
             "type" => self.card_types.iter().map(|v| v.slug()).collect(),
+            "art" => self.arts.iter().map(|v| v.slug()).collect(),
             "foil" => self.foils.iter().map(|v| v.slug()).collect(),
             "shape" => self.shapes.iter().map(|v| v.slug()).collect(),
             "size" => self.sizes.iter().map(|v| v.slug()).collect(),
@@ -211,18 +223,18 @@ impl Filter {
     }
 
     /// La carte passe le filtre, en ignorant éventuellement un réglage (compteurs de la galerie).
-    pub fn matches_except(&self, d: &CardDraft, skip: Option<&str>) -> bool {
+    pub fn matches_except(&self, c: &Card, skip: Option<&str>) -> bool {
         FILTER_KEYS.iter().all(|&k| {
             if skip == Some(k) {
                 return true;
             }
             let vals = self.values(k);
-            vals.is_empty() || vals.contains(&field(d, k))
+            vals.is_empty() || vals.contains(&field(c, k))
         })
     }
 
-    pub fn matches(&self, d: &CardDraft) -> bool {
-        self.matches_except(d, None)
+    pub fn matches(&self, c: &Card) -> bool {
+        self.matches_except(c, None)
     }
 
     /// Paires `clé=valeur` du filtre, dans l'ordre des réglages.
@@ -248,10 +260,7 @@ pub async fn list(pool: &SqlitePool, filter: Filter) -> sqlx::Result<Vec<Card>> 
         .into_iter()
         .map(Card::try_from)
         .collect::<sqlx::Result<Vec<Card>>>()?;
-    Ok(cards
-        .into_iter()
-        .filter(|c| filter.matches(&c.draft))
-        .collect())
+    Ok(cards.into_iter().filter(|c| filter.matches(c)).collect())
 }
 
 pub async fn get(pool: &SqlitePool, slug: &str) -> sqlx::Result<Option<Card>> {

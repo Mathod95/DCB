@@ -1878,3 +1878,23 @@ async fn card_v2_applies_the_final_card_settings() {
     assert!(body.contains(r#"data-version="v2""#) && body.contains(r#"data-relief="flat""#));
     assert!(!body.contains(r#"data-relief="soft""#));
 }
+
+#[tokio::test]
+async fn gallery_filters_cards_with_or_without_art() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    send(
+        &t.app,
+        multipart("/cards", &card_fields("Crash Loop", &[("art", PNG)])),
+    )
+    .await;
+    let (_, _, body) = send(&t.app, get("/gallery?art=with")).await;
+    assert!(body.contains(r#"aria-label="Crash Loop""#) && !body.contains(r#"aria-label="DDOS""#));
+    let (_, _, body) = send(&t.app, get("/gallery?art=without")).await;
+    assert!(!body.contains(r#"aria-label="Crash Loop""#) && body.contains(r#"aria-label="DDOS""#));
+    // les deux cochés : toutes les cartes
+    let (_, _, body) = send(&t.app, get("/gallery?art=with&art=without")).await;
+    assert!(body.contains(r#"aria-label="Crash Loop""#) && body.contains(r#"aria-label="DDOS""#));
+    let (status, _, json) = send(&t.app, get("/api/cards?art=without")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(json.contains("DDOS") && !json.contains("Crash Loop"));
+}

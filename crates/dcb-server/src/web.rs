@@ -16,6 +16,7 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
+use dcb_core::ArtPresence;
 use dcb_core::Background;
 use dcb_core::CardVersion;
 use dcb_core::DescStyle;
@@ -685,7 +686,7 @@ async fn gallery(
         let owned = s.owned_by(user.id);
         all.retain(|c| owned.contains(&c.slug));
     }
-    let cards: Vec<&Card> = all.iter().filter(|c| filter.matches(&c.draft)).collect();
+    let cards: Vec<&Card> = all.iter().filter(|c| filter.matches(c)).collect();
     // Affichage (panneau de droite) : réglages appliqués à toutes les cartes de la galerie, sans
     // toucher aux fichiers.
     let view = GalleryView::from_pairs(&q);
@@ -703,7 +704,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 12] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 13] = [
         (
             "type",
             "Type",
@@ -711,6 +712,17 @@ async fn gallery(
             options(CardType::ALL, CardType::slug, CardType::label, |t| {
                 Some(t.color())
             }),
+        ),
+        (
+            "art",
+            "Illustration",
+            "Toutes",
+            options(
+                ArtPresence::ALL,
+                ArtPresence::slug,
+                ArtPresence::label,
+                |_| None,
+            ),
         ),
         (
             "foil",
@@ -825,8 +837,7 @@ async fn gallery(
                         count: all
                             .iter()
                             .filter(|c| {
-                                db::field(&c.draft, key) == value
-                                    && filter.matches_except(&c.draft, Some(key))
+                                db::field(c, key) == value && filter.matches_except(c, Some(key))
                             })
                             .count(),
                     }
