@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use dcb_core::Background;
+use dcb_core::CardVersion;
 use dcb_core::DescStyle;
 use dcb_core::EffectStyle;
 use dcb_core::Refs;
@@ -49,6 +50,9 @@ struct CardFile {
     /// Fond de la carte, absent du fichier quand c'est `plain`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     background: Option<String>,
+    /// Version de la carte, absente du fichier quand c'est `v1`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
     /// Bloc Effect façon code, absent du fichier quand c'est `text`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     effect_style: Option<String>,
@@ -95,6 +99,7 @@ impl From<&CardDraft> for CardFile {
                 .then(|| d.desc_style.slug().to_owned()),
             relief: (d.relief != Relief::Flat).then(|| d.relief.slug().to_owned()),
             background: (d.background != Background::Plain).then(|| d.background.slug().to_owned()),
+            version: (d.version != CardVersion::V1).then(|| d.version.slug().to_owned()),
             effect_style: (d.effect_style != EffectStyle::Text)
                 .then(|| d.effect_style.slug().to_owned()),
             effect_file: (!d.effect_file.is_empty()).then(|| d.effect_file.clone()),
@@ -188,6 +193,17 @@ impl TryFrom<CardFile> for CardDraft {
                 )
             })?,
         };
+        let version = match f.version.as_deref().map(str::trim) {
+            None | Some("") => CardVersion::V1,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = CardVersion::ALL.iter().map(|t| t.slug()).collect();
+                format!(
+                    "version {:?} inconnue (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         let background = match f.background.as_deref().map(str::trim) {
             None | Some("") => Background::Plain,
             Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
@@ -232,6 +248,7 @@ impl TryFrom<CardFile> for CardDraft {
             desc_style,
             relief,
             background,
+            version,
             effect_style,
             effect_file: f.effect_file.unwrap_or_default(),
             refs,
@@ -455,6 +472,7 @@ mod tests {
             desc_style: DescStyle::Comment,
             relief: Relief::Soft,
             background: Background::Tinted,
+            version: CardVersion::V2,
             effect_style: EffectStyle::Code,
             effect_file: "deploy.sh".into(),
             refs: Refs::Linked,
@@ -493,6 +511,7 @@ mod tests {
         assert!(text.contains("desc_style = \"comment\""), "{text}");
         assert!(text.contains("relief = \"soft\""), "{text}");
         assert!(text.contains("background = \"tinted\""), "{text}");
+        assert!(text.contains("version = \"v2\""), "{text}");
         assert!(text.contains("effect_style = \"code\""), "{text}");
         assert!(text.contains("effect_file = \"deploy.sh\""), "{text}");
         assert!(text.contains("refs = \"linked\""), "{text}");

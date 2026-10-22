@@ -1838,3 +1838,43 @@ async fn tinted_background_combines_with_any_shape() {
     let (_, _, meta) = send(&t.app, get("/api/meta")).await;
     assert!(meta.contains("\"backgrounds\"") && meta.contains("\"thin\""));
 }
+
+#[tokio::test]
+async fn card_v2_applies_the_final_card_settings() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("V2 Pod", &[("version", b"v2"), ("shape", b"neon")]),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("v2-pod.toml")).unwrap();
+    // le fichier garde ses propres réglages, la v2 s'applique à l'affichage
+    assert!(
+        toml.contains("version = \"v2\"") && toml.contains("shape = \"neon\""),
+        "{toml}"
+    );
+    let (_, _, body) = send(&t.app, get("/cards/v2-pod")).await;
+    for attr in [
+        r#"data-version="v2""#,
+        r#"data-shape="topbar""#,
+        r#"data-size="compact""#,
+        r#"data-relief="soft""#,
+        r#"data-bg="tinted""#,
+        r#"data-effect="code""#,
+        r#"data-refs="linked""#,
+    ] {
+        assert!(body.contains(attr), "{attr}");
+    }
+    // les filtres portent sur ce qui s'affiche
+    let (_, _, body) = send(&t.app, get("/gallery?shape=topbar")).await;
+    assert!(body.contains("V2 Pod") && !body.contains(r#"aria-label="DDOS""#));
+    let (_, _, body) = send(&t.app, get("/gallery?version=v2")).await;
+    assert!(body.contains("V2 Pod") && !body.contains(r#"aria-label="DDOS""#));
+    // l'affichage peut passer toute la galerie en v2, puis changer un réglage par-dessus
+    let (_, _, body) = send(&t.app, get("/gallery?v_version=v2&v_relief=flat")).await;
+    assert!(body.contains(r#"data-version="v2""#) && body.contains(r#"data-relief="flat""#));
+    assert!(!body.contains(r#"data-relief="soft""#));
+}

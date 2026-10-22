@@ -7,6 +7,7 @@
 use std::str::FromStr;
 
 use dcb_core::Background;
+use dcb_core::CardVersion;
 use dcb_core::EffectStyle;
 use dcb_core::Refs;
 use dcb_core::Relief;
@@ -37,6 +38,7 @@ struct CardRow {
     desc_style: String,
     relief: String,
     background: String,
+    version: String,
     effect_style: String,
     effect_file: String,
     refs: String,
@@ -67,6 +69,7 @@ impl TryFrom<CardRow> for Card {
                 desc_style: r.desc_style.parse().map_err(decode)?,
                 relief: r.relief.parse().map_err(decode)?,
                 background: r.background.parse().map_err(decode)?,
+                version: r.version.parse().map_err(decode)?,
                 effect_style: r.effect_style.parse().map_err(decode)?,
                 effect_file: r.effect_file,
                 refs: r.refs.parse().map_err(decode)?,
@@ -85,14 +88,15 @@ impl TryFrom<CardRow> for Card {
 /// Colonnes lues, en macro pour composer des requêtes `&'static str` avec `concat!`.
 macro_rules! columns {
     () => {
-        "slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, refs, relief, background, effect_style, effect_file, description, effect, \
+        "slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, refs, relief, background, version, effect_style, effect_file, description, effect, \
          deploy_cost, daily_cost, flavor_text, art"
     };
 }
 
 /// Réglages filtrables, dans l'ordre de la galerie : clé d'URL et valeur de la carte.
 pub const FILTER_KEYS: &[&str] = &[
-    "type", "foil", "shape", "size", "badge", "title", "desc", "refs", "relief", "bg", "effect",
+    "type", "foil", "shape", "size", "badge", "title", "desc", "refs", "relief", "bg", "version",
+    "effect",
 ];
 
 /// Filtre de la galerie et de l'API : dans un même réglage, les valeurs choisies s'additionnent
@@ -108,6 +112,7 @@ pub struct Filter {
     pub descs: Vec<DescStyle>,
     pub reliefs: Vec<Relief>,
     pub backgrounds: Vec<Background>,
+    pub versions: Vec<CardVersion>,
     pub effect_styles: Vec<EffectStyle>,
     pub refs: Vec<Refs>,
     pub titles: Vec<Title>,
@@ -115,6 +120,8 @@ pub struct Filter {
 
 /// Valeur d'un réglage sur une carte, sous la forme de son slug.
 pub fn field(d: &CardDraft, key: &str) -> &'static str {
+    // les filtres portent sur ce que la carte affiche (une carte v2 est compacte, etc.)
+    let d = &d.effective();
     match key {
         "type" => d.card_type.slug(),
         "foil" => d.foil.slug(),
@@ -124,6 +131,7 @@ pub fn field(d: &CardDraft, key: &str) -> &'static str {
         "desc" => d.desc_style.slug(),
         "relief" => d.relief.slug(),
         "bg" => d.background.slug(),
+        "version" => d.version.slug(),
         "effect" => d.effect_style.slug(),
         "refs" => d.refs.slug(),
         "title" => d.title.slug(),
@@ -169,6 +177,7 @@ impl Filter {
                 "desc" => push(&mut f.descs, v, strict)?,
                 "relief" => push(&mut f.reliefs, v, strict)?,
                 "bg" => push(&mut f.backgrounds, v, strict)?,
+                "version" => push(&mut f.versions, v, strict)?,
                 "effect" => push(&mut f.effect_styles, v, strict)?,
                 "refs" => push(&mut f.refs, v, strict)?,
                 "title" => push(&mut f.titles, v, strict)?,
@@ -189,6 +198,7 @@ impl Filter {
             "desc" => self.descs.iter().map(|v| v.slug()).collect(),
             "relief" => self.reliefs.iter().map(|v| v.slug()).collect(),
             "bg" => self.backgrounds.iter().map(|v| v.slug()).collect(),
+            "version" => self.versions.iter().map(|v| v.slug()).collect(),
             "effect" => self.effect_styles.iter().map(|v| v.slug()).collect(),
             "refs" => self.refs.iter().map(|v| v.slug()).collect(),
             "title" => self.titles.iter().map(|v| v.slug()).collect(),
@@ -266,9 +276,9 @@ where
 {
     let d = &c.draft;
     sqlx::query(
-        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, refs, relief, background, effect_style, effect_file, \
+        "INSERT INTO cards (slug, name, card_type, skin, foil, shape, size, badge, title, desc_style, refs, relief, background, version, effect_style, effect_file, \
                             description, effect, deploy_cost, daily_cost, flavor_text, art) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (slug) DO UPDATE SET \
             name = excluded.name, card_type = excluded.card_type, skin = excluded.skin, \
             foil = excluded.foil, shape = excluded.shape, size = excluded.size, \
@@ -276,6 +286,7 @@ where
             desc_style = excluded.desc_style, \
             relief = excluded.relief, \
             background = excluded.background, \
+            version = excluded.version, \
             effect_style = excluded.effect_style, \
             effect_file = excluded.effect_file, \
             refs = excluded.refs, \
@@ -298,6 +309,7 @@ where
     .bind(d.refs.slug())
     .bind(d.relief.slug())
     .bind(d.background.slug())
+    .bind(d.version.slug())
     .bind(d.effect_style.slug())
     .bind(&d.effect_file)
     .bind(&d.description)

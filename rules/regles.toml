@@ -574,3 +574,7 @@ text = "Uni, ou teinté par la couleur du type ; se combine avec n'importe quel 
 [[settings.items]]
 term = "Relief"
 text = "Ombre douce sous chaque bloc, avec toutes les skins."
+
+[[settings.items]]
+term = "Version"
+text = "Classique (v1), ou Carte v2 : la carte finale, qui fixe le contour, la taille, le nom, la description, le relief, le background, le bloc Effect et les cartes citées. La skin et la finition restent libres."

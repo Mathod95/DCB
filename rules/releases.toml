@@ -3,6 +3,17 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.13"
+date = "2026-10-22"
+title = "La carte v2"
+new = [
+  "Réglage Version de la carte : Classique (v1), chaque réglage comme choisi, ou Carte v2, la carte finale en cours de conception",
+  "Carte v2 : contour barre d'accent, taille compacte, badge et nom sur l'illustration, description en commentaire, relief, background teinté, bloc Effect en code et cartes citées, d'un seul réglage",
+  "Galerie : filtre Version et passage de toutes les cartes en v2 dans le panneau Affichage",
+]
+changed = ["Les filtres de la galerie portent sur ce que la carte affiche : une carte v2 compte comme compacte, en relief…"]
+
+[[releases]]
 version = "v0.12.1"
 date = "2026-10-22"
 title = "Le relief sur toutes les skins"

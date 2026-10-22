@@ -17,6 +17,7 @@ use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use dcb_core::Background;
+use dcb_core::CardVersion;
 use dcb_core::DescStyle;
 use dcb_core::EffectStyle;
 use dcb_core::Refs;
@@ -434,6 +435,7 @@ const VIEW_KEYS: &[(&str, &str)] = &[
     ("v_refs", "Cartes citées"),
     ("v_relief", "Relief"),
     ("v_bg", "Background"),
+    ("v_version", "Version"),
 ];
 
 impl GalleryView {
@@ -480,8 +482,17 @@ impl GalleryView {
     /// La carte telle que la galerie l'affiche.
     fn card(&self, c: &Card, idx: &RefIndex) -> GalleryCard {
         let mut d = c.draft.clone();
+        if let Some((_, v)) = self.draft.iter().find(|(k, _)| k == "v_version") {
+            set_view(&mut d, "v_version", v);
+        }
+        // la v2 fixe ses réglages ; ceux de l'affichage passent ensuite par-dessus
+        let v2 = d.version == CardVersion::V2;
+        let mut d = d.effective();
+        d.version = CardVersion::V1;
         for (k, v) in &self.draft {
-            set_view(&mut d, k, v);
+            if k != "v_version" {
+                set_view(&mut d, k, v);
+            }
         }
         let mut wrap = String::new();
         if let Some((skin, w, _)) = &self.wrap {
@@ -489,6 +500,10 @@ impl GalleryView {
             wrap = w.clone();
         }
         let mut view = CardView::new(Some(&c.slug), &d).cite(idx, false);
+        if v2 {
+            view.version = CardVersion::V2.slug();
+            view.version_label = CardVersion::V2.label();
+        }
         if let Some((_, _, Some(k))) = &self.wrap {
             view.fx = concepts::fx(k, &c.slug);
             view.data_text = matches!(*k, "ascii" | "glitch");
@@ -514,6 +529,7 @@ fn view_value_ok(key: &str, val: &str) -> bool {
         "v_refs" => val.parse::<Refs>().is_ok(),
         "v_relief" => val.parse::<Relief>().is_ok(),
         "v_bg" => val.parse::<Background>().is_ok(),
+        "v_version" => val.parse::<CardVersion>().is_ok(),
         _ => false,
     }
 }
@@ -541,6 +557,7 @@ fn set_view(d: &mut CardDraft, key: &str, val: &str) -> bool {
         "v_refs" => set(&mut d.refs, val),
         "v_relief" => set(&mut d.relief, val),
         "v_bg" => set(&mut d.background, val),
+        "v_version" => set(&mut d.version, val),
         _ => false,
     }
 }
@@ -591,6 +608,7 @@ fn view_groups(s: &AppState, view: &GalleryView) -> Vec<ViewGroup> {
                 "v_effect" => values(EffectStyle::ALL, EffectStyle::slug, EffectStyle::label),
                 "v_refs" => values(Refs::ALL, Refs::slug, Refs::label),
                 "v_bg" => values(Background::ALL, Background::slug, Background::label),
+                "v_version" => values(CardVersion::ALL, CardVersion::slug, CardVersion::label),
                 _ => values(Relief::ALL, Relief::slug, Relief::label),
             };
             if key == "v_skin" {
@@ -663,7 +681,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 11] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 12] = [
         (
             "type",
             "Type",
@@ -721,6 +739,17 @@ async fn gallery(
             options(Background::ALL, Background::slug, Background::label, |_| {
                 None
             }),
+        ),
+        (
+            "version",
+            "Version",
+            "Toutes",
+            options(
+                CardVersion::ALL,
+                CardVersion::slug,
+                CardVersion::label,
+                |_| None,
+            ),
         ),
         (
             "effect",
@@ -1226,6 +1255,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.background, Background::Plain, "background", &mut errors)
         },
+        version: if v.version.is_empty() {
+            CardVersion::V1
+        } else {
+            pick(&v.version, CardVersion::V1, "version", &mut errors)
+        },
         effect_style: if v.effect_style.is_empty() {
             EffectStyle::Text
         } else {
@@ -1365,6 +1399,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "desc_style" => v.desc_style = text,
             "relief" => v.relief = text,
             "background" => v.background = text,
+            "version" => v.version = text,
             "effect_style" => v.effect_style = text,
             "effect_file" => v.effect_file = text,
             "refs" => v.refs = text,
@@ -1537,6 +1572,8 @@ struct PreviewForm {
     #[serde(default)]
     background: String,
     #[serde(default)]
+    version: String,
+    #[serde(default)]
     effect_style: String,
     #[serde(default)]
     effect_file: String,
@@ -1579,6 +1616,7 @@ async fn preview(
         desc_style: f.desc_style,
         relief: f.relief,
         background: f.background,
+        version: f.version,
         effect_style: f.effect_style,
         effect_file: f.effect_file,
         refs: f.refs,
@@ -1637,6 +1675,9 @@ async fn api_meta() -> Json<serde_json::Value> {
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "effect_styles": EffectStyle::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
+        })).collect::<Vec<_>>(),
+        "versions": CardVersion::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "backgrounds": Background::ALL.iter().map(|t| serde_json::json!({

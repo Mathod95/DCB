@@ -222,6 +222,22 @@ text_enum! {
     }
 }
 
+text_enum! {
+    /// Version de la carte. `V1` : chaque réglage comme choisi ; `V2` : la carte finale en cours
+    /// de conception, qui fixe plusieurs réglages d'un coup (voir `CardDraft::effective`).
+    CardVersion {
+        V1 => "v1", "Classique (v1)",
+        V2 => "v2", "Carte v2",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for CardVersion {
+    fn default() -> Self {
+        CardVersion::V1
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for Background {
     fn default() -> Self {
@@ -311,6 +327,9 @@ pub struct CardDraft {
     /// Fond de la carte ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub background: Background,
+    /// Version de la carte ; absente des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub version: CardVersion,
     /// Présentation du bloc Effect ; absente des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub effect_style: EffectStyle,
@@ -406,6 +425,25 @@ pub struct FieldError {
 }
 
 impl CardDraft {
+    /// La carte telle qu'elle s'affiche : en v2, les réglages de la carte finale remplacent ceux
+    /// de la carte (qui restent dans le fichier, pour revenir à la v1). Skin, finition, nom de
+    /// fichier du bloc Code et contenu restent ceux de la carte.
+    pub fn effective(&self) -> CardDraft {
+        let mut d = self.clone();
+        if d.version == CardVersion::V2 {
+            d.shape = Shape::Topbar;
+            d.size = Size::Compact;
+            d.badge = Badge::Image;
+            d.title = Title::Image;
+            d.desc_style = DescStyle::Comment;
+            d.relief = Relief::Soft;
+            d.background = Background::Tinted;
+            d.effect_style = EffectStyle::Code;
+            d.refs = Refs::Linked;
+        }
+        d
+    }
+
     /// Normalise (trim) puis valide. Renvoie toutes les erreurs d'un coup pour le formulaire.
     pub fn validated(mut self) -> Result<Self, Vec<FieldError>> {
         self.name = self.name.trim().to_owned();
@@ -513,6 +551,7 @@ mod tests {
             desc_style: DescStyle::Classic,
             relief: Relief::Flat,
             background: Background::Plain,
+            version: CardVersion::V1,
             effect_style: EffectStyle::Text,
             effect_file: String::new(),
             refs: Refs::Plain,
@@ -580,6 +619,28 @@ mod tests {
             assert_eq!(t.slug().parse::<EffectStyle>().unwrap(), *t);
         }
         assert!("nope".parse::<EffectStyle>().is_err());
+    }
+
+    #[test]
+    fn v2_sets_the_final_card_settings() {
+        let mut d = draft();
+        assert_eq!(d.effective(), d, "v1 : rien ne change");
+        d.version = CardVersion::V2;
+        d.skin = Skin::Dark;
+        let e = d.effective();
+        assert_eq!(
+            (e.shape, e.size, e.badge, e.title),
+            (Shape::Topbar, Size::Compact, Badge::Image, Title::Image)
+        );
+        assert_eq!(
+            (e.desc_style, e.relief, e.background),
+            (DescStyle::Comment, Relief::Soft, Background::Tinted)
+        );
+        assert_eq!(
+            (e.effect_style, e.refs, e.skin),
+            (EffectStyle::Code, Refs::Linked, Skin::Dark)
+        );
+        assert_eq!(d.shape, Shape::Solid, "le fichier garde ses réglages");
     }
 
     #[test]

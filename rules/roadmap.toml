@@ -43,6 +43,11 @@ text = "Inviter un joueur, jouer à deux"
 
 [[items]]
 status = "done"
+title = "Carte v2, plusieurs réglages d'un coup"
+release = "v0.13"
+
+[[items]]
+status = "done"
 title = "Background teinté, combinable avec les contours"
 release = "v0.12"
 

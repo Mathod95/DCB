@@ -849,3 +849,7 @@ input[type="file"]::file-selector-button {
 .gal-opt input:checked + .gal-radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .gal-opt input:focus-visible + .gal-radio { outline: 2px solid var(--accent); outline-offset: 2px; }
 .gal-view .gal-group-title { white-space: nowrap; }
+
+/* Éditeur : en Carte v2, les réglages qu'elle fixe sont grisés */
+form:has(input[name="version"][value="v2"]:checked) .field[data-v2-locked] { opacity: .4; pointer-events: none; }
+form:has(input[name="version"][value="v2"]:checked) .field[data-v2-locked] .label::after { content: " · fixé par la v2"; font-weight: 400; color: var(--muted); }
