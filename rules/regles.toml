@@ -573,4 +573,4 @@ text = "Uni, ou teinté par la couleur du type ; se combine avec n'importe quel 
 
 [[settings.items]]
 term = "Relief"
-text = "Ombre douce des blocs, avec la skin Light."
+text = "Ombre douce sous chaque bloc, avec toutes les skins."

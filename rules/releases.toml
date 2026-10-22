@@ -3,6 +3,13 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.12.1"
+date = "2026-10-22"
+title = "Le relief sur toutes les skins"
+changed = ["Relief : une ombre douce sous chaque bloc avec toutes les skins (Dark et skins de la documentation compris), sans changer leurs couleurs"]
+fixed = ["Relief et skins de la documentation (CRT, Dracula…) : la skin garde ses couleurs"]
+
+[[releases]]
 version = "v0.12"
 date = "2026-10-22"
 title = "Background teinté et galerie plus confortable"

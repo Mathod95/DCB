@@ -294,17 +294,24 @@
 .card[data-skin="dark"] .card-ref[data-type="hr"] { --rtype: #6d68ff; }
 a.card-ref:hover { text-decoration-style: solid; }
 
-/* Relief (champ `relief` = soft), skin claire seulement : blocs avec une ombre douce et une
-   bordure plus légère, sur un fond un peu plus soutenu */
-/* le fond passe par les couleurs de la skin : le background teinté les mélange
-   ensuite avec la couleur du type, au lieu d'être écrasé */
-.card[data-relief="soft"][data-skin="light"] { --skin-from: #eef2f7; --skin-to: #d9e1ec; }
-.card[data-relief="soft"][data-skin="light"] .card-block,
-.card[data-relief="soft"][data-skin="light"] .card-stat {
-  border-color: #eef2f7;
-  box-shadow: 0 1px 2px rgb(15 23 42 / .06), 0 8px 18px -8px rgb(15 23 42 / .18);
+/* Relief (champ `relief` = soft), toutes skins : chaque bloc et chaque case de coût a une ombre
+   douce qui le détache du fond, plus marquée sur les fonds sombres. Les couleurs de la skin ne
+   changent pas, sauf pour Light seule : fond un peu plus soutenu et bordures plus légères. */
+.card[data-relief="soft"] {
+  --relief-shadow: 0 1px 2px rgb(15 23 42 / .06), 0 8px 18px -8px rgb(15 23 42 / .18);
 }
+.card[data-relief="soft"][data-skin="dark"],
+.sk .card[data-relief="soft"] {
+  --relief-shadow: inset 0 1px 0 rgb(255 255 255 / .05), 0 2px 4px rgb(0 0 0 / .35), 0 10px 22px -8px rgb(0 0 0 / .6);
+}
+.card[data-relief="soft"] .card-block,
+.card[data-relief="soft"] .card-stat { box-shadow: var(--relief-shadow); }
 .card[data-relief="soft"][data-title="image"] .card-block.card-name { box-shadow: none; }
+/* Light seule (hors skins de la documentation) : le fond passe par les couleurs de la skin, que
+   le background teinté mélange ensuite avec la couleur du type */
+.card[data-relief="soft"][data-skin="light"]:not(.sk .card) { --skin-from: #eef2f7; --skin-to: #d9e1ec; }
+.card[data-relief="soft"][data-skin="light"]:not(.sk .card) .card-block,
+.card[data-relief="soft"][data-skin="light"]:not(.sk .card) .card-stat { border-color: #eef2f7; }
 
 /* Bloc Effect façon éditeur de code (champ `effect_style` = code), mêmes cotes que le bloc
    Effect : en-tête avec le nom de fichier (`effect_file`), une ligne YAML par effet. Repris de
@@ -354,7 +361,7 @@ a.card-ref:hover { text-decoration-style: solid; }
 .y-ref[data-type="hr"]       { --rtype: #6d68ff; }
 .y-ref[data-type="app"]      { --rtype: #f88838; }
 .y-ref[data-type="event"]    { --rtype: #a538f8; }
-.card[data-relief="soft"][data-skin="light"] .card-block.card-code { border-color: var(--code-line); }
+.card[data-relief="soft"][data-skin="light"]:not(.sk .card) .card-block.card-code { border-color: var(--code-line); }
 
 /* Texte d'ambiance */
 .card-flavor {
