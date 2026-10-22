@@ -12,6 +12,7 @@ new = [
   "Galerie : filtre Version et passage de toutes les cartes en v2 dans le panneau Affichage",
 ]
 changed = ["Les filtres de la galerie portent sur ce que la carte affiche : une carte v2 compte comme compacte, en relief…"]
+fixed = ["Relief avec la skin Light : l'illustration garde son contour de la couleur du type et les cases de coût leur couleur"]
 
 [[releases]]
 version = "v0.12.1"

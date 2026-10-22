@@ -310,8 +310,9 @@ a.card-ref:hover { text-decoration-style: solid; }
 /* Light seule (hors skins de la documentation) : le fond passe par les couleurs de la skin, que
    le background teinté mélange ensuite avec la couleur du type */
 .card[data-relief="soft"][data-skin="light"]:not(.sk .card) { --skin-from: #eef2f7; --skin-to: #d9e1ec; }
-.card[data-relief="soft"][data-skin="light"]:not(.sk .card) .card-block,
-.card[data-relief="soft"][data-skin="light"]:not(.sk .card) .card-stat { border-color: #eef2f7; }
+/* bordures plus légères sur les blocs neutres seulement : l'illustration garde son contour teinté
+   par le type et les cases de coût leur couleur */
+.card[data-relief="soft"][data-skin="light"]:not(.sk .card) .card-block:not(.card-art) { border-color: #eef2f7; }
 
 /* Bloc Effect façon éditeur de code (champ `effect_style` = code), mêmes cotes que le bloc
    Effect : en-tête avec le nom de fichier (`effect_file`), une ligne YAML par effet. Repris de
