@@ -3,6 +3,12 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.11.1"
+date = "2026-10-22"
+title = "Correctif"
+fixed = ["Fond teinté et relief ensemble : le fond reste teinté par la couleur du type"]
+
+[[releases]]
 version = "v0.11"
 date = "2026-10-22"
 title = "La galerie change d'allure"

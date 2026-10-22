@@ -296,7 +296,9 @@ a.card-ref:hover { text-decoration-style: solid; }
 
 /* Relief (champ `relief` = soft), skin claire seulement : blocs avec une ombre douce et une
    bordure plus légère, sur un fond un peu plus soutenu */
-.card[data-relief="soft"][data-skin="light"] .card-skin { background: linear-gradient(to bottom, #eef2f7, #d9e1ec); }
+/* le fond passe par les couleurs de la skin : le fond teinté (contour `tinted`) les mélange
+   ensuite avec la couleur du type, au lieu d'être écrasé */
+.card[data-relief="soft"][data-skin="light"] { --skin-from: #eef2f7; --skin-to: #d9e1ec; }
 .card[data-relief="soft"][data-skin="light"] .card-block,
 .card[data-relief="soft"][data-skin="light"] .card-stat {
   border-color: #eef2f7;
