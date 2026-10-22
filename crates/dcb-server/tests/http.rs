@@ -1758,3 +1758,37 @@ async fn effect_block_can_be_code_with_a_chosen_file_name() {
     let (_, _, form_page) = send(&t.app, get("/cards/new")).await;
     assert!(form_page.contains(r#"name="effect_file""#) && form_page.contains(r#"value="code""#));
 }
+
+#[tokio::test]
+async fn gallery_display_panel_restyles_every_card_without_saving() {
+    let t = app(&[("ddos.toml", DDOS), ("argo-cd.toml", ARGO)]).await;
+    let (_, _, body) = send(&t.anon, get("/gallery")).await;
+    assert!(body.contains(r#"<aside class="gal-side gal-view""#));
+    assert!(body.contains(r#"form="gal-form" name="v_skin" value="dark""#));
+    assert!(
+        body.contains("Skins classiques") && body.contains("Skins animées")
+            || !body.contains("gal-sub")
+    );
+    // toutes les cartes affichées en dark, compactes, bloc Code ; les fichiers ne changent pas
+    let (_, _, body) = send(
+        &t.anon,
+        get("/gallery?v_skin=dark&v_size=compact&v_effect=code&v_foil=nope"),
+    )
+    .await;
+    assert_eq!(body.matches(r#"data-skin="dark""#).count(), 2);
+    assert_eq!(body.matches(r#"data-size="compact""#).count(), 2);
+    assert_eq!(
+        body.matches(r#"class="card-block card-effect card-code""#)
+            .count(),
+        2
+    );
+    assert!(body.contains(r#"name="v_skin" value="dark" checked"#));
+    // les filtres restent sur les valeurs enregistrées, et leurs liens gardent l'affichage
+    let (_, _, body) = send(&t.anon, get("/gallery?type=app&v_size=compact")).await;
+    assert!(body.contains("ARGO CD") && !body.contains(r#"aria-label="DDOS""#));
+    assert!(body.contains(r#"href="/gallery?v_size=compact""#), "{body}");
+    let toml = std::fs::read_to_string(t.cards().join("ddos.toml")).unwrap();
+    assert!(!toml.contains("size") && !toml.contains("skin"));
+    let (_, _, detail) = send(&t.anon, get("/cards/ddos")).await;
+    assert!(detail.contains(r#"data-size="normal""#));
+}

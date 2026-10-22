@@ -3,6 +3,16 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.11"
+date = "2026-10-22"
+title = "La galerie change d'allure"
+new = [
+  "Galerie : panneau Affichage à droite, qui applique un réglage à toutes les cartes affichées",
+  "Skin (Light, Dark et toutes les skins de la documentation), finition, contour, taille, badge, nom, description, bloc Effect, cartes citées, relief",
+  "Les cartes ne sont pas modifiées ; l'adresse garde l'affichage choisi, avec les filtres",
+]
+
+[[releases]]
 version = "v0.10"
 date = "2026-10-22"
 title = "Le bloc Effect façon code"

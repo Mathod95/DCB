@@ -481,6 +481,30 @@ pub struct FilterGroup {
     pub options: Vec<FilterOption>,
 }
 
+/// Carte de la galerie, avec les classes de son conteneur (skins de la documentation).
+pub struct GalleryCard {
+    pub card: CardView,
+    pub wrap: String,
+}
+
+/// Un menu du panneau Affichage (un choix par réglage).
+pub struct ViewGroup {
+    pub key: &'static str,
+    pub title: &'static str,
+    pub summary: String,
+    pub is_set: bool,
+    pub open: bool,
+    pub options: Vec<ViewOption>,
+}
+
+pub struct ViewOption {
+    pub value: String,
+    pub label: String,
+    pub checked: bool,
+    /// Sous-titre avant la première valeur d'un groupe (skins de la documentation).
+    pub section: &'static str,
+}
+
 /// Filtre actif, affiché en pastille au-dessus des cartes ; le lien le retire.
 pub struct ActiveFilter {
     pub title: &'static str,
@@ -492,7 +516,14 @@ pub struct ActiveFilter {
 #[template(path = "gallery.html")]
 pub struct GalleryPage {
     pub ctx: Ctx,
-    pub cards: Vec<CardView>,
+    pub cards: Vec<GalleryCard>,
+    /// Panneau Affichage : réglages appliqués à toutes les cartes affichées.
+    pub view_groups: Vec<ViewGroup>,
+    pub view_set: bool,
+    /// La même galerie, sans les réglages d'affichage.
+    pub view_reset_href: String,
+    /// Une skin de la documentation est appliquée : styles et scripts des skins à charger.
+    pub uses_concepts: bool,
     pub groups: Vec<FilterGroup>,
     pub active: Vec<ActiveFilter>,
     pub filtered: bool,

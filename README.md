@@ -84,7 +84,7 @@ Le volume `/data` contient `app.db` (les comptes, à sauvegarder) et `cache.db` 
 
 ## Fonctionnalités
 
-- **Galerie** : grille de toutes les cartes, avec un panneau de filtres à gauche (type, finition, contour, taille, badge de type, nom, description, cartes citées, relief). Plusieurs valeurs cochées dans un même réglage s'additionnent, les réglages se cumulent, et chaque valeur affiche le nombre de cartes qu'on obtiendrait en la cochant.
+- **Galerie** : grille de toutes les cartes, avec un panneau Affichage à droite (changer la skin, la taille, le bloc Effect… de toutes les cartes affichées, sans les modifier) et un panneau de filtres à gauche (type, finition, contour, taille, badge de type, nom, description, cartes citées, relief). Plusieurs valeurs cochées dans un même réglage s'additionnent, les réglages se cumulent, et chaque valeur affiche le nombre de cartes qu'on obtiendrait en la cochant.
 - **Éditeur** : création et modification avec aperçu de la carte mis à jour pendant la saisie, compteurs de caractères calés sur la place disponible dans la carte, upload d'illustration (PNG, JPEG, WebP, GIF, 5 Mo max).
 - **Documentation** (`/regles`) : six pages, Overview, Understand the Basics, Core Concepts, Getting Started, Releases (patch notes, `rules/releases.toml`) et Roadmap (`rules/roadmap.toml`). Ancienne description de la page des règles :
   **Règles** (`/regles`) : contexte, début de partie, condition de victoire, types de cartes, phases d'une journée, cycle de vie des apps et finitions. Chaque type montre une carte de la collection tirée au hasard à chaque chargement (les cartes qui ont un texte d'abord), avec son nombre de cartes et un lien vers la galerie filtrée. Le texte vient de `rules/regles.toml`.

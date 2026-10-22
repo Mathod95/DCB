@@ -713,7 +713,7 @@ input[type="file"]::file-selector-button {
 
 /* Galerie : filtres dans une colonne à gauche, un menu déroulant par réglage, cases à cocher */
 .page:has(.gal-layout) { max-width: 1640px; }
-.gal-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; align-items: start; }
+.gal-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr) 240px; gap: 32px; align-items: start; }
 .gal-side { position: sticky; top: 84px; max-height: calc(100vh - 104px); overflow-y: auto; display: grid; gap: 8px; padding-right: 4px; }
 .gal-side-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
 .gal-side-title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -837,3 +837,13 @@ input[type="file"]::file-selector-button {
 .c-doing .road-item { border-left-color: var(--accent); }
 .c-done .road-item { border-left-color: #34d399; }
 .c-done .road-item b { color: var(--text-2); }
+
+/* Galerie : panneau Affichage à droite (un choix par réglage, appliqué à toutes les cartes) */
+.gal-view-note { margin: -2px 2px 4px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.gal-sub { margin: 6px 8px 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.gal-radio { width: 16px; height: 16px; flex: none; border: 1.5px solid var(--line-2); border-radius: 50%; display: grid; place-items: center; }
+.gal-opt input:checked + .gal-radio { border-color: var(--accent); }
+.gal-opt input:checked + .gal-radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.gal-opt input:focus-visible + .gal-radio { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gal-view .gal-group ul { max-height: 340px; overflow-y: auto; }
+.gal-view .gal-group-title { white-space: nowrap; }

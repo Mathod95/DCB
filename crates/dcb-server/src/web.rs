@@ -398,15 +398,232 @@ pub(crate) async fn menu_page(s: &AppState, ctx: Ctx) -> AppResult<Html<String>>
 }
 
 /// URL de la galerie pour un filtre.
-fn gallery_href(f: &Filter, mine: bool) -> String {
+fn gallery_href(f: &Filter, mine: bool, view: &[(String, String)]) -> String {
     let mut q: Vec<String> = f.pairs().iter().map(|(k, v)| format!("{k}={v}")).collect();
     if mine {
         q.push("mine=1".to_owned());
     }
+    q.extend(view.iter().map(|(k, v)| format!("{k}={v}")));
     if q.is_empty() {
         return "/gallery".to_owned();
     }
     format!("/gallery?{}", q.join("&"))
+}
+
+/// Réglages d'affichage de la galerie (`v_skin=dark&v_size=compact`…). Une valeur inconnue est
+/// ignorée ; vide : la carte garde son réglage.
+struct GalleryView {
+    /// Paires reconnues, dans l'ordre de l'URL (pour garder l'affichage dans les liens).
+    pairs: Vec<(String, String)>,
+    draft: Vec<(String, String)>,
+    /// Skin de la documentation : classes du conteneur et calque animé.
+    wrap: Option<(dcb_core::Skin, String, Option<&'static str>)>,
+}
+
+/// Réglages d'affichage, dans l'ordre du panneau : clé d'URL et titre.
+const VIEW_KEYS: &[(&str, &str)] = &[
+    ("v_skin", "Skin"),
+    ("v_foil", "Finition"),
+    ("v_shape", "Contour"),
+    ("v_size", "Taille"),
+    ("v_badge", "Badge de type"),
+    ("v_title", "Nom"),
+    ("v_desc", "Description"),
+    ("v_effect", "Bloc Effect"),
+    ("v_refs", "Cartes citées"),
+    ("v_relief", "Relief"),
+];
+
+impl GalleryView {
+    fn from_pairs(q: &[(String, String)]) -> Self {
+        let mut v = Self {
+            pairs: Vec::new(),
+            draft: Vec::new(),
+            wrap: None,
+        };
+        for (k, val) in q {
+            let val = val.trim();
+            if val.is_empty() || !VIEW_KEYS.iter().any(|(key, _)| key == k) {
+                continue;
+            }
+            let ok = match (k.as_str(), concepts::skin_style(val)) {
+                ("v_skin", Some((skin, wrap, fx))) if !wrap.is_empty() => {
+                    v.wrap = Some((skin, wrap, fx));
+                    true
+                }
+                _ => {
+                    let ok = view_value_ok(k, val);
+                    if ok {
+                        v.draft.push((k.clone(), val.to_owned()));
+                    }
+                    ok
+                }
+            };
+            if ok {
+                v.pairs.retain(|(pk, _)| pk != k);
+                v.pairs.push((k.clone(), val.to_owned()));
+            }
+        }
+        v
+    }
+
+    fn value(&self, key: &str) -> &str {
+        self.pairs
+            .iter()
+            .rev()
+            .find(|(k, _)| k == key)
+            .map_or("", |(_, v)| v.as_str())
+    }
+
+    /// La carte telle que la galerie l'affiche.
+    fn card(&self, c: &Card, idx: &RefIndex) -> GalleryCard {
+        let mut d = c.draft.clone();
+        for (k, v) in &self.draft {
+            set_view(&mut d, k, v);
+        }
+        let mut wrap = String::new();
+        if let Some((skin, w, _)) = &self.wrap {
+            d.skin = *skin;
+            wrap = w.clone();
+        }
+        let mut view = CardView::new(Some(&c.slug), &d).cite(idx, false);
+        if let Some((_, _, Some(k))) = &self.wrap {
+            view.fx = concepts::fx(k, &c.slug);
+            view.data_text = matches!(*k, "ascii" | "glitch");
+            if *k == "ascii" {
+                view.ascii_word = Some(concepts::ascii_word(d.card_type));
+            }
+        }
+        GalleryCard { card: view, wrap }
+    }
+}
+
+/// La valeur est connue pour ce réglage d'affichage.
+fn view_value_ok(key: &str, val: &str) -> bool {
+    match key {
+        "v_skin" => val.parse::<dcb_core::Skin>().is_ok(),
+        "v_foil" => val.parse::<Foil>().is_ok(),
+        "v_shape" => val.parse::<Shape>().is_ok(),
+        "v_size" => val.parse::<Size>().is_ok(),
+        "v_badge" => val.parse::<Badge>().is_ok(),
+        "v_title" => val.parse::<Title>().is_ok(),
+        "v_desc" => val.parse::<DescStyle>().is_ok(),
+        "v_effect" => val.parse::<EffectStyle>().is_ok(),
+        "v_refs" => val.parse::<Refs>().is_ok(),
+        "v_relief" => val.parse::<Relief>().is_ok(),
+        _ => false,
+    }
+}
+
+/// Applique un réglage d'affichage à une carte ; `false` si la valeur est inconnue.
+fn set_view(d: &mut CardDraft, key: &str, val: &str) -> bool {
+    fn set<T: std::str::FromStr>(field: &mut T, val: &str) -> bool {
+        match val.parse() {
+            Ok(v) => {
+                *field = v;
+                true
+            }
+            Err(_) => false,
+        }
+    }
+    match key {
+        "v_skin" => set(&mut d.skin, val),
+        "v_foil" => set(&mut d.foil, val),
+        "v_shape" => set(&mut d.shape, val),
+        "v_size" => set(&mut d.size, val),
+        "v_badge" => set(&mut d.badge, val),
+        "v_title" => set(&mut d.title, val),
+        "v_desc" => set(&mut d.desc_style, val),
+        "v_effect" => set(&mut d.effect_style, val),
+        "v_refs" => set(&mut d.refs, val),
+        "v_relief" => set(&mut d.relief, val),
+        _ => false,
+    }
+}
+
+/// Menus du panneau Affichage : « Comme enregistré » puis les valeurs de chaque réglage. Les
+/// skins de la documentation (classiques et animées) suivent Light et Dark.
+fn view_groups(s: &AppState, view: &GalleryView) -> Vec<ViewGroup> {
+    fn values<T: Copy>(
+        all: &[T],
+        slug: fn(T) -> &'static str,
+        label: fn(T) -> &'static str,
+    ) -> Vec<(String, String, &'static str)> {
+        all.iter()
+            .map(|&v| (slug(v).to_owned(), label(v).to_owned(), ""))
+            .collect()
+    }
+    let doc_skins: Vec<(String, String, &'static str)> = {
+        let rules = s.rules.read().expect("verrou empoisonné");
+        rules.rules.as_ref().map_or_else(Vec::new, |r| {
+            let sk = &r.concepts.skin;
+            sk.classic
+                .iter()
+                .map(|i| (i.key.clone(), i.title.clone(), "Skins classiques"))
+                .chain(
+                    sk.animated
+                        .iter()
+                        .map(|i| (i.key.clone(), i.title.clone(), "Skins animées")),
+                )
+                .filter(|(k, _, _)| !matches!(k.as_str(), "light" | "dark" | "current"))
+                .collect()
+        })
+    };
+    VIEW_KEYS
+        .iter()
+        .map(|&(key, title)| {
+            let mut vals = match key {
+                "v_skin" => values(
+                    dcb_core::Skin::ALL,
+                    dcb_core::Skin::slug,
+                    dcb_core::Skin::label,
+                ),
+                "v_foil" => values(Foil::ALL, Foil::slug, Foil::label),
+                "v_shape" => values(Shape::ALL, Shape::slug, Shape::label),
+                "v_size" => values(Size::ALL, Size::slug, Size::label),
+                "v_badge" => values(Badge::ALL, Badge::slug, Badge::label),
+                "v_title" => values(Title::ALL, Title::slug, Title::label),
+                "v_desc" => values(DescStyle::ALL, DescStyle::slug, DescStyle::label),
+                "v_effect" => values(EffectStyle::ALL, EffectStyle::slug, EffectStyle::label),
+                "v_refs" => values(Refs::ALL, Refs::slug, Refs::label),
+                _ => values(Relief::ALL, Relief::slug, Relief::label),
+            };
+            if key == "v_skin" {
+                vals.extend(doc_skins.iter().cloned());
+            }
+            let current = view.value(key);
+            let summary = vals
+                .iter()
+                .find(|(v, _, _)| v == current)
+                .map_or("Inchangé".to_owned(), |(_, l, _)| l.clone());
+            let mut options = vec![ViewOption {
+                value: String::new(),
+                label: "Comme enregistré".to_owned(),
+                checked: current.is_empty(),
+                section: "",
+            }];
+            let mut prev = "";
+            options.extend(vals.into_iter().map(|(value, label, section)| {
+                // sous-titre au début de chaque groupe de skins de la documentation
+                let head = if section != prev { section } else { "" };
+                prev = section;
+                ViewOption {
+                    checked: value == current,
+                    value,
+                    label,
+                    section: head,
+                }
+            }));
+            ViewGroup {
+                key,
+                title,
+                is_set: !current.is_empty(),
+                open: !current.is_empty(),
+                summary,
+                options,
+            }
+        })
+        .collect()
 }
 
 async fn gallery(
@@ -424,6 +641,9 @@ async fn gallery(
         all.retain(|c| owned.contains(&c.slug));
     }
     let cards: Vec<&Card> = all.iter().filter(|c| filter.matches(&c.draft)).collect();
+    // Affichage (panneau de droite) : réglages appliqués à toutes les cartes de la galerie, sans
+    // toucher aux fichiers.
+    let view = GalleryView::from_pairs(&q);
 
     // Un menu par réglage : valeurs cochables et nombre de cartes qu'on obtiendrait en cochant
     // chacune, avec les autres réglages déjà choisis.
@@ -529,6 +749,7 @@ async fn gallery(
                             href: gallery_href(
                                 &Filter::from_pairs(&pairs, false).unwrap_or_default(),
                                 mine,
+                                &view.pairs,
                             ),
                         });
                     }
@@ -579,16 +800,17 @@ async fn gallery(
         ctx: s.ctx_for(u.as_ref()),
         cards: {
             let idx = RefIndex::new(&all);
-            cards
-                .iter()
-                .map(|c| CardView::new(Some(&c.slug), &c.draft).cite(&idx, false))
-                .collect()
+            cards.iter().map(|c| view.card(c, &idx)).collect()
         },
         groups,
         active,
         filtered: !filter.is_empty() || mine,
         mine,
-        mine_off_href: gallery_href(&filter, false),
+        mine_off_href: gallery_href(&filter, false, &view.pairs),
+        view_reset_href: gallery_href(&filter, mine, &[]),
+        view_set: !view.pairs.is_empty(),
+        uses_concepts: view.wrap.is_some(),
+        view_groups: view_groups(&s, &view),
         load_errors,
     })
 }

@@ -29,7 +29,7 @@
 <div class="gal-layout">
   {#- Filtres : formulaire GET, une case par valeur. Dans un réglage les valeurs s'additionnent,
       d'un réglage à l'autre elles se cumulent. Le formulaire s'envoie à chaque case cochée. -#}
-  <form class="gal-side" method="get" action="/gallery" aria-label="Filtres">
+  <form class="gal-side" id="gal-form" method="get" action="/gallery" aria-label="Filtres">
     <div class="gal-side-head">
       <p class="gal-side-title">Filtres</p>
       {% if filtered %}<a class="gal-reset" href="/gallery">Réinitialiser</a>{% endif %}
@@ -69,19 +69,55 @@
     </div>
     {% else %}
     <div class="grid">
-      {% for card in cards %}
+      {% for item in cards %}{% let card = item.card %}
       {% if let Some(slug) = card.slug %}
       <a class="grid-item" href="/cards/{{ slug }}" aria-label="{{ card.name }}">
-        <div class="card-frame" style="--s: var(--grid-scale)">{% include "card.html" %}</div>
+        {% if item.wrap.is_empty() %}<div class="card-frame" style="--s: var(--grid-scale)">{% include "card.html" %}</div>{% else %}<div class="st {{ item.wrap }}"><div class="card-frame" style="--s: var(--grid-scale)">{% include "card.html" %}</div></div>{% endif %}
       </a>
       {% endif %}
       {% endfor %}
     </div>
     {% endif %}
   </div>
+
+  {#- Affichage : réglages appliqués à toutes les cartes de la galerie, pour comparer (les
+      fichiers ne changent pas). Les choix font partie du formulaire des filtres. -#}
+  <aside class="gal-side gal-view" aria-label="Affichage">
+    <div class="gal-side-head">
+      <p class="gal-side-title">Affichage</p>
+      {% if view_set %}<a class="gal-reset" href="{{ view_reset_href }}">Réinitialiser</a>{% endif %}
+    </div>
+    <p class="gal-view-note">Change l'allure de toutes les cartes affichées, sans modifier les cartes.</p>
+    {% for g in view_groups %}
+    <details class="gal-group"{% if g.open %} open{% endif %}>
+      <summary><span class="gal-group-title">{{ g.title }}</span><span class="gal-current{% if g.is_set %} is-set{% endif %}">{{ g.summary }}</span></summary>
+      <ul>
+        {% for o in g.options %}
+        {% if !o.section.is_empty() %}<li class="gal-sub">{{ o.section }}</li>{% endif %}
+        <li><label class="gal-opt">
+          <input type="radio" form="gal-form" name="{{ g.key }}" value="{{ o.value }}"{% if o.checked %} checked{% endif %}>
+          <span class="gal-radio" aria-hidden="true"></span>
+          <span class="gal-label">{{ o.label }}</span>
+        </label></li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </aside>
 </div>
+{% if uses_concepts %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap">
+<link rel="stylesheet" href="/static/concepts.css">
+<script src="/static/concepts.js" defer></script>
+{% endif %}
 <script>
 // Filtres : la galerie se met à jour dès qu'une case change.
-document.querySelector(".gal-side")?.addEventListener("change", (e) => e.currentTarget.requestSubmit());
+document.querySelector("#gal-form")?.addEventListener("change", (e) => e.currentTarget.requestSubmit());
+// Affichage : les choix appartiennent au même formulaire, envoyé de la même façon.
+document.querySelector(".gal-view")?.addEventListener("change", () => document.querySelector("#gal-form")?.requestSubmit());
+// « Comme enregistré » n'a pas de valeur : on ne l'écrit pas dans l'adresse.
+document.querySelector("#gal-form")?.addEventListener("formdata", (e) => {
+  for (const [k, v] of [...e.formData]) if (k.startsWith("v_") && !v) e.formData.delete(k);
+});
 </script>
 {% endblock %}
