@@ -3,6 +3,13 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.13.1"
+date = "2026-10-22"
+title = "Préprod"
+new = ["Préprod : la version et le commit s'affichent en bas à droite de l'accueil"]
+changed = ["Image plus rapide à construire : les dépendances restent en cache d'un build à l'autre"]
+
+[[releases]]
 version = "v0.13"
 date = "2026-10-22"
 title = "La carte v2"

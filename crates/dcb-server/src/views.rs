@@ -493,6 +493,16 @@ pub fn size_choices() -> Vec<Choice> {
 pub struct MenuPage {
     pub ctx: Ctx,
     pub card_count: i64,
+    /// Pastille de l'image de préprod, en bas à droite (`DCB_CHANNEL` non vide).
+    pub build: Option<BuildBadge>,
+}
+
+/// Canal de l'image (`DCB_CHANNEL`, `preview`), dernière version des Releases et commit
+/// (`DCB_COMMIT`), passés à la construction de l'image.
+pub struct BuildBadge {
+    pub channel: String,
+    pub version: Option<String>,
+    pub commit: Option<String>,
 }
 
 /// Une valeur cochable d'un menu de filtre.

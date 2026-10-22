@@ -393,10 +393,32 @@ async fn menu(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<H
 
 /// Accueil, aussi rendu par `/login` avec le panneau de connexion ouvert.
 pub(crate) async fn menu_page(s: &AppState, ctx: Ctx) -> AppResult<Html<String>> {
+    let build = env_nonempty("DCB_CHANNEL").map(|channel| {
+        let version = s
+            .rules
+            .read()
+            .expect("verrou empoisonné")
+            .rules
+            .as_ref()
+            .and_then(|r| r.releases.first().map(|v| v.version.clone()));
+        BuildBadge {
+            channel,
+            version,
+            commit: env_nonempty("DCB_COMMIT").map(|c| c.chars().take(7).collect()),
+        }
+    });
     render(MenuPage {
         ctx,
         card_count: db::count(&s.pool).await?,
+        build,
     })
+}
+
+fn env_nonempty(key: &str) -> Option<String> {
+    std::env::var(key)
+        .ok()
+        .map(|v| v.trim().to_owned())
+        .filter(|v| !v.is_empty())
 }
 
 /// URL de la galerie pour un filtre.

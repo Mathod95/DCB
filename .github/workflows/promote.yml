@@ -1,0 +1,33 @@
+name: Promote
+
+# Passe la préprod en prod sans rien reconstruire : l'image `preview` validée devient `latest`
+# et main avance jusqu'au commit de preview (avance rapide seulement). Lancé à la main :
+# gh workflow run promote.yml
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: main avance jusqu'à preview
+        run: |
+          git fetch origin preview main
+          git merge-base --is-ancestor origin/main origin/preview \
+            || { echo "preview ne contient pas main : rebase preview d'abord"; exit 1; }
+          git push origin origin/preview:refs/heads/main
+      - name: l'image preview devient latest
+        run: docker buildx imagetools create -t ghcr.io/mathod95/dcb:latest ghcr.io/mathod95/dcb:preview

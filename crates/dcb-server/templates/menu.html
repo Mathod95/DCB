@@ -33,4 +33,11 @@
     {% endif %}
   </nav>
 </section>
+{% if let Some(b) = build %}
+<p class="build-badge" title="Image de préprod">
+  <span class="build-channel">{{ b.channel }}</span>
+  {% if let Some(v) = b.version %}<span>{{ v }}</span>{% endif %}
+  {% if let Some(c) = b.commit %}<code>{{ c }}</code>{% endif %}
+</p>
+{% endif %}
 {% endblock %}

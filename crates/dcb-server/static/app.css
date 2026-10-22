@@ -853,3 +853,8 @@ input[type="file"]::file-selector-button {
 /* Éditeur : en Carte v2, les réglages qu'elle fixe sont grisés */
 form:has(input[name="version"][value="v2"]:checked) .field[data-v2-locked] { opacity: .4; pointer-events: none; }
 form:has(input[name="version"][value="v2"]:checked) .field[data-v2-locked] .label::after { content: " · fixé par la v2"; font-weight: 400; color: var(--muted); }
+
+/* Accueil de l'image de préprod : canal, version et commit en bas à droite */
+.build-badge { position: fixed; right: 16px; bottom: 16px; z-index: 50; margin: 0; display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 999px; background: var(--panel-2); border: 1px solid #f59e0b; color: var(--text); font-size: 13px; box-shadow: 0 6px 20px rgb(0 0 0 / .35); }
+.build-channel { text-transform: uppercase; font-weight: 700; letter-spacing: .06em; color: #f59e0b; }
+.build-badge code { font-family: "JetBrains Mono", ui-monospace, monospace; color: var(--muted); }
