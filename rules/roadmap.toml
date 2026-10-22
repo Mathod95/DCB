@@ -13,6 +13,11 @@ text = "Piste de la page Carte DCB v2"
 
 [[items]]
 status = "planned"
+title = "Modification en masse"
+text = "Enregistrer un réglage sur toutes les cartes filtrées ou sélectionnées, en local"
+
+[[items]]
+status = "planned"
 title = "Effets structurés"
 text = "Des effets que le moteur sait appliquer, plus seulement du texte"
 
@@ -35,6 +40,11 @@ text = "Les phases, les coûts, la trésorerie, en temps réel"
 status = "planned"
 title = "Parties en ligne"
 text = "Inviter un joueur, jouer à deux"
+
+[[items]]
+status = "done"
+title = "Background teinté, combinable avec les contours"
+release = "v0.12"
 
 [[items]]
 status = "done"

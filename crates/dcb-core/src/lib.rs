@@ -112,7 +112,7 @@ text_enum! {
         Corners  => "corners",  "Coins de viseur",
         Chamfer  => "chamfer",  "Coins coupés",
         Topbar   => "topbar",   "Barre d'accent",
-        Tinted   => "tinted",   "Fond teinté",
+        Thin     => "thin",     "Filet",
     }
 }
 
@@ -213,6 +213,22 @@ impl Default for EffectStyle {
     }
 }
 
+text_enum! {
+    /// Fond de la carte. `Plain` : la skin seule ; `Tinted` : le fond prend la couleur du type,
+    /// sans toucher au contour (qui se choisit à part).
+    Background {
+        Plain  => "plain",  "Uni",
+        Tinted => "tinted", "Teinté",
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Background {
+    fn default() -> Self {
+        Background::Plain
+    }
+}
+
 #[allow(clippy::derivable_impls)]
 impl Default for Relief {
     fn default() -> Self {
@@ -292,6 +308,9 @@ pub struct CardDraft {
     /// Relief des blocs ; absent des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub relief: Relief,
+    /// Fond de la carte ; absent des anciens JSON, d'où la valeur par défaut.
+    #[serde(default)]
+    pub background: Background,
     /// Présentation du bloc Effect ; absente des anciens JSON, d'où la valeur par défaut.
     #[serde(default)]
     pub effect_style: EffectStyle,
@@ -493,6 +512,7 @@ mod tests {
             title: Title::Block,
             desc_style: DescStyle::Classic,
             relief: Relief::Flat,
+            background: Background::Plain,
             effect_style: EffectStyle::Text,
             effect_file: String::new(),
             refs: Refs::Plain,
@@ -560,6 +580,15 @@ mod tests {
             assert_eq!(t.slug().parse::<EffectStyle>().unwrap(), *t);
         }
         assert!("nope".parse::<EffectStyle>().is_err());
+    }
+
+    #[test]
+    fn background_round_trip() {
+        assert_eq!(Background::default(), Background::Plain);
+        for t in Background::ALL {
+            assert_eq!(t.slug().parse::<Background>().unwrap(), *t);
+        }
+        assert!("nope".parse::<Background>().is_err());
     }
 
     #[test]

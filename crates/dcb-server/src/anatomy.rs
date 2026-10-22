@@ -178,6 +178,7 @@ pub fn toml_lines(d: &CardDraft) -> Vec<TomlLine> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dcb_core::Background;
     use dcb_core::EffectStyle;
     use dcb_core::Refs;
     use dcb_core::Relief;
@@ -196,6 +197,7 @@ mod tests {
             title: Title::Block,
             desc_style: DescStyle::Classic,
             relief: Relief::Flat,
+            background: Background::Plain,
             effect_style: EffectStyle::Text,
             effect_file: String::new(),
             refs: Refs::Plain,

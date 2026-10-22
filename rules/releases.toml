@@ -3,6 +3,20 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.12"
+date = "2026-10-22"
+title = "Background teinté et galerie plus confortable"
+new = [
+  "Réglage Background : Uni ou Teinté, le fond prend la couleur du type et se combine avec n'importe quel contour",
+  "Galerie : les cartes s'agrandissent pour remplir toute la largeur",
+]
+changed = ["Le contour « Fond teinté » devient « Filet », un simple trait de 1 px"]
+fixed = [
+  "Galerie : choisir une valeur ne referme plus les menus et ne remonte plus en haut de la page",
+  "Galerie : plus de barres de défilement dans les panneaux de filtres et d'affichage",
+]
+
+[[releases]]
 version = "v0.11.1"
 date = "2026-10-22"
 title = "Correctif"

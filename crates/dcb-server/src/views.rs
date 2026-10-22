@@ -1,6 +1,7 @@
 //! Templates askama et modèles de vue.
 
 use askama::Template;
+use dcb_core::Background;
 use dcb_core::DescStyle;
 use dcb_core::EffectStyle;
 use dcb_core::Refs;
@@ -106,8 +107,11 @@ pub struct CardView {
     pub desc_style_label: &'static str,
     /// Relief des blocs (`data-relief` sur la carte).
     pub relief: &'static str,
+    /// Fond de la carte (`data-bg` sur la carte).
+    pub background: &'static str,
     pub effect_style: &'static str,
     pub relief_label: &'static str,
+    pub background_label: &'static str,
     pub effect_style_label: &'static str,
     /// Nom de fichier en tête du bloc Effect façon code.
     pub effect_file: String,
@@ -274,8 +278,10 @@ impl CardView {
             desc_style: d.desc_style.slug(),
             desc_style_label: d.desc_style.label(),
             relief: d.relief.slug(),
+            background: d.background.slug(),
             effect_style: d.effect_style.slug(),
             relief_label: d.relief.label(),
+            background_label: d.background.label(),
             effect_style_label: d.effect_style.label(),
             effect_file: if d.effect_file.trim().is_empty() {
                 "effect.yaml".to_owned()
@@ -395,6 +401,17 @@ fn code_rows(d: &CardDraft, refs: &[(String, CardType)]) -> Vec<String> {
         );
     }
     rows
+}
+
+pub fn background_choices() -> Vec<Choice> {
+    Background::ALL
+        .iter()
+        .map(|t| Choice {
+            value: t.slug(),
+            label: t.label(),
+            color: None,
+        })
+        .collect()
 }
 
 pub fn relief_choices() -> Vec<Choice> {
@@ -562,6 +579,7 @@ pub struct FormValues {
     pub title: String,
     pub desc_style: String,
     pub relief: String,
+    pub background: String,
     pub effect_style: String,
     pub effect_file: String,
     pub refs: String,
@@ -586,6 +604,7 @@ impl FormValues {
             title: d.title.slug().into(),
             desc_style: d.desc_style.slug().into(),
             relief: d.relief.slug().into(),
+            background: d.background.slug().into(),
             effect_style: d.effect_style.slug().into(),
             effect_file: d.effect_file.clone(),
             refs: d.refs.slug().into(),
@@ -609,6 +628,7 @@ impl FormValues {
             title: Title::Block.slug().into(),
             desc_style: DescStyle::Classic.slug().into(),
             relief: Relief::Flat.slug().into(),
+            background: Background::Plain.slug().into(),
             effect_style: EffectStyle::Text.slug().into(),
             effect_file: String::new(),
             refs: Refs::Plain.slug().into(),
@@ -638,6 +658,7 @@ pub struct FormPage {
     pub titles: Vec<Choice>,
     pub desc_styles: Vec<Choice>,
     pub reliefs: Vec<Choice>,
+    pub backgrounds: Vec<Choice>,
     pub effect_styles: Vec<Choice>,
     pub refs_options: Vec<Choice>,
     pub lim_name: usize,
@@ -674,6 +695,7 @@ impl FormPage {
             titles: title_choices(),
             desc_styles: desc_style_choices(),
             reliefs: relief_choices(),
+            backgrounds: background_choices(),
             effect_styles: effect_style_choices(),
             refs_options: refs_choices(),
             lim_name: limits::NAME,
@@ -990,6 +1012,7 @@ impl AnatomyView {
                 d.title = Title::Block;
                 d.desc_style = DescStyle::Classic;
                 d.relief = Relief::Flat;
+                d.background = Background::Plain;
                 d.effect_style = EffectStyle::Text;
                 d.refs = Refs::Plain;
                 d.size = Size::Normal;

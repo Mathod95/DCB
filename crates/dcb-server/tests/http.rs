@@ -572,7 +572,7 @@ async fn rules_page_shows_rules_counts_and_random_examples() {
         assert!(body.contains(&format!(r#"data-foil="{foil}""#)), "{foil}");
     }
     for shape in [
-        "solid", "neon", "gradient", "sweep", "double", "corners", "chamfer", "topbar", "tinted",
+        "solid", "neon", "gradient", "sweep", "double", "corners", "chamfer", "topbar", "thin",
     ] {
         assert!(
             body.contains(&format!(r#"data-shape="{shape}""#)),
@@ -1791,4 +1791,50 @@ async fn gallery_display_panel_restyles_every_card_without_saving() {
     assert!(!toml.contains("size") && !toml.contains("skin"));
     let (_, _, detail) = send(&t.anon, get("/cards/ddos")).await;
     assert!(detail.contains(r#"data-size="normal""#));
+}
+
+#[tokio::test]
+async fn tinted_background_combines_with_any_shape() {
+    let t = app(&[("ddos.toml", DDOS)]).await;
+    let (_, _, body) = send(&t.app, get("/cards/ddos")).await;
+    assert!(body.contains(r#"data-bg="plain""#));
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields(
+                "Tint Pod",
+                &[("background", b"tinted"), ("shape", b"topbar")],
+            ),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("tint-pod.toml")).unwrap();
+    assert!(
+        toml.contains("background = \"tinted\"") && toml.contains("shape = \"topbar\""),
+        "{toml}"
+    );
+    let (_, _, body) = send(&t.app, get("/cards/tint-pod")).await;
+    assert!(body.contains(r#"data-bg="tinted""#) && body.contains(r#"data-shape="topbar""#));
+    // Uni n'est pas écrit ; l'ancien contour « tinted » n'existe plus (devenu Filet, `thin`)
+    send(
+        &t.app,
+        multipart(
+            "/cards",
+            &card_fields("Plain Pod", &[("background", b"plain")]),
+        ),
+    )
+    .await;
+    let toml = std::fs::read_to_string(t.cards().join("plain-pod.toml")).unwrap();
+    assert!(!toml.contains("background"), "{toml}");
+    let (status, _, _) = send(
+        &t.app,
+        multipart("/cards", &card_fields("Old Pod", &[("shape", b"tinted")])),
+    )
+    .await;
+    assert_ne!(status, StatusCode::SEE_OTHER);
+    let (_, _, body) = send(&t.app, get("/gallery?bg=tinted&v_bg=tinted")).await;
+    assert!(body.contains("Tint Pod") && !body.contains(r#"aria-label="DDOS""#));
+    let (_, _, meta) = send(&t.app, get("/api/meta")).await;
+    assert!(meta.contains("\"backgrounds\"") && meta.contains("\"thin\""));
 }

@@ -103,7 +103,8 @@ Reproduite depuis le composant `card` du fichier Figma DevCardBattle (374×574),
 |---|---|
 | Type (bordure + badge) | Resource `#38bdf8`, Incident `#f83838`, Ressource humaine `#0800f6`, App `#f88838`, Event `#a538f8` |
 | Skin | Light, Dark |
-| Contour (`shape`) | Plein, Néon, Dégradé, Reflet qui tourne, Double filet, Coins de viseur, Coins coupés, Barre d'accent, Fond teinté |
+| Contour (`shape`) | Plein, Néon, Dégradé, Reflet qui tourne, Double filet, Coins de viseur, Coins coupés, Barre d'accent, Filet |
+| Background (`background`) | Uni (par défaut), Teinté (le fond prend la couleur du type, avec n'importe quel contour) |
 | Taille (`size`) | Normale (deux cases de coût, par défaut), Compacte (coûts en chips, bloc Effect agrandi) |
 | Badge de type (`badge`) | Dans le nom (par défaut), Sur l'illustration (pastille avec l'icône du type) |
 | Description (`desc_style`) | Classique (par défaut), Sans titre (le texte gagne une ligne), En commentaire (en tête du bloc Effect, qui gagne 70 px) |

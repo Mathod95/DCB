@@ -296,7 +296,7 @@ a.card-ref:hover { text-decoration-style: solid; }
 
 /* Relief (champ `relief` = soft), skin claire seulement : blocs avec une ombre douce et une
    bordure plus légère, sur un fond un peu plus soutenu */
-/* le fond passe par les couleurs de la skin : le fond teinté (contour `tinted`) les mélange
+/* le fond passe par les couleurs de la skin : le background teinté les mélange
    ensuite avec la couleur du type, au lieu d'être écrasé */
 .card[data-relief="soft"][data-skin="light"] { --skin-from: #eef2f7; --skin-to: #d9e1ec; }
 .card[data-relief="soft"][data-skin="light"] .card-block,
@@ -491,13 +491,15 @@ a.card-ref:hover { text-decoration-style: solid; }
   box-shadow: 0 0 10px color-mix(in srgb, var(--type) 55%, transparent);
 }
 
-/* Fond teinté : le fond prend la couleur du type, le trait devient un filet */
-.card[data-shape="tinted"] .card-skin {
+/* Background teinté (champ `background`) : le fond prend la couleur du type ; le contour reste
+   celui choisi. Mélangé aux couleurs de la skin (claire, sombre, relief). */
+.card[data-bg="tinted"] .card-skin {
   background: linear-gradient(to bottom,
     color-mix(in srgb, var(--type) 22%, var(--skin-from)),
     color-mix(in srgb, var(--type) 8%, var(--skin-to)));
 }
-.card[data-shape="tinted"] .card-stroke {
+/* Filet : trait fin de 1 px de la couleur du type */
+.card[data-shape="thin"] .card-stroke {
   border-width: 1px;
   border-color: color-mix(in srgb, var(--type) 55%, transparent);
 }

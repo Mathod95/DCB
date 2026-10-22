@@ -16,6 +16,7 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
+use dcb_core::Background;
 use dcb_core::DescStyle;
 use dcb_core::EffectStyle;
 use dcb_core::Refs;
@@ -432,6 +433,7 @@ const VIEW_KEYS: &[(&str, &str)] = &[
     ("v_effect", "Bloc Effect"),
     ("v_refs", "Cartes citées"),
     ("v_relief", "Relief"),
+    ("v_bg", "Background"),
 ];
 
 impl GalleryView {
@@ -511,6 +513,7 @@ fn view_value_ok(key: &str, val: &str) -> bool {
         "v_effect" => val.parse::<EffectStyle>().is_ok(),
         "v_refs" => val.parse::<Refs>().is_ok(),
         "v_relief" => val.parse::<Relief>().is_ok(),
+        "v_bg" => val.parse::<Background>().is_ok(),
         _ => false,
     }
 }
@@ -537,6 +540,7 @@ fn set_view(d: &mut CardDraft, key: &str, val: &str) -> bool {
         "v_effect" => set(&mut d.effect_style, val),
         "v_refs" => set(&mut d.refs, val),
         "v_relief" => set(&mut d.relief, val),
+        "v_bg" => set(&mut d.background, val),
         _ => false,
     }
 }
@@ -586,6 +590,7 @@ fn view_groups(s: &AppState, view: &GalleryView) -> Vec<ViewGroup> {
                 "v_desc" => values(DescStyle::ALL, DescStyle::slug, DescStyle::label),
                 "v_effect" => values(EffectStyle::ALL, EffectStyle::slug, EffectStyle::label),
                 "v_refs" => values(Refs::ALL, Refs::slug, Refs::label),
+                "v_bg" => values(Background::ALL, Background::slug, Background::label),
                 _ => values(Relief::ALL, Relief::slug, Relief::label),
             };
             if key == "v_skin" {
@@ -658,7 +663,7 @@ async fn gallery(
             .map(|&v| (slug(v), label(v), color(v)))
             .collect()
     }
-    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 10] = [
+    let menus: [(&'static str, &'static str, &'static str, Vec<_>); 11] = [
         (
             "type",
             "Type",
@@ -708,6 +713,14 @@ async fn gallery(
             "Relief",
             "Tous",
             options(Relief::ALL, Relief::slug, Relief::label, |_| None),
+        ),
+        (
+            "bg",
+            "Background",
+            "Tous",
+            options(Background::ALL, Background::slug, Background::label, |_| {
+                None
+            }),
         ),
         (
             "effect",
@@ -1208,6 +1221,11 @@ fn parse_values(v: &FormValues) -> Result<CardDraft, (CardDraft, Vec<FieldError>
         } else {
             pick(&v.relief, Relief::Flat, "relief", &mut errors)
         },
+        background: if v.background.is_empty() {
+            Background::Plain
+        } else {
+            pick(&v.background, Background::Plain, "background", &mut errors)
+        },
         effect_style: if v.effect_style.is_empty() {
             EffectStyle::Text
         } else {
@@ -1346,6 +1364,7 @@ async fn read_submission(mut mp: Multipart) -> AppResult<Submission> {
             "title" => v.title = text,
             "desc_style" => v.desc_style = text,
             "relief" => v.relief = text,
+            "background" => v.background = text,
             "effect_style" => v.effect_style = text,
             "effect_file" => v.effect_file = text,
             "refs" => v.refs = text,
@@ -1516,6 +1535,8 @@ struct PreviewForm {
     #[serde(default)]
     relief: String,
     #[serde(default)]
+    background: String,
+    #[serde(default)]
     effect_style: String,
     #[serde(default)]
     effect_file: String,
@@ -1557,6 +1578,7 @@ async fn preview(
         title: f.title,
         desc_style: f.desc_style,
         relief: f.relief,
+        background: f.background,
         effect_style: f.effect_style,
         effect_file: f.effect_file,
         refs: f.refs,
@@ -1615,6 +1637,9 @@ async fn api_meta() -> Json<serde_json::Value> {
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "effect_styles": EffectStyle::ALL.iter().map(|t| serde_json::json!({
+            "slug": t.slug(), "label": t.label()
+        })).collect::<Vec<_>>(),
+        "backgrounds": Background::ALL.iter().map(|t| serde_json::json!({
             "slug": t.slug(), "label": t.label()
         })).collect::<Vec<_>>(),
         "reliefs": Relief::ALL.iter().map(|t| serde_json::json!({

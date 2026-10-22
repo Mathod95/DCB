@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use dcb_core::Background;
 use dcb_core::DescStyle;
 use dcb_core::EffectStyle;
 use dcb_core::Refs;
@@ -45,6 +46,9 @@ struct CardFile {
     /// Relief des blocs, absent du fichier quand c'est `flat`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     relief: Option<String>,
+    /// Fond de la carte, absent du fichier quand c'est `plain`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    background: Option<String>,
     /// Bloc Effect façon code, absent du fichier quand c'est `text`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     effect_style: Option<String>,
@@ -90,6 +94,7 @@ impl From<&CardDraft> for CardFile {
             desc_style: (d.desc_style != DescStyle::Classic)
                 .then(|| d.desc_style.slug().to_owned()),
             relief: (d.relief != Relief::Flat).then(|| d.relief.slug().to_owned()),
+            background: (d.background != Background::Plain).then(|| d.background.slug().to_owned()),
             effect_style: (d.effect_style != EffectStyle::Text)
                 .then(|| d.effect_style.slug().to_owned()),
             effect_file: (!d.effect_file.is_empty()).then(|| d.effect_file.clone()),
@@ -183,6 +188,17 @@ impl TryFrom<CardFile> for CardDraft {
                 )
             })?,
         };
+        let background = match f.background.as_deref().map(str::trim) {
+            None | Some("") => Background::Plain,
+            Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
+                let valid: Vec<_> = Background::ALL.iter().map(|t| t.slug()).collect();
+                format!(
+                    "background {:?} inconnu (valeurs : {})",
+                    e.value,
+                    valid.join(", ")
+                )
+            })?,
+        };
         let relief = match f.relief.as_deref().map(str::trim) {
             None | Some("") => Relief::Flat,
             Some(v) => v.parse().map_err(|e: dcb_core::UnknownVariant| {
@@ -215,6 +231,7 @@ impl TryFrom<CardFile> for CardDraft {
             badge,
             desc_style,
             relief,
+            background,
             effect_style,
             effect_file: f.effect_file.unwrap_or_default(),
             refs,
@@ -437,6 +454,7 @@ mod tests {
             badge: Badge::Image,
             desc_style: DescStyle::Comment,
             relief: Relief::Soft,
+            background: Background::Tinted,
             effect_style: EffectStyle::Code,
             effect_file: "deploy.sh".into(),
             refs: Refs::Linked,
@@ -474,6 +492,7 @@ mod tests {
         assert!(text.contains("badge = \"image\""), "{text}");
         assert!(text.contains("desc_style = \"comment\""), "{text}");
         assert!(text.contains("relief = \"soft\""), "{text}");
+        assert!(text.contains("background = \"tinted\""), "{text}");
         assert!(text.contains("effect_style = \"code\""), "{text}");
         assert!(text.contains("effect_file = \"deploy.sh\""), "{text}");
         assert!(text.contains("refs = \"linked\""), "{text}");

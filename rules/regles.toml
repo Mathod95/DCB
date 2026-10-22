@@ -366,8 +366,8 @@ key = "topbar"
 text = "Filet fin tout autour, et une barre épaisse de la couleur du type en haut de la carte."
 
 [[concepts.shape.items]]
-key = "tinted"
-text = "Plus de trait épais, le fond de la carte prend une teinte du type, avec un filet fin."
+key = "thin"
+text = "Un simple filet fin de 1 px de la couleur du type. Avec le background Teinté, on retrouve l'ancien « fond teinté »."
 
 # ---------------------------------------------------------------------------------------------
 # Understand the Basics
@@ -566,6 +566,10 @@ text = "Les noms d'autres cartes dans l'effet prennent la couleur de leur type."
 [[settings.items]]
 term = "Bloc Effect"
 text = "En texte, ou façon éditeur de code avec le nom de fichier de votre choix."
+
+[[settings.items]]
+term = "Background"
+text = "Uni, ou teinté par la couleur du type ; se combine avec n'importe quel contour."
 
 [[settings.items]]
 term = "Relief"

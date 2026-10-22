@@ -29,7 +29,7 @@
 <div class="gal-layout">
   {#- Filtres : formulaire GET, une case par valeur. Dans un réglage les valeurs s'additionnent,
       d'un réglage à l'autre elles se cumulent. Le formulaire s'envoie à chaque case cochée. -#}
-  <form class="gal-side" id="gal-form" method="get" action="/gallery" aria-label="Filtres">
+  <form class="gal-side" id="gal-form" method="get" action="/gallery" aria-label="Filtres" hx-swap="innerHTML show:none">
     <div class="gal-side-head">
       <p class="gal-side-title">Filtres</p>
       {% if filtered %}<a class="gal-reset" href="/gallery">Réinitialiser</a>{% endif %}
@@ -111,6 +111,56 @@
 <script src="/static/concepts.js" defer></script>
 {% endif %}
 <script>
+// Menus ouverts et position de défilement gardés d'un rechargement à l'autre : choisir une valeur
+// recharge la galerie, sans refermer les menus ni remonter en haut.
+(() => {
+  const KEY = "dcb-gallery-ui";
+  let ui = {};
+  try { ui = JSON.parse(sessionStorage.getItem(KEY) || "{}"); } catch {}
+  const groups = [...document.querySelectorAll(".gal-group")];
+  const nameOf = (g) => (g.closest(".gal-view") ? "v:" : "f:") + (g.querySelector("input")?.name || "");
+  if (ui.open) groups.forEach((g) => { if (nameOf(g) in ui.open) g.open = ui.open[nameOf(g)]; });
+  const sides = [...document.querySelectorAll(".gal-side")];
+  if (ui.restore) {
+    const back = () => {
+      scrollTo(0, ui.y || 0);
+      sides.forEach((el, i) => (el.scrollTop = (ui.sides || [])[i] || 0));
+    };
+    back();
+    // htmx remet la page en place après l'échange : on repasse derrière lui
+    document.addEventListener("htmx:afterSettle", back, { once: true });
+    requestAnimationFrame(back);
+    ui.restore = false;
+  }
+  const save = (restore) => {
+    ui.open = Object.fromEntries(groups.map((g) => [nameOf(g), g.open]));
+    if (restore) {
+      ui.restore = true;
+      ui.y = scrollY;
+      ui.sides = sides.map((el) => el.scrollTop);
+    }
+    try { sessionStorage.setItem(KEY, JSON.stringify(ui)); } catch {}
+  };
+  groups.forEach((g) => g.addEventListener("toggle", () => save(false)));
+  document.querySelector("#gal-form")?.addEventListener("submit", () => save(true));
+  save(false);
+})();
+
+// Grille : les cartes s'agrandissent pour remplir la largeur disponible, avec autant de
+// colonnes qu'à la taille de base.
+(() => {
+  const grid = document.querySelector(".grid");
+  if (!grid) return;
+  const BASE = 0.61, W = 374, GAP = 22;
+  const fit = () => {
+    const width = grid.clientWidth;
+    const n = Math.max(1, Math.floor((width + GAP) / (W * BASE + GAP)));
+    grid.style.setProperty("--grid-scale", ((width - GAP * (n - 1)) / n / W).toFixed(4));
+  };
+  new ResizeObserver(fit).observe(grid);
+  fit();
+})();
+
 // Filtres : la galerie se met à jour dès qu'une case change.
 document.querySelector("#gal-form")?.addEventListener("change", (e) => e.currentTarget.requestSubmit());
 // Affichage : les choix appartiennent au même formulaire, envoyé de la même façon.
