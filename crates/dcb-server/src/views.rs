@@ -1009,7 +1009,7 @@ impl BoardPage {
                 140,
                 140,
                 "deploys",
-                "Énergie (actions), à déplacer",
+                "Énergie, à déplacer",
                 true,
                 false,
             ),
