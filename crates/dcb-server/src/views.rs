@@ -779,6 +779,23 @@ pub struct ConceptsPage {
 #[template(path = "board.html")]
 pub struct BoardPage {
     pub ctx: Ctx,
+    /// Plateau entier avec l'adversaire (`/plateau/complet`) ; sinon la moitié du joueur.
+    pub full: bool,
+}
+
+impl BoardPage {
+    /// Décalage vertical : la moitié du joueur commence à y = 1443 dans le frame Figma.
+    pub fn oy(&self) -> i32 {
+        if self.full { 0 } else { 1443 }
+    }
+
+    pub fn width(&self) -> i32 {
+        if self.full { 4048 } else { 3915 }
+    }
+
+    pub fn height(&self) -> i32 {
+        if self.full { 2861 } else { 1261 }
+    }
 }
 
 #[derive(Template)]

@@ -206,6 +206,7 @@ pub fn router(state: AppState) -> Router {
         .route("/", get(menu))
         .route("/gallery", get(gallery))
         .route("/plateau", get(board_page))
+        .route("/plateau/complet", get(board_full_page))
         .route("/regles", get(rules_page))
         .route("/regles/concepts", get(concepts_page))
         .route("/regles/{page}", get(doc_page))
@@ -393,10 +394,22 @@ async fn menu(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<H
     menu_page(&s, s.ctx_for(u.as_ref())).await
 }
 
-/// Maquette du plateau de jeu, publique.
+/// Maquette du plateau de jeu, publique : la moitié du joueur, à la taille de la page.
 async fn board_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Html<String>> {
     render(BoardPage {
         ctx: s.ctx_for(u.as_ref()),
+        full: false,
+    })
+}
+
+/// Le plateau entier avec l'adversaire, pour exemple.
+async fn board_full_page(
+    State(s): State<AppState>,
+    MaybeUser(u): MaybeUser,
+) -> AppResult<Html<String>> {
+    render(BoardPage {
+        ctx: s.ctx_for(u.as_ref()),
+        full: true,
     })
 }
 
