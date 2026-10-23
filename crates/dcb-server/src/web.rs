@@ -394,11 +394,21 @@ async fn menu(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<H
     menu_page(&s, s.ctx_for(u.as_ref())).await
 }
 
+/// Main du plateau : 10 cartes de la collection, illustrées d'abord.
+async fn board_hand(s: &AppState) -> AppResult<Vec<CardView>> {
+    Ok(db::random_hand(&s.pool, 10)
+        .await?
+        .iter()
+        .map(|c| CardView::new(Some(&c.slug), &c.draft))
+        .collect())
+}
+
 /// Maquette du plateau de jeu, publique : la moitié du joueur, à la taille de la page.
 async fn board_page(State(s): State<AppState>, MaybeUser(u): MaybeUser) -> AppResult<Html<String>> {
     render(BoardPage {
         ctx: s.ctx_for(u.as_ref()),
         full: false,
+        hand: board_hand(&s).await?,
     })
 }
 
@@ -410,6 +420,7 @@ async fn board_full_page(
     render(BoardPage {
         ctx: s.ctx_for(u.as_ref()),
         full: true,
+        hand: board_hand(&s).await?,
     })
 }
 

@@ -4,7 +4,8 @@
 {#- Maquette du plateau, recopiée du frame Figma `Board` (node 36:2621) à ses cotes.
     `/plateau` : la moitié du joueur seule (zones 7 à 19), à la taille de la page.
     `/plateau/complet` : le plateau entier avec l'adversaire (4048 × 2861), pour exemple.
-    Pas encore jouable : chaque zone porte un numéro pour lui donner un rôle. -#}
+    Deux vues comme l'anatomie de la carte : Plateau (le rendu) et Squelette (le rôle de
+    chaque zone, `BoardPage::zones`). Pas encore jouable. -#}
 {%- let oy = self.oy() -%}
 {%- let bw = self.width() -%}
 {%- let bh = self.height() -%}
@@ -23,11 +24,11 @@
     transform: scale(var(--s)); transform-origin: 0 0;
     font-family: Inter, system-ui, sans-serif;
   }
+  .board[hidden] { display: none; }
   .z { position: absolute; box-sizing: border-box; }
   .z-white { background: #fff; border-radius: 36px; border: 3px solid #0b1228; }
   .z-back { border-radius: 12px; border: 3px solid rgb(255 255 255 / .55); }
   .z-red  { background: linear-gradient(to bottom, #c94646, #772c2c); }
-  .z-blue { background: linear-gradient(to bottom, #1579de, #1d4880); }
   .z-panel { border-radius: 18px; overflow: hidden; border: 3px solid rgb(255 255 255 / .7); }
   .z-panel > h3 {
     margin: 0; height: 38px; display: flex; align-items: center; justify-content: center;
@@ -41,34 +42,91 @@
   .p-org  { background: #fff1d8; } .p-org > h3  { background: #fffdf5; color: #f97316; }
   .p-kpi  { background: #d6c1ff; } .p-kpi > h3  { background: #e4d3fb; color: #a855f7; }
   .p-kpi ul { list-style: none; margin: 14px 0 0 19px; padding: 0; color: #a78bfa; font-size: 21px; font-weight: 600; line-height: 1.15; }
-  .deck-kpis { position: absolute; left: 133px; top: 235px; margin: 0; padding: 0; list-style: none; font-size: 11px; line-height: 1.5; color: #0b1228; }
-  .z-ghost { border: 3px dashed #c7cfdb; border-radius: 16px; }
-  /* numéros des zones, pour leur donner un rôle */
+
+  /* 12 · Main : des cartes de la collection à mi-taille (187 × 287) */
+  .hand-slot { position: absolute; width: 187px; height: 287px; }
+  .hand-slot > .card-frame { --s: .5; }
+  .hand-slot.is-empty { border: 3px dashed rgb(255 255 255 / .25); border-radius: 12px; }
+
+  /* 14 · Deck et pioche : une pile de dos de carte */
+  .deck { position: absolute; width: 374px; height: 590px; }
+  .deck-back {
+    position: absolute; left: 0; width: 374px; height: 574px; box-sizing: border-box;
+    border-radius: 20px; border: 3px solid rgb(255 255 255 / .7);
+    background: linear-gradient(160deg, #13284d, #0a1428 60%, #0d1a33);
+    box-shadow: 0 6px 14px rgb(0 0 0 / .35);
+  }
+  .deck-back:nth-child(1) { top: 16px; opacity: .55; }
+  .deck-back:nth-child(2) { top: 8px; opacity: .8; }
+  .deck-back.is-top { top: 0; overflow: hidden; }
+  .deck-back.is-top::before {
+    content: ""; position: absolute; inset: 14px; border-radius: 12px;
+    border: 4px solid transparent;
+    background: linear-gradient(135deg, #f88838, #38bdf8, #a538f8, #f83838, #6d68ff) border-box;
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .deck-back.is-top::after {
+    content: ""; position: absolute; inset: 30px; border-radius: 6px;
+    background: radial-gradient(rgb(56 189 248 / .22) 2px, transparent 2.6px) 0 0 / 22px 22px;
+  }
+  .deck-logo { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 22px; z-index: 1; }
+  .deck-mark { display: grid; gap: 12px; }
+  .deck-mark i { display: block; height: 16px; border-radius: 8px; }
+  .deck-mark i:nth-child(1) { width: 110px; background: #f88838; }
+  .deck-mark i:nth-child(2) { width: 80px; background: #38bdf8; }
+  .deck-mark i:nth-child(3) { width: 50px; background: #a538f8; }
+  .deck-name { font-size: 34px; font-weight: 800; color: #e2e8f0; letter-spacing: .01em; }
+  .deck-name b { color: #38bdf8; }
+
+  /* numéros des zones */
   .zn {
-    position: absolute; top: 10px; left: 10px; z-index: 2;
-    min-width: 44px; height: 44px; padding: 0 10px; border-radius: 22px;
+    position: absolute; top: 10px; left: 10px; z-index: 3;
+    min-width: 44px; height: 44px; padding: 0 10px; border-radius: 22px; box-sizing: border-box;
     display: grid; place-items: center;
     background: #f59e0b; color: #111; font-size: 24px; font-weight: 800;
     box-shadow: 0 4px 12px rgb(0 0 0 / .35);
   }
   .z-panel > .zn { top: auto; left: auto; bottom: 8px; right: 8px; }
   .board.no-num .zn { display: none; }
+
+  /* Vue Squelette : chaque zone avec son nom et son rôle (comme l'anatomie de la carte) */
+  .board-skel .skz {
+    position: absolute; box-sizing: border-box; padding: 22px 26px;
+    border: 3px dashed #3b4f6e; border-radius: 24px; background: rgb(10 16 30 / .85);
+    display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+    font-family: var(--mono); color: #94a3b8;
+  }
+  .board-skel .skz.is-known { border-color: #38bdf8; border-style: solid; color: #e2e8f0; }
+  .board-skel .skz.is-opp { border-color: #f8383880; }
+  .board-skel .skz .n { display: inline-grid; place-items: center; min-width: 52px; height: 52px; padding: 0 12px; box-sizing: border-box; border-radius: 26px; background: #f59e0b; color: #111; font: 800 28px var(--sans); align-self: flex-start; }
+  .board-skel .skz code { font-size: 30px; color: inherit; }
+  .board-skel .skz p { margin: 0; font: 500 26px/1.3 var(--sans); color: #94a3b8; }
+  .board-skel .skz.is-known p { color: #cbd5e1; }
+  .board-skel .skz.is-small { padding: 12px; gap: 6px; }
+  .board-skel .skz.is-small code { font-size: 20px; }
+  .board-skel .skz.is-small p { font-size: 17px; }
+  .board-skel .skz.is-small .n { min-width: 40px; height: 40px; font-size: 22px; }
 </style>
 
 <section class="board-page">
   <div class="board-head">
     <h1>{% if full %}Plateau complet{% else %}Plateau{% endif %}</h1>
-    <p>{% if full %}Exemple du frame Board de Figma, avec l'adversaire en haut.{% else %}Ta moitié du plateau. Chaque zone a un numéro : dis-moi ce qu'elle contient.{% endif %}</p>
+    <p>{% if full %}Exemple du frame Board de Figma, avec l'adversaire en haut.{% else %}Ta moitié du plateau. Les zones en bleu dans le squelette ont un rôle, les autres sont à définir.{% endif %}</p>
     <div class="tools">
-      <label><input type="checkbox" id="board-num" checked> Numéros</label>
+      <div class="anat-switch" role="group" aria-label="Vue">
+        <button type="button" data-view="board" aria-pressed="true">Plateau</button>
+        <button type="button" data-view="skeleton" aria-pressed="false">Squelette</button>
+      </div>
+      <label id="board-num-label"><input type="checkbox" id="board-num" checked> Numéros</label>
       {% if full %}<a href="/plateau">Mon plateau</a>{% else %}<a href="/plateau/complet">Plateau complet (exemple)</a>{% endif %}
     </div>
   </div>
 
   <div class="board-fit" id="board-fit" data-w="{{ bw }}" data-h="{{ bh }}">
-    <div class="board" id="board">
+    {#- Vue Plateau -#}
+    <div class="board board-real" id="board">
       {% if full %}
-      {# Adversaire : pioche, main, zone de jeu, colonne de droite #}
       <div class="z z-back z-red" style="left:605px;top:168px;width:374px;height:574px"><span class="zn">1</span></div>
       {% for i in 0..10 %}
       <div class="z z-back z-red" style="left:{{ 999 + i * 207 }}px;top:168px;width:187px;height:287px">{% if i == 0 %}<span class="zn">2</span>{% endif %}</div>
@@ -79,23 +137,38 @@
       <div class="z z-white" style="left:3069px;top:1005px;width:608px;height:400px"><span class="zn">6</span></div>
       {% endif %}
 
-      {# Joueur : colonne de gauche, trois zones, zone de jeu, main, pioche et tableaux de bord #}
       <div class="z z-white" style="left:12px;top:{{ 1455 - oy }}px;width:340px;height:1237px"><span class="zn">7</span></div>
       <div class="z z-white" style="left:371px;top:{{ 1455 - oy }}px;width:608px;height:400px"><span class="zn">8</span></div>
       <div class="z z-white" style="left:371px;top:{{ 1874 - oy }}px;width:608px;height:399px"><span class="zn">9</span></div>
       <div class="z z-white" style="left:371px;top:{{ 2292 - oy }}px;width:608px;height:400px"><span class="zn">10</span></div>
-      <div class="z z-white" style="left:999px;top:{{ 1455 - oy }}px;width:2050px;height:930px">
-        <span class="zn">11</span>
-        <div class="z z-ghost" style="left:485px;top:214px;width:328px;height:102px"><span class="zn">11b</span></div>
+      <div class="z z-white" style="left:999px;top:{{ 1455 - oy }}px;width:2050px;height:930px"><span class="zn">11</span></div>
+
+      {#- 12 · Main -#}
+      {% for card in hand %}
+      <div class="hand-slot" style="left:{{ 999 + loop.index0 * 207 }}px;top:{{ 2405 - oy }}px">
+        {% if loop.first %}<span class="zn">12</span>{% endif %}
+        <div class="card-frame">{% include "card.html" %}</div>
       </div>
-      {% for i in 0..10 %}
-      <div class="z z-back z-blue" style="left:{{ 999 + i * 207 }}px;top:{{ 2405 - oy }}px;width:187px;height:287px">{% if i == 0 %}<span class="zn">12</span>{% endif %}</div>
       {% endfor %}
+      {% for i in hand.len()..10 %}
+      <div class="hand-slot is-empty" style="left:{{ 999 + i * 207 }}px;top:{{ 2405 - oy }}px">{% if i == 0 %}<span class="zn">12</span>{% endif %}</div>
+      {% endfor %}
+
       <div class="z z-panel p-res" style="left:3069px;top:{{ 1455 - oy }}px;width:834px;height:637px"><span class="zn">13</span><h3>RESOURCES</h3></div>
-      <div class="z z-back z-blue" style="left:3069px;top:{{ 2102 - oy }}px;width:374px;height:590px">
+
+      {#- 14 · Deck et pioche -#}
+      <div class="deck" style="left:3069px;top:{{ 2102 - oy }}px" aria-label="Deck">
+        <div class="deck-back"></div>
+        <div class="deck-back"></div>
+        <div class="deck-back is-top">
+          <div class="deck-logo">
+            <span class="deck-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="deck-name">DevCard<b>Battle</b></span>
+          </div>
+        </div>
         <span class="zn">14</span>
-        <ul class="deck-kpis"><li>Stabilité</li><li>Traffic</li><li>Taux de réponse</li><li>Taux de disponibilité</li><li>Taux de click</li><li>Temps de réponse</li><li>Taux de conversion</li></ul>
       </div>
+
       <div class="z z-panel p-cost" style="left:3463px;top:{{ 2102 - oy }}px;width:440px;height:290px"><span class="zn">15</span><h3>COST EXPLORER</h3></div>
       <div class="z z-panel p-bud" style="left:3463px;top:{{ 2402 - oy }}px;width:140px;height:140px"><span class="zn">16</span><h3>BUDGETS</h3><div class="v">$25.000,00</div></div>
       <div class="z z-panel p-dep" style="left:3613px;top:{{ 2402 - oy }}px;width:140px;height:140px"><span class="zn">17</span><h3>DEPLOYS</h3><div class="v">5/5</div></div>
@@ -103,6 +176,17 @@
       <div class="z z-panel p-kpi" style="left:3763px;top:{{ 2402 - oy }}px;width:140px;height:290px"><span class="zn">19</span><h3>KPI</h3>
         <ul><li>CTR 100%</li><li>STB 85%</li><li>ART</li><li>CVR</li><li>???</li><li>???</li><li>???</li><li>???</li></ul>
       </div>
+    </div>
+
+    {#- Vue Squelette -#}
+    <div class="board board-skel" id="board-skel" hidden>
+      {% for z in self.zones() %}
+      <div class="skz{% if z.known %} is-known{% endif %}{% if z.opponent %} is-opp{% endif %}{% if z.rect.2 < 300 && z.rect.3 < 300 %} is-small{% endif %}" style="left:{{ z.rect.0 }}px;top:{{ z.rect.1 }}px;width:{{ z.rect.2 }}px;height:{{ z.rect.3 }}px">
+        <span class="n">{{ z.num }}</span>
+        <code>{{ z.key }}</code>
+        <p>{{ z.role }}</p>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </section>
@@ -112,14 +196,14 @@
   // Le plateau occupe toute la place sous l'en-tête, sans défilement : il garde ses proportions
   // et se cale sur la largeur ou la hauteur disponible.
   const fit = document.getElementById("board-fit");
-  const board = document.getElementById("board");
+  const boards = fit.querySelectorAll(".board");
   const W = +fit.dataset.w, H = +fit.dataset.h;
   const resize = () => {
     fit.style.marginTop = "0px";
     const avW = document.documentElement.clientWidth - 48;
     const avH = window.innerHeight - fit.getBoundingClientRect().top - window.scrollY - 76;
     const s = Math.max(0.05, Math.min(avW / W, avH / H));
-    board.style.setProperty("--s", s);
+    boards.forEach((b) => b.style.setProperty("--s", s));
     fit.style.width = W * s + "px";
     fit.style.height = H * s + "px";
     // centré dans la hauteur restante quand c'est la largeur qui limite
@@ -127,7 +211,18 @@
   };
   addEventListener("resize", resize);
   resize();
-  document.getElementById("board-num").addEventListener("change", (e) => board.classList.toggle("no-num", !e.target.checked));
+
+  const real = document.getElementById("board");
+  const skel = document.getElementById("board-skel");
+  const numLabel = document.getElementById("board-num-label");
+  document.getElementById("board-num").addEventListener("change", (e) => real.classList.toggle("no-num", !e.target.checked));
+  document.querySelectorAll(".board-head [data-view]").forEach((b) => b.addEventListener("click", () => {
+    const sk = b.dataset.view === "skeleton";
+    real.hidden = sk;
+    skel.hidden = !sk;
+    numLabel.hidden = sk;
+    document.querySelectorAll(".board-head [data-view]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
 })();
 </script>
 {% endblock %}

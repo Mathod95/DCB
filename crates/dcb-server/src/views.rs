@@ -781,6 +781,19 @@ pub struct BoardPage {
     pub ctx: Ctx,
     /// Plateau entier avec l'adversaire (`/plateau/complet`) ; sinon la moitié du joueur.
     pub full: bool,
+    /// Cartes de la main (zone 12), en miniature.
+    pub hand: Vec<CardView>,
+}
+
+/// Une zone du plateau pour la vue Squelette : numéro, position dans le frame Figma, nom et rôle.
+pub struct BoardZone {
+    pub num: &'static str,
+    pub rect: (i32, i32, i32, i32),
+    pub key: &'static str,
+    pub role: &'static str,
+    /// Rôle connu (sinon « à définir »).
+    pub known: bool,
+    pub opponent: bool,
 }
 
 impl BoardPage {
@@ -795,6 +808,225 @@ impl BoardPage {
 
     pub fn height(&self) -> i32 {
         if self.full { 2861 } else { 1261 }
+    }
+
+    /// Zones du plateau, aux cotes du frame Figma (y décalé pour la moitié du joueur).
+    pub fn zones(&self) -> Vec<BoardZone> {
+        let z = |num, x, y, w, h, key, role, known, opponent| BoardZone {
+            num,
+            rect: (x, y - self.oy(), w, h),
+            key,
+            role,
+            known,
+            opponent,
+        };
+        let mut v = Vec::new();
+        if self.full {
+            v.extend([
+                z(
+                    "1",
+                    605,
+                    168,
+                    374,
+                    574,
+                    "opponent.deck",
+                    "Deck de l'adversaire",
+                    true,
+                    true,
+                ),
+                z(
+                    "2",
+                    999,
+                    168,
+                    2050,
+                    287,
+                    "opponent.hand",
+                    "Main de l'adversaire, face cachée",
+                    true,
+                    true,
+                ),
+                z(
+                    "3",
+                    999,
+                    505,
+                    2050,
+                    900,
+                    "opponent.zone_3",
+                    "À définir",
+                    false,
+                    true,
+                ),
+                z(
+                    "4",
+                    3069,
+                    168,
+                    608,
+                    400,
+                    "opponent.zone_4",
+                    "À définir",
+                    false,
+                    true,
+                ),
+                z(
+                    "5",
+                    3069,
+                    587,
+                    608,
+                    399,
+                    "opponent.zone_5",
+                    "À définir",
+                    false,
+                    true,
+                ),
+                z(
+                    "6",
+                    3069,
+                    1005,
+                    608,
+                    400,
+                    "opponent.zone_6",
+                    "À définir",
+                    false,
+                    true,
+                ),
+            ]);
+        }
+        v.extend([
+            z(
+                "7",
+                12,
+                1455,
+                340,
+                1237,
+                "zone_7",
+                "À définir",
+                false,
+                false,
+            ),
+            z(
+                "8",
+                371,
+                1455,
+                608,
+                400,
+                "zone_8",
+                "À définir",
+                false,
+                false,
+            ),
+            z(
+                "9",
+                371,
+                1874,
+                608,
+                399,
+                "zone_9",
+                "À définir",
+                false,
+                false,
+            ),
+            z(
+                "10",
+                371,
+                2292,
+                608,
+                400,
+                "zone_10",
+                "À définir",
+                false,
+                false,
+            ),
+            z(
+                "11",
+                999,
+                1455,
+                2050,
+                930,
+                "zone_11",
+                "À définir",
+                false,
+                false,
+            ),
+            z(
+                "12",
+                999,
+                2405,
+                2050,
+                287,
+                "hand",
+                "Main : les cartes en main, 10 au plus",
+                true,
+                false,
+            ),
+            z(
+                "13",
+                3069,
+                1455,
+                834,
+                637,
+                "resources",
+                "Resources",
+                false,
+                false,
+            ),
+            z(
+                "14",
+                3069,
+                2102,
+                374,
+                590,
+                "deck",
+                "Deck et pioche",
+                true,
+                false,
+            ),
+            z(
+                "15",
+                3463,
+                2102,
+                440,
+                290,
+                "cost_explorer",
+                "Cost Explorer",
+                false,
+                false,
+            ),
+            z(
+                "16",
+                3463,
+                2402,
+                140,
+                140,
+                "budget",
+                "Trésorerie, à déplacer",
+                true,
+                false,
+            ),
+            z(
+                "17",
+                3613,
+                2402,
+                140,
+                140,
+                "deploys",
+                "Énergie (actions), à déplacer",
+                true,
+                false,
+            ),
+            z(
+                "18",
+                3463,
+                2552,
+                290,
+                140,
+                "org_chart",
+                "Organigramme",
+                false,
+                false,
+            ),
+            z("19", 3763, 2402, 140, 290, "kpi", "KPI", false, false),
+        ]);
+        v
     }
 }
 

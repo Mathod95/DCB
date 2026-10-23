@@ -367,6 +367,23 @@ pub async fn count_by_type(pool: &SqlitePool) -> sqlx::Result<Vec<(CardType, i64
         .collect())
 }
 
+/// `n` cartes différentes tirées au hasard (main du plateau) : celles qui ont une illustration
+/// d'abord, puis celles qui ont un texte.
+pub async fn random_hand(pool: &SqlitePool, n: i64) -> sqlx::Result<Vec<Card>> {
+    const SQL: &str = concat!(
+        "SELECT ",
+        columns!(),
+        " FROM cards ORDER BY (art IS NULL), (description = '' AND effect = ''), RANDOM() LIMIT ?1"
+    );
+    sqlx::query_as::<_, CardRow>(SQL)
+        .bind(n)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(Card::try_from)
+        .collect()
+}
+
 /// Une carte tirée au hasard, d'un type donné ou de toute la collection. Les cartes qui ont
 /// une description ou un effet passent en priorité : une carte encore vide n'est tirée que
 /// s'il n'y en a pas d'autre.
