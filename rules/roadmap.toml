@@ -27,7 +27,7 @@ title = "Deck builder"
 text = "Composer et enregistrer ses decks"
 
 [[items]]
-status = "planned"
+status = "doing"
 title = "Plateau de jeu"
 text = "Les zones du Board, côte à côte avec l'adversaire"
 

@@ -3,6 +3,17 @@
 # ce qui a changé et ce qui est corrigé.
 
 [[releases]]
+version = "v0.14"
+date = "2026-10-23"
+title = "Le plateau de jeu, en maquette"
+new = [
+  "Page Plateau : ta moitié du plateau en pleine page, avec les zones du Figma numérotées pour leur donner un rôle",
+  "Plateau : vue Plateau et vue Squelette (nom et rôle de chaque zone), comme l'anatomie de la carte",
+  "Plateau : la main avec 10 cartes de la collection en miniature, et le deck en pile de dos de carte",
+  "Plateau complet en exemple, avec la moitié de l'adversaire",
+]
+
+[[releases]]
 version = "v0.13.2"
 date = "2026-10-22"
 title = "Filtre Illustration"
